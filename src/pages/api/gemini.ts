@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+﻿import type { NextApiRequest, NextApiResponse } from "next";
 import { generateText } from "ai";
 
 interface GeminiRequestBody {
@@ -10,6 +10,26 @@ interface GeminiResponse {
   text?: string;
   imageUrl?: string;
   error?: string;
+}
+
+// Types for Gemini API content
+interface GeminiFileContent {
+  type: "file";
+  file: {
+    data: string; // base64
+    mediaType: string;
+  };
+}
+
+interface GeminiTextContent {
+  type: "text";
+  text: string;
+}
+
+type GeminiContent = GeminiFileContent | GeminiTextContent;
+
+interface GeminiStep {
+  content?: GeminiContent[];
 }
 
 export default async function handler(
@@ -30,16 +50,15 @@ export default async function handler(
     const apiKey = process.env.AI_GATEWAY_API_KEY;
     if (!apiKey) return res.status(500).json({ error: "Server misconfiguration" });
 
-    // Determine if this is an image processing request
     const isImageRequest = images && images.length > 0;
     const model = isImageRequest ? "google/gemini-2.5-flash-image-preview" : "google/gemini-2.5-flash";
 
     const result = await generateText({
       model,
       providerOptions: {
-        google: { 
-          apiKey, 
-          responseModalities: isImageRequest ? ["IMAGE", "TEXT"] : ["TEXT"] 
+        google: {
+          apiKey,
+          responseModalities: isImageRequest ? ["IMAGE", "TEXT"] : ["TEXT"],
         },
       },
       messages: [
@@ -47,36 +66,47 @@ export default async function handler(
           role: "user",
           content: [
             { type: "text", text: prompt },
-            ...(images ? images.map(img => ({ type: "image" as const, image: img })) : [])
+            ...(images
+              ? images.map((img) => ({ type: "image" as const, image: img }))
+              : []),
           ],
         },
       ],
     });
 
-    // Look inside steps to find content
-    const textContent = result.steps
-      ?.flatMap(step => step.content)
-      ?.filter((c: any) => c.type === "text")
-      ?.map((c: any) => c.text)
-      ?.join("\n");
+    const steps: GeminiStep[] = result.steps || [];
 
-    const imageContent = result.steps
-      ?.flatMap(step => step.content)
-      ?.filter((c: any) => c.type === "file")
-      ?.map((c: any) => c.file?.data)
-      ?.join("");
+    const textContent = steps
+      .flatMap((step) => step.content || [])
+      .filter((c): c is GeminiTextContent => c.type === "text")
+      .map((c) => c.text)
+      .join("\n");
 
-    if (isImageRequest && imageContent) {
-      const dataUrl = `data:image/jpeg;base64,${imageContent}`;
-      res.status(200).json({ imageUrl: dataUrl });
+    const fileContent = steps
+      .flatMap((step) => step.content || [])
+      .filter((c): c is GeminiFileContent => c.type === "file" && c.file?.data)
+      .map((c) => c.file.data)
+      .join("");
+
+    if (isImageRequest && fileContent) {
+      const firstMediaType = steps
+        .flatMap((step) => step.content || [])
+        .find((c): c is GeminiFileContent => c.type === "file" && !!c.file)
+        ?.file.mediaType || "image/jpeg";
+
+      const dataUrl = `data:${firstMediaType};base64,${fileContent}`;
+      return res.status(200).json({ imageUrl: dataUrl });
     } else if (textContent) {
-      res.status(200).json({ text: textContent });
+      return res.status(200).json({ text: textContent });
     } else {
       console.error("No content returned from Gemini", result);
-      res.status(500).json({ error: "No response from Gemini" });
+      return res.status(500).json({ error: "No response from Gemini" });
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("Error calling Gemini API:", err);
-    res.status(500).json({ error: "Internal server error" });
+    if (err instanceof Error) {
+      return res.status(500).json({ error: err.message });
+    }
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
