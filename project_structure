@@ -1,0 +1,32 @@
+genie-next/
+├─ node_modules/
+├─ public/                  # static assets like images, icons
+│
+├─ pages/                   # Next.js routes
+│   ├─ api/                 # backend / serverless APIs
+│   │   ├─ gemini.ts
+│   │   ├─ firebase.ts
+│   │   └─ share.ts
+│   └─ index.tsx            # main entry page (previous App.tsx)
+│
+├─ components/              # reusable UI components
+│   ├─ ChatBox.tsx
+│   ├─ ImageGenerator.tsx
+│   └─ Navbar.tsx
+│
+├─ services/                # move your service logic here
+│   ├─ geminiService.ts
+│   ├─ firebaseService.ts
+│   ├─ dailyTrendService.ts
+│   ├─ authService.ts
+│   └─ shareService.ts
+│
+├─ styles/                  # optional: CSS / SCSS files
+│
+├─ constants.ts
+├─ config.ts
+├─ types.ts
+├─ metadata.json
+├─ package.json
+├─ tsconfig.json
+└─ .env.local
