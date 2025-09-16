@@ -20,7 +20,7 @@ interface CachedFilter {
   id: string;
   name: string;
   accessCount?: number;
-  thumbnailUrl?: string;
+  previewImageUrl?: string;
 }
 
 export default function Home() {
@@ -87,7 +87,7 @@ export default function Home() {
           id: f.id,
           name: f.name,
           accessCount: f.accessCount,
-          thumbnailUrl: f.thumbnailUrl,
+          previewImageUrl: f.previewImageUrl,
         }));
         localStorage.setItem('filters', JSON.stringify(minimalCache));
 
@@ -117,7 +117,7 @@ export default function Home() {
       id: f.id,
       name: f.name,
       accessCount: f.accessCount,
-      thumbnailUrl: f.thumbnailUrl,
+      previewImageUrl: f.previewImageUrl,
     }));
     try {
       localStorage.setItem('filters', JSON.stringify(minimalCache));
@@ -198,9 +198,9 @@ export default function Home() {
       case 'apply':
         return <ApplyFilterView filter={viewState.filter} setViewState={setViewState} user={user} />;
       case 'create':
-        return <StudioView setViewState={setViewState} addFilter={addFilter} user={user} />;
+        return <StudioView setViewState={setViewState} user={user} addFilter={addFilter} />;
       case 'edit':
-        return <StudioView setViewState={setViewState} filterToEdit={viewState.filter} onUpdateFilter={handleUpdateFilter} user={user} />;
+        return <StudioView setViewState={setViewState} user={user} filterToEdit={viewState.filter} onUpdateFilter={handleUpdateFilter} />;
       case 'auth':
         return <AuthView setViewState={setViewState} onSignInSuccess={handleSignInSuccess} />;
       case 'shared':
@@ -219,43 +219,18 @@ export default function Home() {
             <h1 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100">Genie</h1>
           </div>
           <div className="flex items-center gap-4">
-            {viewState.view === 'marketplace' && (
-              <button onClick={() => setViewState({ view: 'create' })} className="bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 text-content-100 dark:text-dark-content-100 font-semibold py-2 px-4 rounded-lg text-sm transition-colors border border-border-color dark:border-dark-border-color shadow-sm">
-                Create filter
-              </button>
-            )}
-            <button onClick={toggleTheme} className="p-2 rounded-full bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 border border-border-color dark:border-dark-border-color transition-colors" aria-label="Toggle theme">
+            <button
+              className="p-2 rounded-lg bg-neutral-200 dark:bg-dark-neutral-200 hover:bg-neutral-300 dark:hover:bg-dark-neutral-300 transition-colors"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+            >
               {theme === 'light' ? <MoonIcon /> : <SunIcon />}
             </button>
-            {user ? (
-              <span className="text-content-200 dark:text-dark-content-200 hidden sm:inline">{user.email}</span>
-            ) : (
-              <button onClick={() => setViewState({ view: 'auth' })} className="bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors">
-                Sign In
-              </button>
-            )}
           </div>
         </header>
-        <main className="max-w-7xl mx-auto w-full">
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 dark:bg-red-900/30 dark:border-red-600 dark:text-red-300 px-4 py-3 rounded-lg relative mb-6" role="alert">
-              <strong className="font-bold">Error: </strong>
-              <span className="block sm:inline">{error}</span>
-              <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError(null)}>
-                <svg className="fill-current h-6 w-6 text-red-500 dark:text-red-400" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <title>Close</title>
-                  <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
-                </svg>
-              </span>
-            </div>
-          )}
-          {renderView()}
-        </main>
+        {renderView()}
       </div>
-      <footer className="w-full text-center py-4 px-4 sm:px-6 md:px-8">
-        <p className="text-sm text-content-200 dark:text-dark-content-200">&copy; {new Date().getFullYear()} Genie. All rights reserved.</p>
-      </footer>
-      <WelcomeModal isOpen={isWelcomeModalOpen} onClose={() => setIsWelcomeModalOpen(false)} />
+      {isWelcomeModalOpen && <WelcomeModal isOpen={isWelcomeModalOpen} onClose={() => setIsWelcomeModalOpen(false)} />}
     </div>
   );
 }

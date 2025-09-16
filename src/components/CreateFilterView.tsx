@@ -6,10 +6,13 @@ import { shareImage } from '../services/shareService';
 import Spinner from './Spinner';
 import { BackArrowIcon, UploadIcon, SparklesIcon, ShareIcon, ReimagineIcon } from './icons';
 
-interface ApplyFilterViewProps {
-  filter: Filter;
+interface StudioViewProps {
   setViewState: (viewState: ViewState) => void;
   user: User | null;
+  filter?: Filter;
+  addFilter?: (newFilter: Filter) => void;
+  filterToEdit?: Filter;
+  onUpdateFilter?: (filterToUpdate: Filter) => Promise<void> | void;
 }
 
 const ImageUploader: React.FC<{
@@ -52,7 +55,7 @@ const ImageUploader: React.FC<{
   );
 };
 
-const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState, user }) => {
+const ApplyFilterView: React.FC<StudioViewProps> = ({ filter, setViewState, user }) => {
   const [uploadedImage1, setUploadedImage1] = useState<string | null>(null);
   const [uploadedImage2, setUploadedImage2] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -61,12 +64,13 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  const filterType = filter.type || 'single';
+  const filterType = (filter?.type) || 'single';
 
   // ✅ useCallback is always defined in component root, no conditional hooks
   const handleApplyFilter = useCallback(async () => {
     setError(null);
-    const imagesToProcess: string[] = [uploadedImage1!]; // uploadedImage1 must exist
+    const imagesToProcess: string[] = [];
+    if (uploadedImage1) imagesToProcess.push(uploadedImage1);
 
     if (filterType === 'merge' && uploadedImage2) {
       imagesToProcess.push(uploadedImage2);
@@ -81,7 +85,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
     setGeneratedImage(null);
 
     try {
-      const result = await applyImageFilter(imagesToProcess, filter.prompt);
+      const result = await applyImageFilter(imagesToProcess, filter?.prompt || '');
       setGeneratedImage(result);
     } catch (err) {
       if (err instanceof Error) setError(err.message);
@@ -89,7 +93,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
     } finally {
       setIsLoading(false);
     }
-  }, [uploadedImage1, uploadedImage2, filter.prompt, filterType]);
+  }, [uploadedImage1, uploadedImage2, filter?.prompt, filterType]);
 
   const handleShare = useCallback(async () => {
     if (!generatedImage) return;
@@ -98,6 +102,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
     setError(null);
 
     try {
+      if (!filter) throw new Error('No filter selected.');
       const result = await shareImage(generatedImage, filter, user);
       if (result === 'copied') {
         setShareStatus('copied');
@@ -126,8 +131,8 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
 
       <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg shadow-md border border-border-color dark:border-dark-border-color">
         <div className="text-center mb-4 border-b border-border-color dark:border-dark-border-color pb-4">
-          <h2 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100">{filter.name}</h2>
-          <p className="text-content-200 dark:text-dark-content-200 mt-1 text-sm sm:text-base">{filter.description}</p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100">{filter?.name || 'Studio'}</h2>
+          <p className="text-content-200 dark:text-dark-content-200 mt-1 text-sm sm:text-base">{filter?.description || 'Upload images and apply AI filters.'}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">

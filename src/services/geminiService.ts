@@ -55,6 +55,28 @@ export const applyImageFilter = async (
 };
 
 /**
+ * Generates an image from a prompt only (no input images).
+ * @param prompt - The text prompt for image generation.
+ * @returns A base64 data URL of the generated image.
+ */
+export const generateImageFromPrompt = async (prompt: string): Promise<string> => {
+  const response = await fetch('/api/nanobanana', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ textPrompt: prompt, images: [] }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to generate image from prompt');
+  }
+
+  const data = await response.json();
+  if (!data.transformedImage) throw new Error('No image returned from backend');
+  return data.transformedImage;
+};
+
+/**
  * Improves a given prompt by making it more detailed and specific.
  * @param currentPrompt - The current prompt to improve.
  * @returns A promise that resolves to an improved prompt.

@@ -6,18 +6,24 @@ interface ImageInput {
   data: string;
 }
 
-interface GeminiContentFile {
-  type: 'file' | 'text';
-  mediaType?: string;
-  data?: string;
-  file?: {
+// Local output content types (Gemini returns nested file object in steps)
+interface OutputFileContent {
+  type: 'file';
+  file: {
     mediaType: string;
-    base64Data: string;
+    data: string;
   };
 }
 
-interface GeminiStep {
-  content?: GeminiContentFile[];
+interface OutputTextContent {
+  type: 'text';
+  text: string;
+}
+
+type OutputContent = OutputFileContent | OutputTextContent;
+
+interface OutputStepLike {
+  content?: OutputContent[];
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -38,26 +44,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           role: 'user',
           content: [
             { type: 'text', text: textPrompt },
-            ...(images || []).map((img) => ({
-              type: 'file',
+            ...((images || []).map((img) => ({
+              type: 'file' as const,
               mediaType: img.mediaType,
               data: img.data,
-            })),
+            }))),
           ],
         },
       ],
     });
 
-    const step: GeminiStep | undefined = result.steps?.[0];
+    const step: OutputStepLike | undefined = (result.steps as unknown as OutputStepLike[])?.[0];
 
-    const fileObj = step?.content?.find((c) => c.type === 'file')?.file;
+    const fileObj = step?.content?.find((c): c is OutputFileContent => c.type === 'file')?.file;
 
     if (!fileObj) {
       console.error('No file returned from Gemini, full step object:', step);
       return res.status(500).json({ error: 'No image returned from Gemini' });
     }
 
-    const dataUrl = `data:${fileObj.mediaType};base64,${fileObj.base64Data}`;
+    const dataUrl = `data:${fileObj.mediaType};base64,${fileObj.data}`;
     return res.status(200).json({ transformedImage: dataUrl });
   } catch (err: unknown) {
     console.error('Nanobanana/Gemini error:', err);
