@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { Share, ViewState } from '../types';
 import { getSharedImage } from '../services/shareService';
 import Spinner from './Spinner';
@@ -11,14 +10,15 @@ interface SharedImageViewProps {
 
 const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState }) => {
   const [shareData, setShareData] = useState<Share | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchShare = async () => {
+      setIsLoading(true);
+      setError(null);
+
       try {
-        setIsLoading(true);
-        setError(null);
         const data: Share = await getSharedImage(shareId);
         setShareData(data);
       } catch (err: unknown) {
@@ -31,6 +31,7 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
         setIsLoading(false);
       }
     };
+
     fetchShare();
   }, [shareId]);
 
@@ -62,9 +63,7 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
     );
   }
 
-  if (!shareData) {
-    return null; // Should be handled by loading/error states
-  }
+  if (!shareData) return null; // Shouldn’t happen, but TS safe
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in text-center">
@@ -77,13 +76,11 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
             Shared by {shareData.username}
           </p>
         )}
-        <div className="my-6 w-full aspect-square bg-base-300 dark:bg-dark-base-300 rounded-lg flex items-center justify-center overflow-hidden relative">
-          <Image
+        <div className="my-6 w-full aspect-square bg-base-300 dark:bg-dark-base-300 rounded-lg flex items-center justify-center overflow-hidden">
+          <img
             src={shareData.imageUrl}
             alt={`Image created with ${shareData.filterName} filter`}
-            fill
-            style={{ objectFit: 'contain' }}
-            priority
+            className="object-contain w-full h-full"
           />
         </div>
         <button

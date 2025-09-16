@@ -22,20 +22,36 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+interface Filter {
+  id?: string;
+  name?: string;
+  description?: string;
+  [key: string]: any; // extend with other filter fields
+}
+
+interface FirebaseResponse {
+  filters?: Filter[];
+  filter?: Filter;
+  message?: string;
+  error?: string;
+}
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<FirebaseResponse>
+) {
   const { action } = req.query;
 
   try {
     switch (action) {
       case 'getFilters': {
         const snapshot = await db.collection('filters').orderBy('createdAt', 'desc').get();
-        const filters = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        res.status(200).json({ filters });
-        break;
+        const filters: Filter[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return res.status(200).json({ filters });
       }
 
       case 'saveFilter': {
-        const { filter } = req.body;
+        const { filter } = req.body as { filter?: Filter };
         if (!filter) return res.status(400).json({ error: 'Missing filter data' });
 
         const docRef = await db.collection('filters').add({
@@ -44,50 +60,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           accessCount: 0,
         });
 
-        const newFilter = (await docRef.get()).data();
-        res.status(200).json({ filter: { id: docRef.id, ...newFilter } });
-        break;
+        const newFilter = (await docRef.get()).data() as Filter;
+        return res.status(200).json({ filter: { id: docRef.id, ...newFilter } });
       }
 
       case 'updateFilter': {
-        const { filterId, filterData } = req.body;
+        const { filterId, filterData } = req.body as { filterId?: string; filterData?: Partial<Filter> };
         if (!filterId || !filterData) return res.status(400).json({ error: 'Missing filterId or filterData' });
 
         const docRef = db.collection('filters').doc(filterId);
         await docRef.update(filterData);
 
-        const updatedFilter = (await docRef.get()).data();
-        res.status(200).json({ filter: { id: docRef.id, ...updatedFilter } });
-        break;
+        const updatedFilter = (await docRef.get()).data() as Filter;
+        return res.status(200).json({ filter: { id: docRef.id, ...updatedFilter } });
       }
 
       case 'deleteFilter': {
-        const { filterId } = req.body;
+        const { filterId } = req.body as { filterId?: string };
         if (!filterId) return res.status(400).json({ error: 'Missing filterId' });
 
         await db.collection('filters').doc(filterId).delete();
-        res.status(200).json({ message: 'Filter deleted' });
-        break;
+        return res.status(200).json({ message: 'Filter deleted' });
       }
 
       case 'incrementAccessCount': {
-        const { filterId } = req.body;
+        const { filterId } = req.body as { filterId?: string };
         if (!filterId) return res.status(400).json({ error: 'Missing filterId' });
 
         const docRef = db.collection('filters').doc(filterId);
         await docRef.update({
           accessCount: admin.firestore.FieldValue.increment(1),
         });
-        res.status(200).json({ message: 'Access count incremented' });
-        break;
+        return res.status(200).json({ message: 'Access count incremented' });
       }
 
       default:
-        res.status(400).json({ error: 'Unknown action' });
-        break;
+        return res.status(400).json({ error: 'Unknown action' });
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Firebase API error:', err);
-    res.status(500).json({ error: err.message || 'Internal server error' });
+    if (err instanceof Error) {
+      return res.status(500).json({ error: err.message });
+    }
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
