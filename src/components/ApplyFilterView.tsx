@@ -5,7 +5,8 @@ import { applyImageFilter } from '../services/geminiService';
 import { fileToBase64 } from '../utils/fileUtils';
 import { shareImage } from '../services/shareService';
 import Spinner from './Spinner';
-import { BackArrowIcon, UploadIcon, SparklesIcon, ShareIcon, ReimagineIcon } from './icons';
+import { BackArrowIcon, UploadIcon, SparklesIcon, ShareIcon, ReimagineIcon, DownloadIcon } from './icons';
+import ShareModal from './ShareModal';
 
 interface ApplyFilterViewProps {
   filter: Filter;
@@ -66,10 +67,13 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error' | 'shared'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
 
   const filterType = filter.type || 'single';
+
+  const isWindows = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent);
 
   const handleApplyFilter = useCallback(async () => {
     setError(null);
@@ -104,18 +108,38 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
     setError(null);
 
     try {
-      const result = await shareImage(generatedImage, filter, user);
-      if (result === 'copied') {
-        setShareStatus('copied');
-        setTimeout(() => setShareStatus('idle'), 2000);
+      const appUrl = window.location.origin;
+      const shareText = `Check out this image I created with the '${filter.name}' filter on Genie! Create your own here: ${appUrl}`;
+
+      // Use Web Share API with file on supported/mobile
+      if (!isWindows && navigator.share && navigator.canShare) {
+        try {
+          const res = await fetch(generatedImage);
+          const blob = await res.blob();
+          const file = new File([blob], `filtered-${Date.now()}.png`, { type: 'image/png' });
+
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ title: 'Genie', text: shareText, files: [file] });
+            setShareStatus('shared');
+            setIsSharing(false);
+            return;
+          }
+        } catch (shareErr) {
+          // Fall through to modal/copy flow
+          console.log('Web Share failed, falling back:', shareErr);
+        }
       }
+
+      // On Windows or when Web Share is unavailable, show WhatsApp-only modal
+      setIsShareModalOpen(true);
+      setShareStatus('idle');
     } catch (err: unknown) {
       setError(err instanceof Error ? `Sharing failed: ${err.message}` : 'An unknown error occurred while sharing.');
       setShareStatus('error');
     } finally {
       setIsSharing(false);
     }
-  }, [generatedImage, filter, user]);
+  }, [generatedImage, filter.name, isWindows]);
 
   const isApplyDisabled = isLoading || !uploadedImage1 || (filterType === 'merge' && !uploadedImage2);
 
@@ -237,18 +261,38 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
             </button>
 
             {generatedImage && (
-              <button
-                onClick={handleShare}
-                disabled={isSharing || isLoading}
-                className="w-full flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 dark:bg-dark-base-300 dark:hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <ShareIcon />
-                {isSharing ? 'Sharing...' : shareStatus === 'copied' ? 'Link Copied!' : 'Share'}
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  onClick={handleShare}
+                  disabled={isSharing || isLoading}
+                  className="w-full flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 dark:bg-dark-base-300 dark:hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <ShareIcon />
+                  {isWindows ? 'Share (WhatsApp)' : 'Share'}
+                </button>
+                <a
+                  href={generatedImage}
+                  download={`filtered-${Date.now()}.png`}
+                  className="w-full flex items-center justify-center gap-2 bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 border border-border-color dark:border-dark-border-color text-content-100 dark:text-dark-content-100 font-bold py-3 px-4 rounded-lg transition-colors text-center"
+                >
+                  <DownloadIcon />
+                  Download
+                </a>
+              </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Windows/Desktop WhatsApp-only share modal */}
+      {generatedImage && (
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          imageUrl={generatedImage}
+          filterName={filter.name}
+        />
+      )}
     </div>
   );
 };
