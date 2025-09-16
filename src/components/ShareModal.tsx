@@ -50,8 +50,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, imageUrl, filt
         <div className="bg-base-300/50 dark:bg-dark-base-300/50 p-3 rounded-lg text-sm text-left mb-5 space-y-2">
             <p className="font-bold text-content-100 dark:text-dark-content-100">How to share on WhatsApp:</p>
             <ol className="list-decimal list-inside text-content-200 dark:text-dark-content-200">
-                <li>Tap 'Share to WhatsApp' below.</li>
-                <li>Tap 'Download Image'.</li>
+                <li>Tap &apos;Share to WhatsApp&apos; below.</li>
+                <li>Tap &apos;Download Image&apos;.</li>
                 <li>In WhatsApp, attach the downloaded image to your message.</li>
             </ol>
         </div>

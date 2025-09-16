@@ -28,10 +28,6 @@ interface GeminiTextContent {
 
 type GeminiContent = GeminiFileContent | GeminiTextContent;
 
-interface GeminiStep {
-  content?: GeminiContent[];
-}
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GeminiResponse>
@@ -74,24 +70,25 @@ export default async function handler(
       ],
     });
 
-    const steps: GeminiStep[] = result.steps || [];
+    // Use the SDK steps as-is and narrow type later
+    const steps = result.steps ?? [];
 
     const textContent = steps
-      .flatMap((step) => step.content || [])
-      .filter((c): c is GeminiTextContent => c.type === "text")
+      .flatMap((step: any) => step.content ?? [])
+      .filter((c: any): c is GeminiTextContent => c.type === "text")
       .map((c) => c.text)
       .join("\n");
 
     const fileContent = steps
-      .flatMap((step) => step.content || [])
-      .filter((c): c is GeminiFileContent => c.type === "file" && c.file?.data)
+      .flatMap((step: any) => step.content ?? [])
+      .filter((c: any): c is GeminiFileContent => c.type === "file" && c.file?.data)
       .map((c) => c.file.data)
       .join("");
 
     if (isImageRequest && fileContent) {
       const firstMediaType = steps
-        .flatMap((step) => step.content || [])
-        .find((c): c is GeminiFileContent => c.type === "file" && !!c.file)
+        .flatMap((step: any) => step.content ?? [])
+        .find((c: any): c is GeminiFileContent => c.type === "file" && !!c.file)
         ?.file.mediaType || "image/jpeg";
 
       const dataUrl = `data:${firstMediaType};base64,${fileContent}`;

@@ -26,7 +26,7 @@ interface Filter {
   id?: string;
   name?: string;
   description?: string;
-  [key: string]: any; // extend with other filter fields
+  [key: string]: unknown; // ✅ no more `any`
 }
 
 interface FirebaseResponse {

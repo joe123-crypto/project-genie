@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Share, ViewState } from '../types';
 import { getSharedImage } from '../services/shareService';
 import Spinner from './Spinner';
+import { ViewState } from '../types'; // keep if you already have this
 
 interface SharedImageViewProps {
   shareId: string;
   setViewState: (viewState: ViewState) => void;
 }
 
+// Define a local type that matches what getSharedImage actually returns
+interface SharedImage {
+  imageUrl: string;
+  filterName: string;
+  username?: string;
+}
+
 const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState }) => {
-  const [shareData, setShareData] = useState<Share | null>(null);
+  const [shareData, setShareData] = useState<SharedImage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +26,7 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
       setError(null);
 
       try {
-        const data: Share = await getSharedImage(shareId);
+        const data: SharedImage = await getSharedImage(shareId);
         setShareData(data);
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -63,7 +70,7 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
     );
   }
 
-  if (!shareData) return null; // Shouldn’t happen, but TS safe
+  if (!shareData) return null; // TS safe
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in text-center">
