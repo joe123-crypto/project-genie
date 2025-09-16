@@ -11,7 +11,8 @@ interface OutputFileContent {
   type: 'file';
   file: {
     mediaType: string;
-    data: string;
+    data?: string;
+    base64Data?: string;
   };
 }
 
@@ -36,9 +37,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!textPrompt) return res.status(400).json({ error: 'textPrompt required' });
 
   try {
+    const apiKey = process.env.AI_GATEWAY_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'Server misconfiguration' });
+
     const result = await generateText({
       model: 'google/gemini-2.5-flash-image-preview',
-      providerOptions: { google: { responseModalities: ['TEXT', 'IMAGE'] } },
+      providerOptions: { google: { apiKey, responseModalities: ['TEXT', 'IMAGE'] } },
       messages: [
         {
           role: 'user',
@@ -63,7 +67,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'No image returned from Gemini' });
     }
 
-    const dataUrl = `data:${fileObj.mediaType};base64,${fileObj.data}`;
+    const base64 = fileObj.base64Data || fileObj.data;
+    if (!base64) {
+      console.error('File object missing base64 content:', fileObj);
+      return res.status(500).json({ error: 'Malformed image data from Gemini' });
+    }
+
+    const dataUrl = `data:${fileObj.mediaType};base64,${base64}`;
     return res.status(200).json({ transformedImage: dataUrl });
   } catch (err: unknown) {
     console.error('Nanobanana/Gemini error:', err);
