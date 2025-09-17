@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Filter, ViewState, User } from '../types';
 import { applyImageFilter } from '../services/geminiService';
-import { fileToBase64 } from '../utils/fileUtils';
+import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from '../utils/fileUtils';
 import { shareImage } from '../services/shareService';
 import Spinner from './Spinner';
 import { BackArrowIcon, UploadIcon, SparklesIcon, ShareIcon, ReimagineIcon, DownloadIcon } from './icons';
@@ -27,8 +27,13 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ id, image, onUpload, labe
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!isSupportedImageFormat(file)) {
+      onError('Unsupported file format. Please upload a JPEG, PNG, GIF, WebP, HEIF, or HEIC image.');
+      return;
+    }
+
     try {
-      const base64 = await fileToBase64(file);
+      const base64 = await fileToBase64WithHEIFSupport(file);
       onUpload(base64);
     } catch {
       onError('Failed to read the image file.');
@@ -54,7 +59,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ id, image, onUpload, labe
             <p className="mt-2 text-sm">Upload an image</p>
           </div>
         )}
-        <input id={id} type="file" accept="image/*" className="sr-only" onChange={handleUpload} />
+        <input id={id} type="file" accept="image/*,.heif,.heic" className="sr-only" onChange={handleUpload} />
         <label htmlFor={id} className="absolute inset-0 cursor-pointer focus:outline-none" />
       </div>
     </div>
@@ -226,11 +231,22 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
                 <input
                   id="image-upload-1"
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heif,.heic"
                   className="hidden"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
-                    if (file) fileToBase64(file).then(setUploadedImage1).catch(() => setError('Failed to read image'));
+                    if (file) {
+                      if (!isSupportedImageFormat(file)) {
+                        setError('Unsupported file format. Please upload a JPEG, PNG, GIF, WebP, HEIF, or HEIC image.');
+                        return;
+                      }
+                      try {
+                        const base64 = await fileToBase64WithHEIFSupport(file);
+                        setUploadedImage1(base64);
+                      } catch {
+                        setError('Failed to read image');
+                      }
+                    }
                   }}
                 />
               </label>

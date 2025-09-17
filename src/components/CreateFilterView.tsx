@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Filter, ViewState, User } from '../types';
 import { applyImageFilter } from '../services/geminiService';
-import { fileToBase64 } from '../utils/fileUtils';
+import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from '../utils/fileUtils';
 import { shareImage } from '../services/shareService';
 import Spinner from './Spinner';
 import { BackArrowIcon, UploadIcon, SparklesIcon, ShareIcon, ReimagineIcon } from './icons';
@@ -26,7 +26,8 @@ const ImageUploader: React.FC<{
     const file = event.target.files?.[0];
     if (file) {
       try {
-        const base64 = await fileToBase64(file);
+        if (!isSupportedImageFormat(file)) { onError('Unsupported file format. Please upload a JPEG, PNG, GIF, WebP, HEIF, or HEIC image.'); return; }
+        const base64 = await fileToBase64WithHEIFSupport(file);
         onUpload(base64);
       } catch {
         onError('Failed to read the image file.');
@@ -48,7 +49,7 @@ const ImageUploader: React.FC<{
             <p className="mt-2 text-sm">Upload an image</p>
           </div>
         )}
-        <input id={id} type="file" accept="image/*" className="sr-only" onChange={handleUpload} />
+        <input id={id} type="file" accept="image/*,.heif,.heic" className="sr-only" onChange={handleUpload} />
         <label htmlFor={id} className="absolute inset-0 cursor-pointer focus:outline-none"></label>
       </div>
     </div>
@@ -195,7 +196,7 @@ const ApplyFilterView: React.FC<StudioViewProps> = ({ filter, setViewState, user
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) fileToBase64(file).then(setUploadedImage1).catch(() => setError('Failed to read image'));
+                    if (file) fileToBase64WithHEIFSupport(file).then(setUploadedImage1).catch(() => setError('Failed to read image'));
                   }}
                 />
               </label>

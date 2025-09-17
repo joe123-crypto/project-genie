@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { fileToBase64WithHEIFSupport, isSupportedImageFormat, getConvertedMimeType } from "../utils/fileUtils";
 
 export default function ImageGenerator() {
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -7,10 +8,22 @@ export default function ImageGenerator() {
   const [transformedImage, setTransformedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setImageFile(file);
-    if (file) setImagePreview(URL.createObjectURL(file));
+    if (!file) return;
+
+    if (!isSupportedImageFormat(file)) {
+      setImageFile(null);
+      return;
+    }
+
+    try {
+      const dataUrl = await fileToBase64WithHEIFSupport(file);
+      setImagePreview(dataUrl);
+    } catch {
+      setImageFile(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,25 +33,24 @@ export default function ImageGenerator() {
     setLoading(true);
     setTransformedImage(null);
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64Image = reader.result?.toString().split(",")[1]; // strip data URL prefix
-      if (!base64Image) return;
+    try {
+      const dataUrl = await fileToBase64WithHEIFSupport(imageFile);
+      const base64Image = dataUrl.split(",")[1];
+      const mediaType = getConvertedMimeType(imageFile);
 
-      try {
-        const res = await fetch("/api/nanobanana", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            textPrompt: prompt,
-            images: [
-              {
-                mediaType: imageFile.type,
-                data: base64Image,
-              },
-            ],
-          }),
-        });
+      const res = await fetch("/api/nanobanana", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          textPrompt: prompt,
+          images: [
+            {
+              mediaType,
+              data: base64Image,
+            },
+          ],
+        }),
+      });
 
         const data = await res.json();
         if (data.transformedImage) setTransformedImage(data.transformedImage);
@@ -49,16 +61,13 @@ export default function ImageGenerator() {
       } finally {
         setLoading(false);
       }
-    };
-
-    reader.readAsDataURL(imageFile);
   };
 
   return (
     <div style={{ padding: "1rem" }}>
       <h2>AI Image Generator</h2>
       <form onSubmit={handleSubmit}>
-        <input type="file" accept="image/*" onChange={handleFileChange} />
+                  <input type="file" accept="image/*,.heif,.heic" onChange={handleFileChange} />
         {imagePreview && (
           <img
             src={imagePreview}
