@@ -1,6 +1,6 @@
-
 import React from 'react';
 import { DollarIcon } from './icons';
+import { commonClasses, themeColors } from '../utils/theme';
 
 interface WelcomeModalProps {
   isOpen: boolean;
@@ -20,28 +20,39 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
       role="dialog"
     >
       <div
-        className="bg-base-200 dark:bg-dark-base-200 rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md text-center transform transition-all duration-300"
+        className={`${themeColors.base.light[200]} ${themeColors.base.dark[200]} rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md text-center transform transition-all duration-300`}
         onClick={(e) => e.stopPropagation()} // Prevent closing modal when clicking inside
         style={{ animation: 'scale-up 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}
       >
-        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-brand-primary/20 dark:bg-dark-brand-primary/20 mb-4">
-          <DollarIcon className="h-8 w-8 text-brand-primary dark:text-dark-brand-primary" />
+        {/* Icon container */}
+        <div className={`mx-auto flex items-center justify-center h-16 w-16 rounded-full ${themeColors.brand.light.primary.replace('bg-', 'bg-opacity-20')} ${themeColors.brand.dark.primary.replace('dark:bg-', 'dark:bg-opacity-20')} mb-4`}>
+          <DollarIcon className={`h-8 w-8 ${themeColors.brand.light.primary.replace('bg-', 'text-')} ${themeColors.brand.dark.primary.replace('dark:bg-', 'dark:text-')}`} />
         </div>
 
-        <h3 className="text-2xl font-bold text-content-100 dark:text-dark-content-100 mb-3">Welcome to the Creator Program!</h3>
-        <p className="text-content-200 dark:text-dark-content-200 mb-6">
-          If your filter stays in the <span className="font-semibold text-content-100 dark:text-dark-content-100">Trending</span> section for 10 days, you get a commission of <span className="font-bold text-content-100 dark:text-dark-content-100">$0.25</span> per day.
+        {/* Title */}
+        <h3 className={`text-2xl ${commonClasses.text.heading} mb-3`}>
+          Welcome to the Creator Program!
+        </h3>
+
+        {/* Description */}
+        <p className={`${commonClasses.text.body} mb-6`}>
+          If your filter stays in the{' '}
+          <span className={commonClasses.text.heading}>Trending</span> section for 10 days,
+          you get a commission of{' '}
+          <span className={commonClasses.text.heading}>$0.25</span> per day.
         </p>
 
+        {/* Action Button */}
         <button
           onClick={onClose}
-          className="w-full sm:w-auto bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105 shadow-lg"
+          className={`w-full sm:w-auto ${commonClasses.button.primary} py-3 px-8 transform hover:scale-105 shadow-lg`}
           aria-label="Close welcome message"
         >
           Start Creating!
         </button>
       </div>
-      {/* Add a simple keyframe animation for the scale-up effect */}
+
+      {/* Animations */}
       <style>{`
         @keyframes scale-up {
           from { transform: scale(0.9); opacity: 0; }
@@ -51,8 +62,8 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
           animation: fade-in 0.3s ease-in-out;
         }
         @keyframes fade-in {
-            from { opacity: 0; }
-            to { opacity: 1; }
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
       `}</style>
     </div>

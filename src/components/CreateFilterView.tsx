@@ -1,244 +1,274 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Filter, ViewState, User } from '../types';
-import { applyImageFilter } from '../services/geminiService';
-import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from '../utils/fileUtils';
-import { shareImage } from '../services/shareService';
+import { BackArrowIcon, UploadIcon, SparklesIcon } from './icons';
 import Spinner from './Spinner';
-import { BackArrowIcon, UploadIcon, SparklesIcon, ShareIcon, ReimagineIcon } from './icons';
 
 interface StudioViewProps {
   setViewState: (viewState: ViewState) => void;
   user: User | null;
-  filter?: Filter;
   addFilter?: (newFilter: Filter) => void;
   filterToEdit?: Filter;
   onUpdateFilter?: (filterToUpdate: Filter) => Promise<void> | void;
 }
 
-const ImageUploader: React.FC<{
-  id: string;
-  image: string | null;
-  onUpload: (base64: string) => void;
-  label: string;
-  onError: (error: string) => void;
-}> = ({ id, image, onUpload, label, onError }) => {
-  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+// Type selection screen component
+const FilterTypeSelection: React.FC<{ onSelect: (type: 'instant' | 'studio') => void }> = ({ onSelect }) => {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <button
+        onClick={() => onSelect('instant')}
+        className="flex flex-col items-center justify-center p-8 bg-base-200 dark:bg-dark-base-200 rounded-lg border-2 border-border-color dark:border-dark-border-color hover:border-brand-primary dark:hover:border-dark-brand-primary transition-all hover:shadow-lg"
+      >
+        <div className="h-16 w-16 bg-brand-primary/10 dark:bg-dark-brand-primary/10 rounded-full flex items-center justify-center mb-4">
+          <SparklesIcon className="h-8 w-8 text-brand-primary dark:text-dark-brand-primary" />
+        </div>
+        <h3 className="text-xl font-bold text-content-100 dark:text-dark-content-100 mb-2">Instant Filter</h3>
+        <p className="text-content-200 dark:text-dark-content-200 text-center">
+          Create a filter quickly with AI assistance for prompts and image generation
+        </p>
+      </button>
+
+      <button
+        onClick={() => onSelect('studio')}
+        className="flex flex-col items-center justify-center p-8 bg-base-200 dark:bg-dark-base-200 rounded-lg border-2 border-border-color dark:border-dark-border-color hover:border-brand-primary dark:hover:border-dark-brand-primary transition-all hover:shadow-lg"
+      >
+        <div className="h-16 w-16 bg-brand-primary/10 dark:bg-dark-brand-primary/10 rounded-full flex items-center justify-center mb-4">
+          <svg 
+            className="h-8 w-8 text-brand-primary dark:text-dark-brand-primary"
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+          </svg>
+        </div>
+        <h3 className="text-xl font-bold text-content-100 dark:text-dark-content-100 mb-2">Filter Studio</h3>
+        <p className="text-content-200 dark:text-dark-content-200 text-center">
+          Advanced tools for creating sophisticated filters with complete control
+        </p>
+      </button>
+    </div>
+  );
+};
+
+// Instant Filter form component
+const InstantFilterForm: React.FC<{
+  onBack: () => void;
+  onSave: (filter: Omit<Filter, 'id'>) => void;
+}> = ({ onBack, onSave }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    prompt: '',
+    previewImageUrl: '',
+  });
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
-      try {
-        if (!isSupportedImageFormat(file)) { onError('Unsupported file format. Please upload a JPEG, PNG, GIF, WebP, HEIF, or HEIC image.'); return; }
-        const base64 = await fileToBase64WithHEIFSupport(file);
-        onUpload(base64);
-      } catch {
-        onError('Failed to read the image file.');
-      }
+      setImageFile(file);
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setFormData(prev => ({ ...prev, previewImageUrl: previewUrl }));
     }
   };
 
-  return (
-    <div className="w-full">
-      <label htmlFor={id} className="block text-sm font-medium text-content-200 dark:text-dark-content-200 mb-2 text-center">
-        {label}
-      </label>
-      <div className="w-full aspect-square bg-base-300 dark:bg-dark-base-300 rounded-lg flex items-center justify-center overflow-hidden relative border border-border-color dark:border-dark-border-color">
-        {image ? (
-          <img src={image} alt={label} className="object-contain w-full h-full" />
-        ) : (
-          <div className="text-center text-content-200 dark:text-dark-content-200 p-4">
-            <UploadIcon className="mx-auto h-12 w-12" />
-            <p className="mt-2 text-sm">Upload an image</p>
-          </div>
-        )}
-        <input id={id} type="file" accept="image/*,.heif,.heic" className="sr-only" onChange={handleUpload} />
-        <label htmlFor={id} className="absolute inset-0 cursor-pointer focus:outline-none"></label>
-      </div>
-    </div>
-  );
-};
+  const handleGeneratePrompt = async () => {
+    setIsGeneratingPrompt(true);
+    // Simulate AI prompt generation
+    setTimeout(() => {
+      setFormData(prev => ({
+        ...prev,
+        prompt: "An AI-generated prompt will appear here...",
+      }));
+      setIsGeneratingPrompt(false);
+    }, 1500);
+  };
 
-const ApplyFilterView: React.FC<StudioViewProps> = ({ filter, setViewState, user }) => {
-  const [uploadedImage1, setUploadedImage1] = useState<string | null>(null);
-  const [uploadedImage2, setUploadedImage2] = useState<string | null>(null);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSharing, setIsSharing] = useState(false);
-  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
-
-  const filterType = (filter?.type) || 'single';
-
-  // ✅ useCallback is always defined in component root, no conditional hooks
-  const handleApplyFilter = useCallback(async () => {
-    setError(null);
-    const imagesToProcess: string[] = [];
-    if (uploadedImage1) imagesToProcess.push(uploadedImage1);
-
-    if (filterType === 'merge' && uploadedImage2) {
-      imagesToProcess.push(uploadedImage2);
-    }
-
-    if (imagesToProcess.length < (filterType === 'merge' ? 2 : 1)) {
-      setError(`Please upload ${filterType === 'merge' ? 'two images' : 'an image'} first.`);
-      return;
-    }
-
-    setIsLoading(true);
-    setGeneratedImage(null);
-
-    try {
-      const result = await applyImageFilter(imagesToProcess, filter?.prompt || '');
-      setGeneratedImage(result);
-    } catch (err) {
-      if (err instanceof Error) setError(err.message);
-      else setError('An unknown error occurred.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [uploadedImage1, uploadedImage2, filter?.prompt, filterType]);
-
-  const handleShare = useCallback(async () => {
-    if (!generatedImage) return;
-    setIsSharing(true);
-    setShareStatus('idle');
-    setError(null);
-
-    try {
-      if (!filter) throw new Error('No filter selected.');
-      const result = await shareImage(generatedImage, filter, user);
-      if (result === 'copied') {
-        setShareStatus('copied');
-        setTimeout(() => setShareStatus('idle'), 2000);
-      }
-    } catch (err) {
-      if (err instanceof Error) setError(`Sharing failed: ${err.message}`);
-      else setError('An unknown error occurred while sharing.');
-      setShareStatus('error');
-    } finally {
-      setIsSharing(false);
-    }
-  }, [generatedImage, filter, user]);
-
-  const isApplyDisabled = isLoading || !uploadedImage1 || (filterType === 'merge' && !uploadedImage2);
+  const handleGenerateImage = async () => {
+    setIsGeneratingImage(true);
+    // Simulate AI image generation
+    setTimeout(() => {
+      setIsGeneratingImage(false);
+      alert('Image generation coming soon!');
+    }, 1500);
+  };
 
   return (
-    <div className="max-w-4xl mx-auto animate-fade-in">
+    <div className="max-w-2xl mx-auto">
       <button
-        onClick={() => setViewState({ view: 'marketplace' })}
+        onClick={onBack}
         className="flex items-center gap-2 text-content-200 dark:text-dark-content-200 hover:text-content-100 dark:hover:text-dark-content-100 mb-6 font-semibold"
       >
         <BackArrowIcon />
-        Back to Marketplace
+        Back
       </button>
 
-      <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg shadow-md border border-border-color dark:border-dark-border-color">
-        <div className="text-center mb-4 border-b border-border-color dark:border-dark-border-color pb-4">
-          <h2 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100">{filter?.name || 'Studio'}</h2>
-          <p className="text-content-200 dark:text-dark-content-200 mt-1 text-sm sm:text-base">{filter?.description || 'Upload images and apply AI filters.'}</p>
-        </div>
+      <div className="bg-base-200 dark:bg-dark-base-200 p-6 rounded-lg shadow-md">
+        <h2 className="text-2xl font-bold text-content-100 dark:text-dark-content-100 mb-6">Create Instant Filter</h2>
+        
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          onSave(formData);
+        }} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+              Filter Name
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              className="w-full p-2 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100"
+              placeholder="Enter filter name"
+              required
+            />
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-          {/* Image Display */}
-          <div className="w-full">
-            {generatedImage ? (
-              <div className="w-full max-w-md mx-auto aspect-square bg-base-300 dark:bg-dark-base-300 rounded-lg flex items-center justify-center overflow-hidden relative border border-border-color dark:border-dark-border-color">
-                <img src={generatedImage} alt="Generated result" className="object-contain w-full h-full" />
-                {isLoading && (
-                  <div className="absolute inset-0 bg-white/70 dark:bg-black/70 flex flex-col items-center justify-center gap-4">
-                    <Spinner className="h-8 w-8 text-brand-primary dark:text-dark-brand-primary" />
-                    <p className="text-content-100 dark:text-dark-content-100 font-semibold">Applying filter...</p>
-                  </div>
-                )}
-              </div>
-            ) : filterType === 'merge' ? (
-              <div className="grid grid-cols-2 gap-4 max-w-md mx-auto relative">
-                <ImageUploader id="image-upload-1" image={uploadedImage1} onUpload={setUploadedImage1} label="Image 1" onError={setError} />
-                <ImageUploader id="image-upload-2" image={uploadedImage2} onUpload={setUploadedImage2} label="Image 2" onError={setError} />
-                {isLoading && (
-                  <div className="absolute inset-0 bg-white/70 dark:bg-black/70 flex flex-col items-center justify-center gap-4 rounded-lg">
-                    <Spinner className="h-8 w-8 text-brand-primary dark:text-dark-brand-primary" />
-                    <p className="text-content-100 dark:text-dark-content-100 font-semibold">Applying filter...</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="w-full max-w-md mx-auto aspect-square bg-base-300 dark:bg-dark-base-300 rounded-lg flex items-center justify-center overflow-hidden relative border border-border-color dark:border-dark-border-color">
-                {uploadedImage1 ? (
-                  <img src={uploadedImage1} alt="User upload" className="object-contain w-full h-full" />
+          <div>
+            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+              Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              className="w-full p-2 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100"
+              placeholder="Describe your filter"
+              rows={3}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+              Prompt
+            </label>
+            <div className="flex gap-2">
+              <textarea
+                value={formData.prompt}
+                onChange={(e) => setFormData(prev => ({ ...prev, prompt: e.target.value }))}
+                className="flex-1 p-2 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100"
+                placeholder="Enter or generate a prompt"
+                rows={3}
+              />
+              <button
+                type="button"
+                onClick={handleGeneratePrompt}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+                disabled={isGeneratingPrompt}
+              >
+                {isGeneratingPrompt ? (
+                  <Spinner className="h-5 w-5" />
                 ) : (
-                  <div className="text-center text-content-200 dark:text-dark-content-200 p-4">
-                    <UploadIcon className="mx-auto h-12 w-12" />
-                    <p className="mt-2">Upload an image to get started</p>
-                  </div>
+                  <>
+                    <SparklesIcon className="h-5 w-5" />
+                    Improve with AI
+                  </>
                 )}
-                {isLoading && (
-                  <div className="absolute inset-0 bg-white/70 dark:bg-black/70 flex flex-col items-center justify-center gap-4">
-                    <Spinner className="h-8 w-8 text-brand-primary dark:text-dark-brand-primary" />
-                    <p className="text-content-100 dark:text-dark-content-100 font-semibold">Applying filter...</p>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+              Preview Image
+            </label>
+            <div className="space-y-4">
+              {formData.previewImageUrl && (
+                <div className="w-full aspect-square rounded-lg overflow-hidden bg-base-300 dark:bg-dark-base-300">
+                  <img
+                    src={formData.previewImageUrl}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <label className="flex-1 cursor-pointer">
+                  <div className="px-4 py-2 bg-base-300 dark:bg-dark-base-300 text-content-100 dark:text-dark-content-100 rounded-lg hover:bg-base-400 dark:hover:bg-dark-base-400 transition-colors text-center">
+                    Upload Image
                   </div>
-                )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerateImage}
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+                  disabled={isGeneratingImage}
+                >
+                  {isGeneratingImage ? (
+                    <Spinner className="h-5 w-5" />
+                  ) : (
+                    <>
+                      <SparklesIcon className="h-5 w-5" />
+                      Generate with AI
+                    </>
+                  )}
+                </button>
               </div>
-            )}
-            {error && <p className="text-red-500 dark:text-red-400 mt-4 text-center">{error}</p>}
+            </div>
           </div>
 
-          {/* Controls */}
-          <div className="flex flex-col gap-4 sticky top-6">
-            {filterType === 'single' && !generatedImage && (
-              <label
-                htmlFor="image-upload-1"
-                className="w-full text-center cursor-pointer bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 border border-border-color dark:border-dark-border-color text-content-100 dark:text-dark-content-100 font-bold py-3 px-4 rounded-lg transition-colors"
-              >
-                <span className="flex items-center justify-center gap-2"><UploadIcon /> {uploadedImage1 ? 'Change Image' : 'Upload Image'}</span>
-                <input
-                  id="image-upload-1"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) fileToBase64WithHEIFSupport(file).then(setUploadedImage1).catch(() => setError('Failed to read image'));
-                  }}
-                />
-              </label>
-            )}
-
-            {(generatedImage && (filterType === 'single' || filterType === 'merge')) && (
-              <button
-                onClick={() => {
-                  setGeneratedImage(null);
-                  setUploadedImage1(null);
-                  if (filterType === 'merge') setUploadedImage2(null);
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 border border-border-color dark:border-dark-border-color text-content-100 dark:text-dark-content-100 font-bold py-3 px-4 rounded-lg transition-colors"
-              >
-                <BackArrowIcon /> Start Over
-              </button>
-            )}
-
+          <div className="flex justify-end pt-4">
             <button
-              onClick={handleApplyFilter}
-              disabled={isApplyDisabled}
-              className="w-full flex items-center justify-center gap-2 bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:text-gray-600 dark:disabled:text-gray-400 shadow-sm"
+              type="submit"
+              className="px-6 py-2 bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold rounded-lg transition-colors"
             >
-              {generatedImage ? <ReimagineIcon className="h-5 w-5" /> : <SparklesIcon />}
-              {isLoading ? (generatedImage ? 'Reimagining...' : 'Processing...') : (generatedImage ? 'Reimagine' : 'Apply Filter')}
+              Save Filter
             </button>
-
-            {generatedImage && (
-              <button
-                onClick={handleShare}
-                disabled={isSharing || isLoading}
-                className="w-full flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 dark:bg-dark-base-300 dark:hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <ShareIcon />
-                {isSharing ? 'Sharing...' : shareStatus === 'copied' ? 'Link Copied!' : 'Share'}
-              </button>
-            )}
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
 };
 
-export default ApplyFilterView;
+const CreateFilterView: React.FC<StudioViewProps> = (props) => {
+  const [filterType, setFilterType] = useState<'selection' | 'instant' | 'studio'>('selection');
+
+  const handleSave = (filterData: Omit<Filter, 'id'>) => {
+    // Here you would normally save to backend
+    console.log('Saving filter:', filterData);
+    // For now, just go back to marketplace
+    props.setViewState({ view: 'marketplace' });
+  };
+
+  return (
+    <div className="animate-fade-in">
+      {filterType === 'selection' && (
+        <FilterTypeSelection
+          onSelect={(type) => setFilterType(type)}
+        />
+      )}
+      {filterType === 'instant' && (
+        <InstantFilterForm
+          onBack={() => setFilterType('selection')}
+          onSave={handleSave}
+        />
+      )}
+      {filterType === 'studio' && (
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold text-content-100 dark:text-dark-content-100">
+            Filter Studio - Coming Soon
+          </h2>
+          <button
+            onClick={() => setFilterType('selection')}
+            className="mt-4 px-4 py-2 text-content-200 dark:text-dark-content-200 hover:text-content-100 dark:hover:text-dark-content-100"
+          >
+            Go Back
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CreateFilterView;

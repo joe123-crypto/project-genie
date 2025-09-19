@@ -9,11 +9,13 @@ import SharedImageView from '../components/SharedImageView';
 import WelcomeModal from '../components/WelcomeModal';
 import { HeaderIcon, SunIcon, MoonIcon } from '../components/icons';
 import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter } from '../services/firebaseService';
+
 // import { checkAndGenerateDailyTrend } from '../services/dailyTrendService';
 import { loadUserSession, signOut, getValidIdToken } from '../services/authService';
 import Spinner from '../components/Spinner';
+import {commonClasses} from '../utils/theme';
 
-type Theme = 'light' | 'dark';
+//type Theme = 'light' | 'dark';
 
 // Only cache minimal filter info
 interface CachedFilter {
@@ -211,16 +213,44 @@ export default function Home() {
   };
 
   return (
-    <div className="bg-base-100 dark:bg-dark-base-100 min-h-screen text-content-100 dark:text-dark-content-100 font-sans flex flex-col transition-colors duration-300">
+    <div className={`${commonClasses.container.base} min-h-screen flex flex-col ${commonClasses.transitions.default}`}>
       <div className="flex-grow p-4 sm:p-6 md:p-8">
         <header className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setViewState({ view: 'marketplace' })}>
+          <div 
+            className="flex items-center gap-3 cursor-pointer" 
+            onClick={() => setViewState({ view: 'marketplace' })}
+          >
             <HeaderIcon />
-            <h1 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100">Genie</h1>
+            <h1 className={`text-2xl sm:text-3xl ${commonClasses.text.heading}`}>
+              Genie
+            </h1>
           </div>
           <div className="flex items-center gap-4">
+            {user ? (
+              <>
+                <button
+                  onClick={() => setViewState({ view: 'create' })}
+                  className={commonClasses.button.primary}
+                >
+                  Create Filter
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className={commonClasses.button.secondary}
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setViewState({ view: 'auth' })}
+                className={commonClasses.button.primary}
+              >
+                Sign In
+              </button>
+            )}
             <button
-              className="p-2 rounded-lg bg-neutral-200 dark:bg-dark-neutral-200 hover:bg-neutral-300 dark:hover:bg-dark-neutral-300 transition-colors"
+              className={commonClasses.button.icon}
               onClick={toggleTheme}
               aria-label="Toggle theme"
             >
@@ -230,7 +260,12 @@ export default function Home() {
         </header>
         {renderView()}
       </div>
-      {isWelcomeModalOpen && <WelcomeModal isOpen={isWelcomeModalOpen} onClose={() => setIsWelcomeModalOpen(false)} />}
+      {isWelcomeModalOpen && (
+        <WelcomeModal 
+          isOpen={isWelcomeModalOpen} 
+          onClose={() => setIsWelcomeModalOpen(false)} 
+        />
+      )}
     </div>
   );
 }
