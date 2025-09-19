@@ -9,13 +9,9 @@ import SharedImageView from '../components/SharedImageView';
 import WelcomeModal from '../components/WelcomeModal';
 import { HeaderIcon, SunIcon, MoonIcon } from '../components/icons';
 import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter } from '../services/firebaseService';
-
-// import { checkAndGenerateDailyTrend } from '../services/dailyTrendService';
 import { loadUserSession, signOut, getValidIdToken } from '../services/authService';
 import Spinner from '../components/Spinner';
-import {commonClasses} from '../utils/theme';
-
-//type Theme = 'light' | 'dark';
+import { commonClasses } from '../utils/theme';
 
 // Only cache minimal filter info
 interface CachedFilter {
@@ -32,21 +28,29 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(false);
-  const [theme, setTheme] = useState<Theme>('light');
+  const [isDark, setIsDark] = useState(false);
 
-  // Load theme
+  // Load theme from localStorage
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme | null;
-    const initialTheme = savedTheme || 'light';
-    setTheme(initialTheme);
-    if (initialTheme === 'dark') document.documentElement.classList.add('dark');
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark =
+      savedTheme === 'dark' ||
+      (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+    if (prefersDark) {
+      document.documentElement.classList.add('dark');
+      setIsDark(true);
+    } else {
+      document.documentElement.classList.remove('dark');
+      setIsDark(false);
+    }
   }, []);
 
   const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    const newIsDark = !isDark;
+    setIsDark(newIsDark);
+    localStorage.setItem('theme', newIsDark ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', newIsDark);
   };
 
   // Load cached filters first
@@ -55,7 +59,6 @@ export default function Home() {
     if (cached) {
       try {
         const parsed: CachedFilter[] = JSON.parse(cached);
-        // Map cached filters to Filter type with minimal data
         setFilters(parsed.map(f => ({ ...f } as Filter)));
       } catch {
         localStorage.removeItem('filters');
@@ -92,17 +95,6 @@ export default function Home() {
           previewImageUrl: f.previewImageUrl,
         }));
         localStorage.setItem('filters', JSON.stringify(minimalCache));
-
-        // Daily trending filter code commented out for now
-        // try {
-        //   const newTrendingFilter = await checkAndGenerateDailyTrend();
-        //   if (newTrendingFilter) {
-        //     setFilters(prev => [newTrendingFilter, ...prev]);
-        //   }
-        // } catch (trendError) {
-        //   console.warn("Could not generate daily AI filter:", trendError);
-        // }
-
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error while loading filters.");
       } finally {
@@ -129,40 +121,63 @@ export default function Home() {
   };
 
   // Filter handlers
-  const addFilter = useCallback((newFilter: Filter) => updateLocalCache([newFilter, ...filters]), [filters]);
-  const handleDeleteFilter = useCallback(async (filterId: string) => {
-    if (!user || user.email !== 'munemojoseph332@gmail.com') throw new Error("No permission to delete filters");
-    try {
-      const idToken = await getValidIdToken();
-      if (!idToken) throw new Error("Session expired");
-      await deleteFilter(filterId, idToken);
-      updateLocalCache(filters.filter(f => f.id !== filterId));
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    }
-  }, [filters, user]);
-  const handleUpdateFilter = useCallback(async (filterToUpdate: Filter) => {
-    if (!user || user.email !== 'munemojoseph332@gmail.com') throw new Error("No permission to update filters");
-    try {
-      const idToken = await getValidIdToken();
-      if (!idToken) throw new Error("Session expired");
-      const { id, userId, username, accessCount, createdAt, ...dataToUpdate } = filterToUpdate;
-      const updatedFilter = await updateFilter(id, dataToUpdate, idToken);
-      updateLocalCache(filters.map(f => (f.id === id ? updatedFilter : f)));
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    }
-  }, [filters, user]);
+  const addFilter = useCallback(
+    (newFilter: Filter) => updateLocalCache([newFilter, ...filters]),
+    [filters]
+  );
 
-  const handleSelectFilter = useCallback((filter: Filter) => {
-    setViewState({ view: 'apply', filter });
-    incrementFilterAccessCount(filter.id);
-    updateLocalCache(filters.map(f => f.id === filter.id ? { ...f, accessCount: (f.accessCount || 0) + 1 } : f));
-  }, [filters]);
+  const handleDeleteFilter = useCallback(
+    async (filterId: string) => {
+      if (!user || user.email !== 'munemojoseph332@gmail.com')
+        throw new Error("No permission to delete filters");
+      try {
+        const idToken = await getValidIdToken();
+        if (!idToken) throw new Error("Session expired");
+        await deleteFilter(filterId, idToken);
+        updateLocalCache(filters.filter(f => f.id !== filterId));
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : "Unknown error");
+        throw err;
+      }
+    },
+    [filters, user]
+  );
+
+  const handleUpdateFilter = useCallback(
+    async (filterToUpdate: Filter) => {
+      if (!user || user.email !== 'munemojoseph332@gmail.com')
+        throw new Error("No permission to update filters");
+      try {
+        const idToken = await getValidIdToken();
+        if (!idToken) throw new Error("Session expired");
+        const { id, userId, username, accessCount, createdAt, ...dataToUpdate } =
+          filterToUpdate;
+        const updatedFilter = await updateFilter(id, dataToUpdate, idToken);
+        updateLocalCache(filters.map(f => (f.id === id ? updatedFilter : f)));
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : "Unknown error");
+        throw err;
+      }
+    },
+    [filters, user]
+  );
+
+  const handleSelectFilter = useCallback(
+    (filter: Filter) => {
+      setViewState({ view: 'apply', filter });
+      incrementFilterAccessCount(filter.id);
+      updateLocalCache(
+        filters.map(f =>
+          f.id === filter.id
+            ? { ...f, accessCount: (f.accessCount || 0) + 1 }
+            : f
+        )
+      );
+    },
+    [filters]
+  );
 
   const handleSignInSuccess = (signedInUser: User) => {
     setUser(signedInUser);
@@ -182,7 +197,9 @@ export default function Home() {
       return (
         <div className="flex flex-col items-center justify-center pt-20">
           <Spinner className="h-10 w-10 text-brand-primary dark:text-dark-brand-primary"/>
-          <p className="mt-4 text-lg text-content-200 dark:text-dark-content-200">Loading Filters...</p>
+          <p className="mt-4 text-lg text-content-200 dark:text-dark-content-200">
+            Loading Filters...
+          </p>
         </div>
       );
     }
@@ -254,7 +271,7 @@ export default function Home() {
               onClick={toggleTheme}
               aria-label="Toggle theme"
             >
-              {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+              {isDark ? <SunIcon /> : <MoonIcon />}
             </button>
           </div>
         </header>

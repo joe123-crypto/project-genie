@@ -61,6 +61,7 @@ const InstantFilterForm: React.FC<{
     description: '',
     prompt: '',
     previewImageUrl: '',
+    category: '',
   });
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -127,7 +128,19 @@ const InstantFilterForm: React.FC<{
               required
             />
           </div>
-
+          <div>
+            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+              Category
+            </label>
+            <input
+              type="text"
+              name="category"
+              value={formData.category}
+              onChange={(e) => setFormData({...formData, category: e.target.value})}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              required
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
               Description
