@@ -1,30 +1,81 @@
-﻿import { NextApiRequest, NextApiResponse } from 'next';
+﻿// nanobanana.ts
+import { NextApiRequest, NextApiResponse } from 'next';
 import { generateText } from 'ai';
+import { S3Client, PutObjectCommand, PutObjectCommandInput } from '@aws-sdk/client-s3';
 
 interface ImageInput {
   mediaType: string;
   data: string;
 }
 
-// Local output content types (Gemini returns nested file object in steps)
-interface OutputFileContent {
-  type: 'file';
-  file: {
+// Minimal type for Gemini's output to handle 'text' and 'file' content
+interface GeminiResponseContent {
+  type: 'file' | 'text';
+  text?: string;
+  file?: {
     mediaType: string;
     data?: string;
     base64Data?: string;
   };
 }
 
-interface OutputTextContent {
-  type: 'text';
-  text: string;
+// --- Cloudflare R2 (S3-compatible) setup ---
+const r2BucketName = process.env.R2_BUCKET_NAME || 'genie-bucket';
+const r2Client = new S3Client({
+  region: process.env.R2_REGION || 'auto',
+  endpoint: process.env.R2_ENDPOINT,
+  forcePathStyle: true,
+  credentials: process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY ? {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  } : undefined,
+});
+
+/**
+ * Parses a data URL (data:mime;base64,...) into { mimeType, buffer }.
+ */
+function parseDataUrlToBuffer(dataUrl: string): { mimeType: string; buffer: Buffer } {
+  const match = /^data:(.+);base64,(.*)$/.exec(dataUrl);
+  if (!match) {
+    throw new Error('Invalid data URL');
+  }
+  const mimeType = match[1];
+  const base64Data = match[2];
+  const buffer = Buffer.from(base64Data, 'base64');
+  return { mimeType, buffer };
 }
 
-type OutputContent = OutputFileContent | OutputTextContent;
+/**
+ * Uploads a data URL image to Cloudflare R2 under a deterministic key and returns a public URL.
+ */
+async function uploadPreviewToR2(key: string, dataUrl: string): Promise<string> {
+  const { mimeType, buffer } = parseDataUrlToBuffer(dataUrl);
 
-interface OutputStepLike {
-  content?: OutputContent[];
+  const params: PutObjectCommandInput = {
+    Bucket: r2BucketName,
+    Key: key,
+    Body: buffer,
+    ContentType: mimeType,
+    ACL: 'public-read',
+  };
+
+  await r2Client.send(new PutObjectCommand(params));
+
+  const publicBase = process.env.R2_PUBLIC_BASE_URL;
+  if (publicBase) {
+    return `${publicBase.replace(/\/$/, '')}/${key}`;
+  }
+  const endpoint = (process.env.R2_ENDPOINT || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+  return `https://${endpoint}/${r2BucketName}/${key}`;
+}
+
+/**
+ * Generates a random filename for images
+ */
+function generateRandomFilename(extension: string = 'png'): string {
+  const timestamp = Date.now();
+  const randomId = Math.random().toString(36).substring(2, 15);
+  return `${timestamp}-${randomId}.${extension}`;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -58,23 +109,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ],
     });
 
-    const step: OutputStepLike | undefined = (result.steps as unknown as OutputStepLike[])?.[0];
+    const fileContent = result.steps?.[0]?.content.find((c) => c.type === 'file');
 
-    const fileObj = step?.content?.find((c): c is OutputFileContent => c.type === 'file')?.file;
-
-    if (!fileObj) {
-      console.error('No file returned from Gemini, full step object:', step);
+    if (!fileContent || !fileContent.file) {
+      console.error('No file returned from Gemini, full result:', result);
       return res.status(500).json({ error: 'No image returned from Gemini' });
     }
 
-    const base64 = fileObj.base64Data || fileObj.data;
+    const { file } = fileContent;
+    //console.log("inspecting the filecontent", file);
+    // @ts-expect-error Next.js type issue
+    const base64 = (file as { base64Data: string }).base64Data;
     if (!base64) {
-      console.error('File object missing base64 content:', fileObj);
+      console.error('File object missing base64 content:', file);
       return res.status(500).json({ error: 'Malformed image data from Gemini' });
     }
 
-    const dataUrl = `data:${fileObj.mediaType};base64,${base64}`;
-    return res.status(200).json({ transformedImage: dataUrl });
+    const dataUrl = `data:${file.mediaType};base64,${base64}`;
+
+    const isImageGeneration = !images || images.length === 0;
+    const folder = isImageGeneration ? 'ai-generated' : 'filtered';
+    const filename = generateRandomFilename('png');
+    const key = `${folder}/${filename}`;
+
+    const publicUrl = await uploadPreviewToR2(key, dataUrl);
+
+    console.log(`${isImageGeneration ? 'AI-generated' : 'Filtered'} image uploaded to R2:`, publicUrl);
+
+    return res.status(200).json({
+      transformedImage: publicUrl,
+      originalDataUrl: dataUrl,
+      filename: filename
+    });
   } catch (err: unknown) {
     console.error('Nanobanana/Gemini error:', err);
 

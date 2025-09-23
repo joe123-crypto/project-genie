@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { Filter, ViewState, User } from '../types';
 import { BackArrowIcon, UploadIcon, SparklesIcon } from './icons';
 import Spinner from './Spinner';
+import { improvePrompt, generateImageFromPrompt } from '../services/geminiService';
+import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from '../utils/fileUtils';
+import { saveFilter } from '../services/firebaseService';
+import { getValidIdToken } from '../services/authService';
 
 interface StudioViewProps {
   setViewState: (viewState: ViewState) => void;
@@ -67,35 +71,67 @@ const InstantFilterForm: React.FC<{
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    if (!isSupportedImageFormat(file)) {
+      alert('Unsupported file format. Please upload a JPEG, PNG, GIF, WebP, HEIF, or HEIC image.');
+      return;
+    }
+
+    try {
       setImageFile(file);
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setFormData(prev => ({ ...prev, previewImageUrl: previewUrl }));
+      const base64 = await fileToBase64WithHEIFSupport(file);
+      setFormData(prev => ({ ...prev, previewImageUrl: base64 }));
+    } catch {
+      alert('Failed to read the image file.');
     }
   };
 
   const handleGeneratePrompt = async () => {
+    if (!formData.prompt.trim()) {
+      // If no prompt typed yet, ask AI to create one from scratch
+      setIsGeneratingPrompt(true);
+      try {
+        const improved = await improvePrompt('Create a creative and detailed image generation prompt suitable for a photo filter. Return only the prompt.');
+        setFormData(prev => ({ ...prev, prompt: improved }));
+      } catch (e) {
+        console.error(e);
+        alert('Failed to generate prompt.');
+      } finally {
+        setIsGeneratingPrompt(false);
+      }
+      return;
+    }
+
     setIsGeneratingPrompt(true);
-    // Simulate AI prompt generation
-    setTimeout(() => {
-      setFormData(prev => ({
-        ...prev,
-        prompt: "An AI-generated prompt will appear here...",
-      }));
+    try {
+      const improved = await improvePrompt(formData.prompt);
+      setFormData(prev => ({ ...prev, prompt: improved }));
+    } catch (e) {
+      console.error(e);
+      alert('Failed to improve prompt.');
+    } finally {
       setIsGeneratingPrompt(false);
-    }, 1500);
+    }
   };
 
   const handleGenerateImage = async () => {
+    if (!formData.prompt.trim()) {
+      alert('Please enter or generate a prompt first.');
+      return;
+    }
     setIsGeneratingImage(true);
-    // Simulate AI image generation
-    setTimeout(() => {
+    try {
+      const img = await generateImageFromPrompt(formData.prompt);
+      setFormData(prev => ({ ...prev, previewImageUrl: img }));
+    } catch (e) {
+      console.error(e);
+      alert('Failed to generate image.');
+    } finally {
       setIsGeneratingImage(false);
-      alert('Image generation coming soon!');
-    }, 1500);
+    }
   };
 
   return (
@@ -247,11 +283,35 @@ const InstantFilterForm: React.FC<{
 const CreateFilterView: React.FC<StudioViewProps> = (props) => {
   const [filterType, setFilterType] = useState<'selection' | 'instant' | 'studio'>('selection');
 
-  const handleSave = (filterData: Omit<Filter, 'id'>) => {
-    // Here you would normally save to backend
-    console.log('Saving filter:', filterData);
-    // For now, just go back to marketplace
-    props.setViewState({ view: 'marketplace' });
+  const handleSave = async (filterData: Omit<Filter, 'id'>) => {
+    // Validate minimal fields
+    if (!filterData.name.trim() || !filterData.prompt.trim() || !filterData.category.trim()) {
+      alert('Please provide a name, category, and prompt.');
+      return;
+    }
+
+    try {
+      const idToken = await getValidIdToken();
+
+      const payload: Omit<Filter, 'id'> = {
+        name: filterData.name,
+        description: filterData.description,
+        prompt: filterData.prompt,
+        previewImageUrl: filterData.previewImageUrl,
+        category: filterData.category,
+        type: 'single',
+        userId: props.user?.uid,
+        username: props.user?.email?.split('@')[0] || props.user?.email || 'anonymous',
+        // accessCount and createdAt are set server-side
+      };
+
+      const saved = await saveFilter(payload, idToken || '');
+      if (props.addFilter) props.addFilter(saved);
+      props.setViewState({ view: 'marketplace' });
+    } catch (e) {
+      console.error('Failed to save filter', e);
+      alert('Failed to save filter. Please try again.');
+    }
   };
 
   return (

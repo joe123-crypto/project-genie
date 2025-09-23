@@ -1,4 +1,4 @@
-﻿// Updated dailyTrendService.ts to only call our API routes
+// Updated dailyTrendService.ts to only call our API routes
 import { Filter } from '../types';
 import { generateTrendingFilter } from './geminiService';
 import { saveFilter } from './firebaseService';
@@ -28,7 +28,7 @@ export const checkAndGenerateDailyTrend = async (): Promise<Filter | null> => {
             name: trendingFilterData.name,
             description: trendingFilterData.description,
             prompt: trendingFilterData.prompt,
-            previewImageUrl: trendingFilterData.previewImageUrl,
+            previewImageUrl: trendingFilterData.previewImageUrl || "",
             category: 'Trending',
             type: 'single',
             accessCount: 0,

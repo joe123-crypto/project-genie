@@ -16,8 +16,8 @@ interface GeminiResponse {
 interface GeminiFileContent {
   type: "file";
   file: {
-    data: string; // base64
     mediaType: string;
+    data: string;
   };
 }
 
@@ -52,14 +52,22 @@ export default async function handler(
     if (!apiKey) return res.status(500).json({ error: "Server misconfiguration" });
 
     const isImageRequest = images && images.length > 0;
-    const model = isImageRequest ? "google/gemini-2.5-flash-image-preview" : "google/gemini-2.5-flash";
+    const isImageGeneration = !isImageRequest && prompt.toLowerCase().includes("image") || 
+                             !isImageRequest && (prompt.toLowerCase().includes("generate") || 
+                             prompt.toLowerCase().includes("create") || 
+                             prompt.toLowerCase().includes("draw") || 
+                             prompt.toLowerCase().includes("paint"));
+    
+    // Use image generation model for image requests or when prompt suggests image generation
+    const model = (isImageRequest || isImageGeneration) ? "google/gemini-2.5-flash-image-preview" : "google/gemini-2.5-flash";
+    const responseModalities = (isImageRequest || isImageGeneration) ? ["IMAGE", "TEXT"] : ["TEXT"];
 
     const result = await generateText({
       model,
       providerOptions: {
         google: {
           apiKey,
-          responseModalities: isImageRequest ? ["IMAGE", "TEXT"] : ["TEXT"],
+          responseModalities,
         },
       },
       messages: [
@@ -90,7 +98,8 @@ export default async function handler(
       .map((c) => c.file.data)
       .join("");
 
-    if (isImageRequest && fileContent) {
+    // Check for image content first (for both image requests and image generation)
+    if (fileContent) {
       const firstMediaType = steps
         .flatMap((step) => step.content ?? [])
         .find((c): c is GeminiFileContent => c.type === "file" && !!c.file)

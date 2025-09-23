@@ -1,5 +1,4 @@
-
-import React from 'react';
+﻿import React from 'react';
 import { DownloadIcon, WhatsAppIcon } from './icons';
 
 interface ShareModalProps {
@@ -7,17 +6,20 @@ interface ShareModalProps {
   onClose: () => void;
   imageUrl: string;
   filterName: string;
+  filename?: string; // Optional filename for download
 }
 
-const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, imageUrl, filterName }) => {
+const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, imageUrl, filterName, filename }) => {
   if (!isOpen) {
     return null;
   }
 
-  const shareText = `Check out this image I created with the '${filterName}' filter! Create your own here: ${window.location.origin}`;
+  const shareText = `Check out this image I created with the '${filterName}' filter!\n${imageUrl}\nCreate your own here: ${window.location.origin}`;
   const encodedText = encodeURIComponent(shareText);
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
-  const downloadFilename = `filtered-${filterName.toLowerCase().replace(/\s/g, '-')}.png`;
+  
+  // Use provided filename or generate a random one
+  const downloadFilename = filename || `filtered-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.png`;
 
   return (
     <div

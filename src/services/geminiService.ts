@@ -1,11 +1,11 @@
-// Updated geminiService.ts to use AI SDK instead of @google/genai
+﻿// Updated geminiService.ts to use AI SDK instead of @google/genai
 // This service will make API calls to our Next.js API routes that use the AI SDK
 
 /**
  * Applies a filter to one or more images using a prompt.
  * @param base64ImageDataUrls - An array of base64 encoded images.
  * @param prompt - The prompt describing the filter or merge effect.
- * @returns A promise that resolves to the new base64 image URL.
+ * @returns A promise that resolves to the public URL of the filtered image.
  */
 export const applyImageFilter = async (
   base64ImageDataUrls: string[],
@@ -37,17 +37,19 @@ export const applyImageFilter = async (
       }),
     });
 
+    // Parse the response only once
+    const data = await response.json();
+    
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to apply filter");
+      throw new Error(data.error || "Failed to apply filter");
     }
 
-    const data = await response.json();
     if (!data.transformedImage) {
       throw new Error("No image returned from backend");
     }
 
-    return data.transformedImage; // base64 data URL, can use directly in <img src={...} />
+    console.log("Filtered image uploaded to R2:", data.transformedImage);
+    return data.transformedImage; // This is now a public URL
   } catch (error) {
     console.error("Error applying image filter:", error);
     throw error;
@@ -57,214 +59,239 @@ export const applyImageFilter = async (
 /**
  * Generates an image from a prompt only (no input images).
  * @param prompt - The text prompt for image generation.
- * @returns A base64 data URL of the generated image.
+ * @returns A public URL of the generated image (uploaded to R2).
  */
-export const generateImageFromPrompt = async (prompt: string): Promise<string> => {
-  const response = await fetch('/api/nanobanana', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ textPrompt: prompt, images: [] }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Failed to generate image from prompt');
-  }
-
-  const data = await response.json();
-  if (!data.transformedImage) throw new Error('No image returned from backend');
-  return data.transformedImage;
-};
-
-/**
- * Improves a given prompt by making it more detailed and specific.
- * @param currentPrompt - The current prompt to improve.
- * @returns A promise that resolves to an improved prompt.
- */
-export const improvePrompt = async (currentPrompt: string): Promise<string> => {
+export const generateImage = async (prompt: string): Promise<string> => {
   try {
-    const response = await fetch('/api/gemini', {
-      method: 'POST',
+    console.log("Generating image with prompt:", prompt);
+    
+    // Use nanobanana API for image generation - now uploads to R2 automatically
+    const response = await fetch("/api/nanobanana", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        prompt: `Improve this image generation prompt to be more detailed and specific: "${currentPrompt}". Return only the improved prompt.`
+      body: JSON.stringify({ 
+        textPrompt: prompt,
+        images: [] // Empty array for pure text-to-image generation
       }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to improve prompt');
-    }
+    console.log("Response status:", response.status);
 
+    // Parse the response only once
     const data = await response.json();
-    return data.text || currentPrompt;
-  } catch (error) {
-    console.error('Error improving prompt:', error);
-    return currentPrompt; // Return original prompt if improvement fails
-  }
-};
-
-/**
- * Generates a random creative prompt for image generation.
- * @returns A promise that resolves to a random prompt.
- */
-export const generateRandomPrompt = async (): Promise<string> => {
-  const randomThemes = [
-    'vintage fashion photography',
-    'cyberpunk cityscape',
-    'magical forest',
-    'retro gaming aesthetic',
-    'minimalist architecture',
-    'fantasy portrait',
-    'abstract art',
-    'nature landscape',
-    'urban street art',
-    'cosmic space scene'
-  ];
-
-  const randomTheme = randomThemes[Math.floor(Math.random() * randomThemes.length)];
-  
-  try {
-    const response = await fetch('/api/gemini', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt: `Generate a creative and detailed image generation prompt about: ${randomTheme}. Return only the prompt.`
-      }),
-    });
-
+    console.log("Response data keys:", Object.keys(data));
+    
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to generate random prompt');
+      throw new Error(data.error || "Failed to generate image");
     }
 
-    const data = await response.json();
-    return data.text || `A beautiful ${randomTheme} with artistic lighting and composition`;
+    // Check for transformedImage (nanobanana API response format)
+    if (data.transformedImage) {
+      console.log("Image generated and uploaded to R2:", data.transformedImage);
+      return data.transformedImage; // This is now a public URL
+    }
+    
+    // Fallback to imageUrl (gemini API response format)
+    if (data.imageUrl) {
+      return data.imageUrl;
+    }
+
+    console.error("No image in response:", data);
+    throw new Error("No image returned from backend");
   } catch (error) {
-    console.error('Error generating random prompt:', error);
-    return `A beautiful ${randomTheme} with artistic lighting and composition`;
-  }
-};
-
-/**
- * Generates a complete filter with name, description, prompt, and preview image.
- * @param theme - The theme for the filter.
- * @returns A promise that resolves to a complete filter object.
- */
-export const generateFullFilter = async (theme: string): Promise<{ name: string, description: string, prompt: string, previewImageUrl: string }> => {
-  try {
-    // Generate the prompt first
-    const promptResponse = await fetch('/api/gemini', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt: `Create a detailed image generation prompt for a filter with theme: ${theme}. Return only the prompt.`
-      }),
-    });
-
-    if (!promptResponse.ok) {
-      throw new Error('Failed to generate prompt');
-    }
-
-    const promptData = await promptResponse.json();
-    const prompt = promptData.text || `A beautiful ${theme} filter with artistic effects`;
-
-    // Generate the preview image
-    const previewImageUrl = await generateImageFromPrompt(prompt);
-
-    // Generate name and description
-    const metaResponse = await fetch('/api/gemini', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt: `Create a name and description for an image filter with theme: ${theme}. Return in JSON format: {"name": "Filter Name", "description": "Filter description"}`
-      }),
-    });
-
-    let name = `${theme} Filter`;
-    let description = `A beautiful ${theme} filter for your images`;
-
-    if (metaResponse.ok) {
-      const metaData = await metaResponse.json();
-      try {
-        const parsed = JSON.parse(metaData.text);
-        name = parsed.name || name;
-        description = parsed.description || description;
-      } catch (e) {
-        console.warn('Failed to parse metadata JSON');
-      }
-    }
-
-    return {
-      name,
-      description,
-      prompt,
-      previewImageUrl
-    };
-  } catch (error) {
-    console.error('Error generating full filter:', error);
+    console.error("Error generating image:", error);
     throw error;
   }
 };
 
 /**
- * Categorizes a filter as either 'Useful' or 'Fun'.
- * @param name - The filter name.
- * @param description - The filter description.
- * @param prompt - The filter prompt.
- * @returns A promise that resolves to the category.
+ * Generates text from a prompt using Gemini.
+ * @param prompt - The text prompt for generation.
+ * @returns A promise that resolves to the generated text.
  */
-export const categorizeFilter = async (name: string, description: string, prompt: string): Promise<'Useful' | 'Fun'> => {
+export const generateText = async (prompt: string): Promise<string> => {
   try {
-    const response = await fetch('/api/gemini', {
-      method: 'POST',
+    const response = await fetch("/api/gemini", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        prompt: `Categorize this image filter as either "Useful" or "Fun" based on its name, description, and prompt. Name: "${name}", Description: "${description}", Prompt: "${prompt}". Return only "Useful" or "Fun".`
-      }),
+      body: JSON.stringify({ prompt }),
     });
 
+    // Parse the response only once
+    const data = await response.json();
+    
     if (!response.ok) {
-      return 'Fun'; // Default to Fun if categorization fails
+      throw new Error(data.error || "Failed to generate text");
     }
 
-    const data = await response.json();
-    const category = data.text?.trim();
-    return (category === 'Useful') ? 'Useful' : 'Fun';
+    if (!data.text) {
+      throw new Error("No text returned from backend");
+    }
+
+    return data.text;
   } catch (error) {
-    console.error('Error categorizing filter:', error);
-    return 'Fun'; // Default to Fun if categorization fails
+    console.error("Error generating text:", error);
+    throw error;
   }
 };
 
 /**
- * Generates a trending filter based on current trends.
- * @returns A promise that resolves to a trending filter object.
+ * Improves a prompt using AI to make it more creative and detailed.
+ * @param prompt - The original prompt to improve.
+ * @returns A promise that resolves to the improved prompt.
  */
-export const generateTrendingFilter = async (): Promise<{ name: string, description: string, prompt: string, previewImageUrl: string }> => {
-  const trendingThemes = [
-    'vintage aesthetic',
-    'cyberpunk neon',
-    'minimalist design',
-    'retro gaming',
-    'fantasy art',
-    'urban street style',
-    'cosmic space',
-    'nature photography',
-    'abstract art',
-    'futuristic tech'
-  ];
+export const improvePrompt = async (prompt: string): Promise<string> => {
+  try {
+    const response = await fetch("/api/gemini", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ 
+        prompt: `Improve this prompt to be more creative, detailed, and specific for image generation: ${prompt}` 
+      }),
+    });
 
-  const randomTheme = trendingThemes[Math.floor(Math.random() * trendingThemes.length)];
-  return generateFullFilter(randomTheme);
+    // Parse the response only once
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to improve prompt");
+    }
+
+    if (!data.text) {
+      throw new Error("No improved prompt returned from backend");
+    }
+
+    return data.text;
+  } catch (error) {
+    console.error("Error improving prompt:", error);
+    throw error;
+  }
 };
+
+/**
+ * Generates a trending filter based on current trends and popular styles.
+ * @returns A promise that resolves to trending filter data.
+ */
+export const generateTrendingFilter = async (): Promise<{ name: string; description: string; prompt: string; previewImageUrl?: string }> => {
+  try {
+    const response = await fetch("/api/gemini", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ 
+        prompt: "Generate a trending photo filter idea for 2024. Include a creative name, description, and detailed prompt for image generation. Format as JSON with keys: name, description, prompt" 
+      }),
+    });
+
+    // Parse the response only once
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to generate trending filter");
+    }
+
+    if (!data.text) {
+      throw new Error("No trending filter returned from backend");
+    }
+
+    // Try to parse the JSON response
+    try {
+      const filterData = JSON.parse(data.text);
+      return {
+        name: filterData.name || "Trending Filter",
+        description: filterData.description || "A popular photo filter",
+        prompt: filterData.prompt || "Create a trending photo filter effect",
+        previewImageUrl: filterData.previewImageUrl
+      };
+    } catch (parseError) {
+      // If JSON parsing fails, return a default structure
+      return {
+        name: "Trending Filter",
+        description: data.text || "A popular photo filter",
+        prompt: data.text || "Create a trending photo filter effect"
+      };
+    }
+  } catch (error) {
+    console.error("Error generating trending filter:", error);
+    throw error;
+  }
+};
+
+/**
+ * Applies a filter to multiple images and merges them using a prompt.
+ * @param base64ImageDataUrls - An array of base64 encoded images.
+ * @param prompt - The prompt describing the merge effect.
+ * @returns A promise that resolves to the merged base64 image URL.
+ */
+export const mergeImages = async (
+  base64ImageDataUrls: string[],
+  prompt: string
+): Promise<string> => {
+  if (base64ImageDataUrls.length < 2) {
+    throw new Error("At least two images are required to merge.");
+  }
+
+  try {
+    // Convert base64 data URLs into objects compatible with backend
+    const images = base64ImageDataUrls.map((dataUrl) => {
+      const match = dataUrl.match(/^data:(image\/\w+);base64,(.*)$/);
+      if (!match) throw new Error("Invalid base64 image format");
+      return {
+        mediaType: match[1],
+        data: match[2],
+      };
+    });
+
+    const response = await fetch("/api/nanobanana", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        textPrompt: prompt,
+        images,
+      }),
+    });
+
+    // Parse the response only once
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to merge images");
+    }
+
+    if (!data.transformedImage) {
+      throw new Error("No merged image returned from backend");
+    }
+
+    console.log("Merged image uploaded to R2:", data.transformedImage);
+    return data.transformedImage; // This is now a public URL
+  } catch (error) {
+    console.error("Error merging images:", error);
+    throw error;
+  }
+};
+
+// Alias functions for backward compatibility
+export const generateImageFromPrompt = generateImage;
+export const applyFilter = (base64ImageDataUrl: string, prompt: string) => 
+  applyImageFilter([base64ImageDataUrl], prompt);
+export const mergeImagesWithFilter = mergeImages;
+export const createImageFromPrompt = generateImage;
+export const createTextFromPrompt = generateText;
+export const applyFilterToImage = (base64ImageDataUrl: string, prompt: string) => 
+  applyImageFilter([base64ImageDataUrl], prompt);
+export const mergeImagesWithFilterEffect = mergeImages;
+export const filterImage = (base64ImageDataUrl: string, prompt: string) => 
+  applyImageFilter([base64ImageDataUrl], prompt);
+export const mergeImagesWithFilterPrompt = mergeImages;
+export const applyFilterToSingleImage = (base64ImageDataUrl: string, prompt: string) => 
+  applyImageFilter([base64ImageDataUrl], prompt);
+export const mergeMultipleImages = mergeImages;

@@ -1,75 +1,20 @@
-import React, { useState, useCallback } from 'react';
-import Image from 'next/image';
-import { Filter, ViewState, User } from '../types';
+﻿import React, { useState, useCallback, useEffect } from 'react';
 import { applyImageFilter } from '../services/geminiService';
-import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from '../utils/fileUtils';
-import { shareImage } from '../services/shareService';
-import Spinner from './Spinner';
-import { BackArrowIcon, UploadIcon, SparklesIcon, ShareIcon, ReimagineIcon, DownloadIcon } from './icons';
+import { Filter, User, ViewState } from '../types';
+import { UploadIcon, ShareIcon, DownloadIcon, BackArrowIcon } from './icons';
 import ShareModal from './ShareModal';
 
 interface ApplyFilterViewProps {
   filter: Filter;
-  setViewState: (viewState: ViewState) => void;
+  setViewState: (state: ViewState) => void;
   user: User | null;
 }
-
-interface ImageUploaderProps {
-  id: string;
-  image: string | null;
-  onUpload: (base64: string) => void;
-  label: string;
-  onError: (error: string) => void;
-}
-
-const ImageUploader: React.FC<ImageUploaderProps> = ({ id, image, onUpload, label, onError }) => {
-  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!isSupportedImageFormat(file)) {
-      onError('Unsupported file format. Please upload a JPEG, PNG, GIF, WebP, HEIF, or HEIC image.');
-      return;
-    }
-
-    try {
-      const base64 = await fileToBase64WithHEIFSupport(file);
-      onUpload(base64);
-    } catch {
-      onError('Failed to read the image file.');
-    }
-  };
-
-  return (
-    <div className="w-full">
-      <label htmlFor={id} className="block text-sm font-medium text-center mb-2 text-content-200 dark:text-dark-content-200">{label}</label>
-      <div className="w-full aspect-square bg-base-300 dark:bg-dark-base-300 rounded-lg flex items-center justify-center overflow-hidden relative border border-border-color dark:border-dark-border-color">
-        {image ? (
-          <Image
-            src={image}
-            alt={label}
-            className="object-contain"
-            fill
-            sizes="100vw"
-            style={{ objectFit: 'contain' }}
-          />
-        ) : (
-          <div className="text-center text-content-200 dark:text-dark-content-200 p-4">
-            <UploadIcon className="mx-auto h-12 w-12" />
-            <p className="mt-2 text-sm">Upload an image</p>
-          </div>
-        )}
-        <input id={id} type="file" accept="image/*,.heif,.heic" className="sr-only" onChange={handleUpload} />
-        <label htmlFor={id} className="absolute inset-0 cursor-pointer focus:outline-none" />
-      </div>
-    </div>
-  );
-};
 
 const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState, user }) => {
   const [uploadedImage1, setUploadedImage1] = useState<string | null>(null);
   const [uploadedImage2, setUploadedImage2] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedImageFilename, setGeneratedImageFilename] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error' | 'shared'>('idle');
@@ -94,10 +39,23 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
 
     setIsLoading(true);
     setGeneratedImage(null);
+    setGeneratedImageFilename(null);
 
     try {
       const result = await applyImageFilter(imagesToProcess, filter.prompt);
       setGeneratedImage(result);
+      
+      // Extract filename from URL if it's an R2 URL
+      if (result && result.includes('r2.dev')) {
+        const urlParts = result.split('/');
+        const filename = urlParts[urlParts.length - 1];
+        setGeneratedImageFilename(filename);
+      } else {
+        // Generate a random filename for base64 URLs
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2, 8);
+        setGeneratedImageFilename(`filtered-${timestamp}-${randomId}.png`);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
     } finally {
@@ -113,18 +71,34 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
     setError(null);
 
     try {
+      // 1. Call the share API to get a shareId
+      const response = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: generatedImage,
+          filterName: filter.name,
+          username: null, // No username in User type
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.shareId) {
+        throw new Error(data.error || 'Failed to create share link');
+      }
       const appUrl = window.location.origin;
-      const shareText = `Check out this image I created with the '${filter.name}' filter on Genie! Create your own here: ${appUrl}`;
+      const shareUrl = `${appUrl}/shared/${data.shareId}`;
+      const shareText = `Check out this image I created with the '${filter.name}' filter!\n${shareUrl}\nCreate your own here: ${appUrl}`;
 
       // Use Web Share API with file on supported/mobile
       if (!isWindows && navigator.share && navigator.canShare) {
         try {
           const res = await fetch(generatedImage);
           const blob = await res.blob();
-          const file = new File([blob], `filtered-${Date.now()}.png`, { type: 'image/png' });
+          const filename = generatedImageFilename || `filtered-${Date.now()}.png`;
+          const file = new File([blob], filename, { type: 'image/png' });
 
           if (navigator.canShare({ files: [file] })) {
-            await navigator.share({ title: 'Genie', text: shareText, files: [file] });
+            await navigator.share({ title: 'Genie', text: shareText, url: shareUrl, files: [file] });
             setShareStatus('shared');
             setIsSharing(false);
             return;
@@ -138,142 +112,157 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
       // On Windows or when Web Share is unavailable, show WhatsApp-only modal
       setIsShareModalOpen(true);
       setShareStatus('idle');
+      // Optionally, you can store the shareUrl in state and pass to ShareModal
     } catch (err: unknown) {
       setError(err instanceof Error ? `Sharing failed: ${err.message}` : 'An unknown error occurred while sharing.');
       setShareStatus('error');
     } finally {
       setIsSharing(false);
     }
-  }, [generatedImage, filter.name, isWindows]);
+  }, [generatedImage, filter.name, isWindows, generatedImageFilename, user]);
 
   const isApplyDisabled = isLoading || !uploadedImage1 || (filterType === 'merge' && !uploadedImage2);
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
-      <button
-        onClick={() => setViewState({ view: 'marketplace' })}
-        className="flex items-center gap-2 text-content-200 dark:text-dark-content-200 hover:text-content-100 dark:hover:text-dark-content-100 mb-6 font-semibold"
-      >
-        <BackArrowIcon />
-        Back to Marketplace
-      </button>
+      
+      <div className="flex items-center gap-4 mb-6">
+        <button
+          onClick={() => setViewState({ view: 'marketplace' })}
+          className="flex items-center gap-2 text-content-200 dark:text-dark-content-200 hover:text-content-100 dark:hover:text-dark-content-100 transition-colors"
+        >
+          <BackArrowIcon />
+          Back to Marketplace
+        </button>
+        <h1 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100">
+          Apply &quot;{filter.name}&quot; Filter
+        </h1>
+      </div>
 
-      <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg shadow-md border border-border-color dark:border-dark-border-color">
-        <div className="text-center mb-4 border-b border-border-color dark:border-dark-border-color pb-4">
-          <h2 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100">{filter.name}</h2>
-          <p className="text-content-200 dark:text-dark-content-200 mt-1 text-sm sm:text-base">{filter.description}</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-          {/* Image Display Area */}
-          <div className="w-full">
-            {generatedImage ? (
-              <div className="w-full max-w-md mx-auto aspect-square bg-base-300 dark:bg-dark-base-300 rounded-lg flex items-center justify-center overflow-hidden relative border border-border-color dark:border-dark-border-color">
-                <Image
-                  src={generatedImage}
-                  alt="Generated result"
-                  className="object-contain"
-                  fill
-                  sizes="100vw"
-                  style={{ objectFit: 'contain' }}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <div className="space-y-4">
+          <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg">
+            <h2 className="text-lg font-semibold text-content-100 dark:text-dark-content-100 mb-4">
+              Upload {filterType === 'merge' ? 'First' : ''} Image
+            </h2>
+            <div className="border-2 border-dashed border-border-color dark:border-dark-border-color rounded-lg p-6 text-center">
+              <input
+                type="file"
+                accept="image/*,.heif,.heic"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      setUploadedImage1(event.target?.result as string);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className="hidden"
+                id="upload1"
+              />
+              <label
+                htmlFor="upload1"
+                className="cursor-pointer flex flex-col items-center gap-2"
+              >
+                <UploadIcon />
+                <span className="text-content-200 dark:text-dark-content-200">
+                  {uploadedImage1 ? 'Change Image' : 'Click to upload'}
+                </span>
+              </label>
+              {uploadedImage1 && (
+                <img
+                  src={uploadedImage1}
+                  alt="Uploaded image 1"
+                  className="mt-4 max-w-full max-h-48 object-contain rounded"
                 />
-                {isLoading && (
-                  <div className="absolute inset-0 bg-white/70 dark:bg-black/70 flex flex-col items-center justify-center gap-4">
-                    <Spinner className="h-8 w-8 text-brand-primary dark:text-dark-brand-primary" />
-                    <p className="text-content-100 dark:text-dark-content-100 font-semibold">Applying filter...</p>
-                  </div>
-                )}
-              </div>
-            ) : filterType === 'merge' ? (
-              <div className="grid grid-cols-2 gap-4 max-w-md mx-auto relative">
-                <ImageUploader id="image-upload-1" image={uploadedImage1} onUpload={setUploadedImage1} label="Image 1" onError={setError} />
-                <ImageUploader id="image-upload-2" image={uploadedImage2} onUpload={setUploadedImage2} label="Image 2" onError={setError} />
-                {isLoading && (
-                  <div className="absolute inset-0 bg-white/70 dark:bg-black/70 flex flex-col items-center justify-center gap-4 rounded-lg">
-                    <Spinner className="h-8 w-8 text-brand-primary dark:text-dark-brand-primary" />
-                    <p className="text-content-100 dark:text-dark-content-100 font-semibold">Applying filter...</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="w-full max-w-md mx-auto aspect-square bg-base-300 dark:bg-dark-base-300 rounded-lg flex items-center justify-center overflow-hidden relative border border-border-color dark:border-dark-border-color">
-                {uploadedImage1 ? (
-                  <Image
-                    src={uploadedImage1}
-                    alt="User upload"
-                    className="object-contain"
-                    fill
-                    sizes="100vw"
-                    style={{ objectFit: 'contain' }}
-                  />
-                ) : (
-                  <div className="text-center text-content-200 dark:text-dark-content-200 p-4">
-                    <UploadIcon className="mx-auto h-12 w-12" />
-                    <p className="mt-2">Upload an image to get started</p>
-                  </div>
-                )}
-                {isLoading && (
-                  <div className="absolute inset-0 bg-white/70 dark:bg-black/70 flex flex-col items-center justify-center gap-4">
-                    <Spinner className="h-8 w-8 text-brand-primary dark:text-dark-brand-primary" />
-                    <p className="text-content-100 dark:text-dark-content-100 font-semibold">Applying filter...</p>
-                  </div>
-                )}
-              </div>
-            )}
-            {error && <p className="text-red-500 dark:text-red-400 mt-4 text-center">{error}</p>}
+              )}
+            </div>
           </div>
 
-          {/* Controls Area */}
-          <div className="flex flex-col gap-4 sticky top-6">
-            {filterType === 'single' && !generatedImage && (
-              <label htmlFor="image-upload-1" className="w-full text-center cursor-pointer bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 border border-border-color dark:border-dark-border-color text-content-100 dark:text-dark-content-100 font-bold py-3 px-4 rounded-lg transition-colors">
-                <span className="flex items-center justify-center gap-2"><UploadIcon /> {uploadedImage1 ? 'Change Image' : 'Upload Image'}</span>
+          {filterType === 'merge' && (
+            <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg">
+              <h2 className="text-lg font-semibold text-content-100 dark:text-dark-content-100 mb-4">
+                Upload Second Image
+              </h2>
+              <div className="border-2 border-dashed border-border-color dark:border-dark-border-color rounded-lg p-6 text-center">
                 <input
-                  id="image-upload-1"
                   type="file"
                   accept="image/*,.heif,.heic"
-                  className="hidden"
-                  onChange={async (e) => {
+                  onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      if (!isSupportedImageFormat(file)) {
-                        setError('Unsupported file format. Please upload a JPEG, PNG, GIF, WebP, HEIF, or HEIC image.');
-                        return;
-                      }
-                      try {
-                        const base64 = await fileToBase64WithHEIFSupport(file);
-                        setUploadedImage1(base64);
-                      } catch {
-                        setError('Failed to read image');
-                      }
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setUploadedImage2(event.target?.result as string);
+                      };
+                      reader.readAsDataURL(file);
                     }
                   }}
+                  className="hidden"
+                  id="upload2"
                 />
-              </label>
-            )}
+                <label
+                  htmlFor="upload2"
+                  className="cursor-pointer flex flex-col items-center gap-2"
+                >
+                  <UploadIcon />
+                  <span className="text-content-200 dark:text-dark-content-200">
+                    {uploadedImage2 ? 'Change Image' : 'Click to upload'}
+                  </span>
+                </label>
+                {uploadedImage2 && (
+                  <img
+                    src={uploadedImage2}
+                    alt="Uploaded image 2"
+                    className="mt-4 max-w-full max-h-48 object-contain rounded"
+                  />
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
-            {(generatedImage && (filterType === 'single' || filterType === 'merge')) && (
-              <button
-                onClick={() => {
-                  setGeneratedImage(null);
-                  setUploadedImage1(null);
-                  if (filterType === 'merge') setUploadedImage2(null);
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 border border-border-color dark:border-dark-border-color text-content-100 dark:text-dark-content-100 font-bold py-3 px-4 rounded-lg transition-colors"
-              >
-                <BackArrowIcon /> Start Over
-              </button>
-            )}
+        <div className="space-y-4">
+          <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg">
+            <h2 className="text-lg font-semibold text-content-100 dark:text-dark-content-100 mb-4">
+              Filtered Result
+            </h2>
+            <div className="border-2 border-dashed border-border-color dark:border-dark-border-color rounded-lg p-6 text-center min-h-[200px] flex items-center justify-center">
+              {isLoading ? (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
+                  <span className="text-content-200 dark:text-dark-content-200">Applying filter...</span>
+                </div>
+              ) : generatedImage ? (
+                <img
+                  src={generatedImage}
+                  alt="Filtered result"
+                  className="max-w-full max-h-64 object-contain rounded"
+                />
+              ) : (
+                <span className="text-content-200 dark:text-dark-content-200">
+                  Upload an image and click &quot;Apply Filter&quot; to see the result
+                </span>
+              )}
+            </div>
+          </div>
 
+          {error && (
+            <div className="bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-3">
             <button
               onClick={handleApplyFilter}
               disabled={isApplyDisabled}
-              className="w-full flex items-center justify-center gap-2 bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:text-gray-600 dark:disabled:text-gray-400 shadow-sm"
+              className="w-full bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {generatedImage ? <ReimagineIcon className="h-5 w-5" /> : <SparklesIcon />}
-              {isLoading
-                ? (generatedImage ? 'Reimagining...' : 'Processing...')
-                : (generatedImage ? 'Reimagine' : 'Apply Filter')}
+              {isLoading ? 'Applying Filter...' : 'Apply Filter'}
             </button>
 
             {generatedImage && (
@@ -288,7 +277,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
                 </button>
                 <a
                   href={generatedImage}
-                  download={`filtered-${Date.now()}.png`}
+                  download={generatedImageFilename || `filtered-${Date.now()}.png`}
                   className="w-full flex items-center justify-center gap-2 bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 border border-border-color dark:border-dark-border-color text-content-100 dark:text-dark-content-100 font-bold py-3 px-4 rounded-lg transition-colors text-center"
                 >
                   <DownloadIcon />
@@ -307,6 +296,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
           onClose={() => setIsShareModalOpen(false)}
           imageUrl={generatedImage}
           filterName={filter.name}
+          filename={generatedImageFilename || undefined}
         />
       )}
     </div>

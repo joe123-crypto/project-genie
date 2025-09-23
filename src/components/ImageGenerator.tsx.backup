@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { fileToBase64WithHEIFSupport, isSupportedImageFormat, getConvertedMimeType } from "../utils/fileUtils";
 
 export default function ImageGenerator() {
@@ -52,22 +52,22 @@ export default function ImageGenerator() {
         }),
       });
 
-      const data = await res.json();
-      if (data.transformedImage) setTransformedImage(data.transformedImage);
-      else alert("No image returned from backend");
-    } catch (err) {
-      console.error(err);
-      alert("Error calling image API");
-    } finally {
-      setLoading(false);
-    }
+        const data = await res.json();
+        if (data.transformedImage) setTransformedImage(data.transformedImage);
+        else alert("No image returned from backend");
+      } catch (err) {
+        console.error(err);
+        alert("Error calling image API");
+      } finally {
+        setLoading(false);
+      }
   };
 
   return (
     <div style={{ padding: "1rem" }}>
       <h2>AI Image Generator</h2>
       <form onSubmit={handleSubmit}>
-        <input type="file" accept="image/*,.heif,.heic" onChange={handleFileChange} />
+                  <input type="file" accept="image/*,.heif,.heic" onChange={handleFileChange} />
         {imagePreview && (
           <img
             src={imagePreview}
@@ -91,7 +91,7 @@ export default function ImageGenerator() {
         <div>
           <h3>Transformed Image:</h3>
           <img
-            src={transformedImage}
+            src={transformedImage} // use data URL directly
             alt="Transformed"
             style={{ width: "300px", marginTop: "10px" }}
           />
