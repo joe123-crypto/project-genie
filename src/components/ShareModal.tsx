@@ -6,15 +6,19 @@ interface ShareModalProps {
   onClose: () => void;
   imageUrl: string;
   filterName: string;
+  id?:string;
   filename?: string; // Optional filename for download
 }
 
-const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, imageUrl, filterName, filename }) => {
+const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, id, imageUrl, filterName, filename }) => {
   if (!isOpen) {
     return null;
   }
 
-  const shareText = `Check out this image I created with the '${filterName}' filter!\n${imageUrl}\nCreate your own here: ${window.location.origin}`;
+  const sharePageUrl = `${window.location.origin}/share/${id}`; // id must come from backend
+  const shareText = `Check out this image I created with the '${filterName}' filter!\n${sharePageUrl}`;
+
+  //const shareText = `Check out this image I created with the '${filterName}' filter!\n${imageUrl}\nCreate your own here: ${window.location.origin}`;
   const encodedText = encodeURIComponent(shareText);
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
   

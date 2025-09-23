@@ -8,6 +8,28 @@ export default function ImageGenerator() {
   const [transformedImage, setTransformedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const uploadToR2 = async (file: File) => {
+    console.log("hello world")
+    // Step 1: Ask backend for signed URL
+    const res = await fetch("/api/upload-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contentType: file.type }),
+    });
+  
+    const { uploadUrl, fileUrl } = await res.json();
+    console.log(uploadUrl)
+    // Step 2: Upload file directly to R2
+    await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+  
+    console.log("Uploaded to ",fileUrl)
+    return fileUrl; // Permanent public URL
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setImageFile(file);
@@ -34,9 +56,10 @@ export default function ImageGenerator() {
     setTransformedImage(null);
 
     try {
-      const dataUrl = await fileToBase64WithHEIFSupport(imageFile);
-      const base64Image = dataUrl.split(",")[1];
-      const mediaType = getConvertedMimeType(imageFile);
+      //const dataUrl = await fileToBase64WithHEIFSupport(imageFile);
+      //const base64Image = dataUrl.split(",")[1];
+      //const mediaType = getConvertedMimeType(imageFile);
+      const fileUrl = await uploadToR2(imageFile) 
 
       const res = await fetch("/api/nanobanana", {
         method: "POST",
@@ -45,8 +68,8 @@ export default function ImageGenerator() {
           textPrompt: prompt,
           images: [
             {
-              mediaType,
-              data: base64Image,
+              mediaType: imageFile.type,
+              data: fileUrl,
             },
           ],
         }),

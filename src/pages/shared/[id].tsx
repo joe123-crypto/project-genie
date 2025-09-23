@@ -3,6 +3,7 @@ import Head from 'next/head';
 import React from 'react';
 
 interface SharedImageProps {
+  id: string;
   imageUrl: string;
   filterName: string;
   username?: string | null;
@@ -69,6 +70,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   const data = await res.json();
   return {
     props: {
+      id,
       imageUrl: data.imageUrl,
       filterName: data.filterName,
       username: data.username || null,

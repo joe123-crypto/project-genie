@@ -1,14 +1,15 @@
-﻿// nanobanana.ts
+﻿// pages/api/nanobanana.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { generateText } from 'ai';
 import { S3Client, PutObjectCommand, PutObjectCommandInput } from '@aws-sdk/client-s3';
 
 interface ImageInput {
   mediaType: string;
-  data: string;
+  data?: string; // base64 inline data (old flow)
+  url?: string;  // R2 file URL (new flow)
 }
 
-// Minimal type for Gemini's output to handle 'text' and 'file' content
+// Minimal type for Gemini's output
 interface GeminiResponseContent {
   type: 'file' | 'text';
   text?: string;
@@ -56,7 +57,6 @@ async function uploadPreviewToR2(key: string, dataUrl: string): Promise<string> 
     Key: key,
     Body: buffer,
     ContentType: mimeType,
-    ACL: 'public-read',
   };
 
   await r2Client.send(new PutObjectCommand(params));
@@ -84,7 +84,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { textPrompt, images } = req.body as { textPrompt?: string; images?: ImageInput[] };
-
   if (!textPrompt) return res.status(400).json({ error: 'textPrompt required' });
 
   try {
@@ -99,11 +98,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           role: 'user',
           content: [
             { type: 'text', text: textPrompt },
-            ...((images || []).map((img) => ({
-              type: 'file' as const,
-              mediaType: img.mediaType,
-              data: img.data,
-            }))),
+            ...((images || []).map((img) => {
+              if (img.data) {
+                // Old flow: inline base64
+                return { type: 'file' as const, mediaType: img.mediaType, data: img.data };
+              } else if (img.url) {
+                // New flow: pass R2 URL directly
+                return { type: 'file' as const, mediaType: img.mediaType, data: img.url };
+              } else {
+                throw new Error('Image must have either data or url');
+              }
+            })),
           ],
         },
       ],
@@ -117,7 +122,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const { file } = fileContent;
-    //console.log("inspecting the filecontent", file);
     // @ts-expect-error Next.js type issue
     const base64 = (file as { base64Data: string }).base64Data;
     if (!base64) {
