@@ -9,7 +9,8 @@
  */
 export const applyImageFilter = async (
   inputs: (File | string)[],
-  prompt: string
+  prompt: string,
+  save?: boolean // New optional parameter
 ): Promise<string> => {
   if (inputs.length === 0) throw new Error("At least one image is required");
 
@@ -57,6 +58,7 @@ export const applyImageFilter = async (
     body: JSON.stringify({
       textPrompt: prompt,
       imageBase64,
+      save, // Pass the save flag to the backend
     }),
   });
 

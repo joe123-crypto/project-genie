@@ -21,6 +21,8 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
   const [error, setError] = useState<string | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [personalPrompt, setPersonalPrompt] = useState(""); // Personalization prompt state
+  const [isSaving, setIsSaving] = useState(false); // Track save button state
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle'); // Track save result
 
   const filterType = filter.type || 'single';
 
@@ -125,6 +127,26 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
       setIsSharing(false);
     }
   }, [generatedImage, filter.name, isWindows, generatedImageFilename, user]);
+
+  // Save handler: re-upload the generated image to the saved/ folder
+  const handleSave = useCallback(async () => {
+    if (!generatedImage) return;
+    setIsSaving(true);
+    setSaveStatus('idle');
+    setError(null);
+    try {
+      // Call applyImageFilter with save flag true to upload to saved/ folder
+      // Use the generated image as input
+      const result = await applyImageFilter([generatedImage], filter.prompt, true);
+      setSaveStatus('saved');
+      // Optionally, you could update generatedImage to the saved/ URL
+    } catch (err: unknown) {
+      setError(err instanceof Error ? `Save failed: ${err.message}` : 'An unknown error occurred while saving.');
+      setSaveStatus('error');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [generatedImage, filter.prompt]);
 
   const isApplyDisabled = isLoading || !uploadedImage1 || (filterType === 'merge' && !uploadedImage2);
 
@@ -245,6 +267,17 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
                 <DownloadIcon />
                 Download
               </a>
+              {/* Save button to upload to saved/ folder */}
+              <button
+                onClick={handleSave}
+                disabled={isSaving || isLoading}
+                className="flex items-center gap-2 bg-green-200 hover:bg-green-300 dark:bg-green-800 dark:hover:bg-green-700 text-green-900 dark:text-green-100 font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : 'Save'}
+              </button>
+              {/* Show save status */}
+              {saveStatus === 'saved' && <span className="text-green-600 dark:text-green-300 ml-2">Saved!</span>}
+              {saveStatus === 'error' && <span className="text-red-600 dark:text-red-300 ml-2">Save failed</span>}
             </div>
           )}
         </div>

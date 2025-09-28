@@ -32,24 +32,24 @@ function parseDataUrlToBuffer(dataUrl: string): { mimeType: string; buffer: Buff
   return { mimeType, buffer };
 }
 
-async function uploadPreviewToR2(key: string, dataUrl: string): Promise<string> {
+// Accepts an optional folderPrefix to upload to a subfolder in the bucket
+async function uploadPreviewToR2(key: string, dataUrl: string, folderPrefix?: string): Promise<string> {
   const { mimeType, buffer } = parseDataUrlToBuffer(dataUrl);
-
+  // If folderPrefix is provided, prepend it to the key
+  const finalKey = folderPrefix ? `${folderPrefix.replace(/\/$/, '')}/${key}` : key;
   const params: PutObjectCommandInput = {
     Bucket: r2BucketName,
-    Key: key,
+    Key: finalKey,
     Body: buffer,
     ContentType: mimeType,
   };
-
   await r2Client.send(new PutObjectCommand(params));
-
   const publicBase = process.env.R2_PUBLIC_BASE_URL;
   if (publicBase) {
-    return `${publicBase.replace(/\/$/, '')}/${key}`;
+    return `${publicBase.replace(/\/$/, '')}/${finalKey}`;
   }
   const endpoint = (process.env.R2_ENDPOINT || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-  return `https://${endpoint}/${r2BucketName}/${key}`;
+  return `https://${endpoint}/${r2BucketName}/${finalKey}`;
 }
 
 function generateRandomFilename(extension: string = 'png'): string {
@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { textPrompt, images, imageBase64 } = req.body as { textPrompt?: string; images?: ImageInput[]; imageBase64?: string };
+  const { textPrompt, images, imageBase64, save } = req.body as { textPrompt?: string; images?: ImageInput[]; imageBase64?: string; save?: boolean };
   if (!textPrompt) return res.status(400).json({ error: 'textPrompt required' });
 
   try {
@@ -123,7 +123,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const dataUrl = `data:${file.mediaType || 'image/png'};base64,${base64}`;
     const filename = generateRandomFilename('png');
-    const r2Url = await uploadPreviewToR2(filename, dataUrl);
+    // If save flag is true, upload to saved/ folder
+    const folderPrefix = save ? 'saved' : undefined;
+    const r2Url = await uploadPreviewToR2(filename, dataUrl, folderPrefix);
 
     return res.status(200).json({
       imageUrl: r2Url,
