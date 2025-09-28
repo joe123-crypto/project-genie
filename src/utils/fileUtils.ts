@@ -20,6 +20,22 @@ export const fileToBase64WithHEIFSupport = async (file: File): Promise<string> =
     return fileToBase64(file);
   }
 
+  // Try converting HEIF/HEIC using a client-side decoder first (works on Chrome/Edge)
+  try {
+    // Dynamic import to avoid SSR/bundle issues
+    const heic2any = (await import('heic2any')).default as unknown as (options: { blob: Blob; toType?: string; quality?: number }) => Promise<Blob | Blob[]>;
+    const convertedBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+    const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (libErr) {
+    // Fall back to browser decoding (Safari/iOS supports HEIF natively)
+  }
+
   // Try converting HEIF/HEIC using browser decoding (Safari/iOS supports HEIF natively)
   try {
     const converted = await convertHeifLikeToJpeg(file);
@@ -139,3 +155,85 @@ export const dataUrlToFile = async (dataUrl: string, filename: string): Promise<
     return null;
   }
 };
+
+// Converts any input (File | Blob | base64 string or data URL) to a PNG data URL
+export async function convertToPngBase64(
+  input: File | Blob | string,
+  options?: { maxDimension?: number; maxBytes?: number }
+): Promise<string> {
+  const toDataUrl = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+  const loadImage = (dataUrl: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+  let dataUrl: string;
+  if (typeof input === 'string') {
+    dataUrl = input.startsWith('data:') ? input : `data:image/*;base64,${input}`;
+  } else {
+    dataUrl = await toDataUrl(input);
+  }
+
+  const img = await loadImage(dataUrl);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D context not available');
+
+  const srcW = img.naturalWidth || img.width;
+  const srcH = img.naturalHeight || img.height;
+  const initialMaxDim = options?.maxDimension ?? 1024;
+  const maxBytes = options?.maxBytes; // e.g., 2_500_000 (~2.5MB)
+
+  let targetW: number;
+  let targetH: number;
+
+  const drawAndEncode = (maxDim: number): string => {
+    const maxSrcDim = Math.max(srcW, srcH);
+    const scale = maxSrcDim > maxDim ? maxDim / maxSrcDim : 1;
+    targetW = Math.max(1, Math.round(srcW * scale));
+    targetH = Math.max(1, Math.round(srcH * scale));
+    canvas.width = targetW;
+    canvas.height = targetH;
+    ctx.clearRect(0, 0, targetW, targetH);
+    ctx.drawImage(img, 0, 0, targetW, targetH);
+    return canvas.toDataURL('image/png');
+  };
+
+  let currentMaxDim = initialMaxDim;
+  let pngDataUrl = drawAndEncode(currentMaxDim);
+
+  if (maxBytes) {
+    // Base64 data length is ~4/3 of the binary size; the dataUrl has a header. We compare on the data part.
+    const base64Size = (d: string) => {
+      const idx = d.indexOf(',');
+      const b64 = idx >= 0 ? d.slice(idx + 1) : d;
+      return Math.floor((b64.length * 3) / 4);
+    };
+    let bytes = base64Size(pngDataUrl);
+    // Iteratively shrink dimensions by 20% until under limit or a floor is reached
+    while (bytes > maxBytes && currentMaxDim > 256) {
+      currentMaxDim = Math.floor(currentMaxDim * 0.8);
+      pngDataUrl = drawAndEncode(currentMaxDim);
+      bytes = base64Size(pngDataUrl);
+    }
+  }
+
+  return pngDataUrl;
+}
+
+// Extracts the raw base64 payload from a data URL
+export function extractBase64(dataUrl: string): string {
+  const comma = dataUrl.indexOf(',');
+  return comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+}

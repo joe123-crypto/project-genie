@@ -8,53 +8,69 @@
  * @returns A promise that resolves to the public URL of the filtered image.
  */
 export const applyImageFilter = async (
-  base64ImageDataUrls: string[],
+  inputs: (File | string)[],
   prompt: string
 ): Promise<string> => {
-  if (base64ImageDataUrls.length === 0) {
-    throw new Error("At least one image is required to apply a filter.");
+  if (inputs.length === 0) throw new Error("At least one image is required");
+
+  // We only support single-image filter here; if multiple provided, use mergeImages.
+  const first = inputs[0];
+  let dataUrl: string;
+  if (typeof first === 'string') {
+    dataUrl = first;
+  } else {
+    // File -> data URL
+    dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(first);
+    });
   }
 
-  try {
-    // Convert base64 data URLs into objects compatible with backend
-    const images = base64ImageDataUrls.map((dataUrl) => {
-      const match = dataUrl.match(/^data:(image\/\w+);base64,(.*)$/);
-      if (!match) throw new Error("Invalid base64 image format");
-      return {
-        mediaType: match[1],
-        data: match[2],
-      };
-    });
+  // Ensure PNG encoding
+  const canvas = document.createElement('canvas');
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = dataUrl;
+  });
+  const maxDim = 1024;
+  const srcW = img.naturalWidth || img.width;
+  const srcH = img.naturalHeight || img.height;
+  const maxSrcDim = Math.max(srcW, srcH);
+  const scale = maxSrcDim > maxDim ? maxDim / maxSrcDim : 1;
+  const targetW = Math.round(srcW * scale);
+  const targetH = Math.round(srcH * scale);
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas not available');
+  ctx.drawImage(img, 0, 0, targetW, targetH);
+  const pngDataUrl = canvas.toDataURL('image/png');
+  const imageBase64 = pngDataUrl.split(',')[1];
 
-    const response = await fetch("/api/nanobanana", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        textPrompt: prompt,
-        images,
-      }),
-    });
+  const response = await fetch("/api/nanobanana", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      textPrompt: prompt,
+      imageBase64,
+    }),
+  });
 
-    // Parse the response only once
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.error || "Failed to apply filter");
-    }
-
-    if (!data.transformedImage) {
-      throw new Error("No image returned from backend");
-    }
-
-    console.log("Filtered image uploaded to R2:", data.transformedImage);
-    return data.transformedImage; // This is now a public URL
-  } catch (error) {
-    console.error("Error applying image filter:", error);
-    throw error;
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Failed to apply filter");
+  if (data.imageBase64) {
+    return `data:image/png;base64,${data.imageBase64}`;
   }
+  if (data.transformedImage) {
+    return data.transformedImage;
+  }
+  throw new Error("No image returned from backend");
 };
+
 
 /**
  * Generates an image from a prompt only (no input images).
@@ -62,19 +78,17 @@ export const applyImageFilter = async (
  * @returns A public URL of the generated image (uploaded to R2).
  */
 export const generateImage = async (prompt: string): Promise<string> => {
+  console.log("hello world");
   try {
     console.log("Generating image with prompt:", prompt);
     
-    // Use nanobanana API for image generation - now uploads to R2 automatically
+    // Use nanobanana API for image generation; will return base64 now
     const response = await fetch("/api/nanobanana", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ 
-        textPrompt: prompt,
-        images: [] // Empty array for pure text-to-image generation
-      }),
+      body: JSON.stringify({ textPrompt: prompt }),
     });
 
     console.log("Response status:", response.status);
@@ -87,17 +101,13 @@ export const generateImage = async (prompt: string): Promise<string> => {
       throw new Error(data.error || "Failed to generate image");
     }
 
-    // Check for transformedImage (nanobanana API response format)
+    if (data.imageBase64) {
+      return `data:image/png;base64,${data.imageBase64}`;
+    }
     if (data.transformedImage) {
-      console.log("Image generated and uploaded to R2:", data.transformedImage);
-      return data.transformedImage; // This is now a public URL
+      return data.transformedImage;
     }
-    
-    // Fallback to imageUrl (gemini API response format)
-    if (data.imageUrl) {
-      return data.imageUrl;
-    }
-
+ 
     console.error("No image in response:", data);
     throw new Error("No image returned from backend");
   } catch (error) {
@@ -239,15 +249,32 @@ export const mergeImages = async (
   }
 
   try {
-    // Convert base64 data URLs into objects compatible with backend
-    const images = base64ImageDataUrls.map((dataUrl) => {
-      const match = dataUrl.match(/^data:(image\/\w+);base64,(.*)$/);
-      if (!match) throw new Error("Invalid base64 image format");
-      return {
-        mediaType: match[1],
-        data: match[2],
-      };
-    });
+    // Send only the first two images for merging as PNG base64 inputs (extend if backend supports many)
+    const toBase64 = async (dataUrl: string) => {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = dataUrl;
+      });
+      const canvas = document.createElement('canvas');
+      const maxDim = 1024;
+      const srcW = img.naturalWidth || img.width;
+      const srcH = img.naturalHeight || img.height;
+      const maxSrcDim = Math.max(srcW, srcH);
+      const scale = maxSrcDim > maxDim ? maxDim / maxSrcDim : 1;
+      const targetW = Math.round(srcW * scale);
+      const targetH = Math.round(srcH * scale);
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas not available');
+      ctx.drawImage(img, 0, 0, targetW, targetH);
+      return canvas.toDataURL('image/png').split(',')[1];
+    };
+
+    const imageBase64A = await toBase64(base64ImageDataUrls[0]);
+    const imageBase64B = await toBase64(base64ImageDataUrls[1]);
 
     const response = await fetch("/api/nanobanana", {
       method: "POST",
@@ -256,7 +283,10 @@ export const mergeImages = async (
       },
       body: JSON.stringify({
         textPrompt: prompt,
-        images,
+        images: [
+          { mediaType: 'image/png', data: imageBase64A },
+          { mediaType: 'image/png', data: imageBase64B },
+        ],
       }),
     });
 
@@ -267,12 +297,13 @@ export const mergeImages = async (
       throw new Error(data.error || "Failed to merge images");
     }
 
-    if (!data.transformedImage) {
-      throw new Error("No merged image returned from backend");
+    if (data.imageBase64) {
+      return `data:image/png;base64,${data.imageBase64}`;
     }
-
-    console.log("Merged image uploaded to R2:", data.transformedImage);
-    return data.transformedImage; // This is now a public URL
+    if (data.transformedImage) {
+      return data.transformedImage;
+    }
+    throw new Error("No merged image returned from backend");
   } catch (error) {
     console.error("Error merging images:", error);
     throw error;

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Filter, User } from '../types';
 import Spinner from './Spinner';
 import { TrashIcon, EditIcon } from './icons';
+import Image from 'next/image';
 
 interface FilterCardProps {
   filter: Filter;
@@ -54,7 +55,7 @@ const FilterCard: React.FC<FilterCardProps> = ({ filter, onSelect, aspectRatio, 
                 <button 
                     onClick={handleEdit}
                     disabled={isDeleting}
-                    className="p-2 bg-blue-600/80 hover:bg-blue-500 rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label={`Edit ${filter.name} filter`}
                 >
                     <EditIcon />
@@ -62,16 +63,19 @@ const FilterCard: React.FC<FilterCardProps> = ({ filter, onSelect, aspectRatio, 
                 <button 
                     onClick={handleDelete}
                     disabled={isDeleting}
-                    className="p-2 bg-red-600/80 hover:bg-red-500 rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label={`Delete ${filter.name} filter`}
                 >
                     {isDeleting ? <Spinner className="w-5 h-5"/> : <TrashIcon />}
                 </button>
             </div>
           )}
-          <img
+          {/* Use Next.js Image for better performance and optimization */}
+          <Image
             src={filter.previewImageUrl}
             alt={`Preview of ${filter.name} filter`}
+            fill
+            style={{ objectFit: 'cover' }}
             className="absolute top-0 left-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>

@@ -237,7 +237,7 @@ const InstantFilterForm: React.FC<{
               
               <div className="flex gap-2">
                 <label className="flex-1 cursor-pointer">
-                  <div className="px-4 py-2 bg-base-300 dark:bg-dark-base-300 text-content-100 dark:text-dark-content-100 rounded-lg hover:bg-base-400 dark:hover:bg-dark-base-400 transition-colors text-center">
+                  <div className="px-4 py-2 bg-neutral-200 dark:bg-dark-neutral-200 text-content-100 dark:text-dark-content-100 rounded-lg hover:bg-neutral-300 dark:hover:bg-dark-neutral-300 transition-colors text-center">
                     Upload Image
                   </div>
                   <input

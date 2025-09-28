@@ -100,7 +100,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onSignInSuccess, setViewState }) =>
               type="button"
               onClick={() => handleAuthAction('signUp')}
               disabled={isLoading}
-              className="flex-1 flex justify-center items-center bg-base-300 hover:bg-gray-300 dark:bg-dark-base-300 dark:hover:bg-gray-600 text-content-100 dark:text-dark-content-100 font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
+              className="flex-1 flex justify-center items-center bg-neutral-200 hover:bg-neutral-300 dark:bg-dark-neutral-200 dark:hover:bg-dark-neutral-300 text-content-100 dark:text-dark-content-100 font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
             >
               {isLoading ? <Spinner className="w-5 h-5" /> : 'Create Account'}
             </button>

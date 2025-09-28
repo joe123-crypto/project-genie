@@ -23,3 +23,84 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+/* Theme utility classes to match tokens in `utils/theme.ts` */
+:root {
+  /* Light theme palette */
+  --base-100: #ffffff;
+  --base-200: #f7f7f8;
+  --base-300: #ececef;
+
+  --content-100: #111827; /* high contrast */
+  --content-200: #374151; /* secondary text */
+
+  --brand-primary: #2563eb; /* blue-600 */
+  --brand-secondary: #1d4ed8; /* blue-700 (hover) */
+
+  --neutral-200: #e5e7eb; /* gray-200 */
+  --neutral-300: #d1d5db; /* gray-300 (hover) */
+
+  --border-color: #e5e7eb;
+}
+
+.dark {
+  /* Dark theme palette */
+  --dark-base-100: #0a0a0a;
+  --dark-base-200: #111213;
+  --dark-base-300: #1a1b1d;
+
+  --dark-content-100: #f3f4f6;
+  --dark-content-200: #d1d5db;
+
+  --dark-brand-primary: #60a5fa; /* blue-400 for better contrast on dark */
+  --dark-brand-secondary: #3b82f6; /* blue-500 (hover) */
+
+  --dark-neutral-200: #1f2937; /* gray-800 */
+  --dark-neutral-300: #374151; /* gray-700 (hover) */
+
+  --dark-border-color: #2d323b;
+}
+
+/* Background utilities */
+.bg-base-100 { background-color: var(--base-100); }
+.bg-base-200 { background-color: var(--base-200); }
+.bg-base-300 { background-color: var(--base-300); }
+.dark .dark\:bg-dark-base-100 { background-color: var(--dark-base-100); }
+.dark .dark\:bg-dark-base-200 { background-color: var(--dark-base-200); }
+.dark .dark\:bg-dark-base-300 { background-color: var(--dark-base-300); }
+
+/* Text utilities */
+.text-content-100 { color: var(--content-100); }
+.text-content-200 { color: var(--content-200); }
+.dark .dark\:text-dark-content-100 { color: var(--dark-content-100); }
+.dark .dark\:text-dark-content-200 { color: var(--dark-content-200); }
+
+/* Brand utilities (bg + text for icon replacements) */
+.bg-brand-primary { background-color: var(--brand-primary); }
+.bg-brand-secondary { background-color: var(--brand-secondary); }
+.text-brand-primary { color: var(--brand-primary); }
+.text-brand-secondary { color: var(--brand-secondary); }
+.dark .dark\:bg-dark-brand-primary { background-color: var(--dark-brand-primary); }
+.dark .dark\:bg-dark-brand-secondary { background-color: var(--dark-brand-secondary); }
+.dark .dark\:text-dark-brand-primary { color: var(--dark-brand-primary); }
+.dark .dark\:text-dark-brand-secondary { color: var(--dark-brand-secondary); }
+
+/* Neutral utilities */
+.bg-neutral-200 { background-color: var(--neutral-200); }
+.bg-neutral-300 { background-color: var(--neutral-300); }
+.dark .dark\:bg-dark-neutral-200 { background-color: var(--dark-neutral-200); }
+.dark .dark\:bg-dark-neutral-300 { background-color: var(--dark-neutral-300); }
+
+/* Border utilities */
+.border-border-color { border-color: var(--border-color); }
+.dark .dark\:border-dark-border-color { border-color: var(--dark-border-color); }
+
+/* Hover variants used in theme tokens */
+.hover\:bg-brand-secondary:hover { background-color: var(--brand-secondary); }
+.hover\:bg-neutral-300:hover { background-color: var(--neutral-300); }
+.dark .dark\:hover\:bg-dark-brand-secondary:hover { background-color: var(--dark-brand-secondary); }
+.dark .dark\:hover\:bg-dark-neutral-300:hover { background-color: var(--dark-neutral-300); }
+
+/* Ensure brand buttons have readable text in light theme */
+.bg-brand-primary, .bg-brand-secondary { color: #ffffff; }
+.dark .dark\:bg-dark-brand-primary, .dark .dark\:bg-dark-brand-secondary { color: #0b1020; }

@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { applyImageFilter } from '../services/geminiService';
 import { Filter, User, ViewState } from '../types';
 import { UploadIcon, ShareIcon, DownloadIcon, BackArrowIcon } from './icons';
@@ -20,6 +20,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error' | 'shared'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [personalPrompt, setPersonalPrompt] = useState(""); // Personalization prompt state
 
   const filterType = filter.type || 'single';
 
@@ -42,7 +43,11 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
     setGeneratedImageFilename(null);
 
     try {
-      const result = await applyImageFilter(imagesToProcess, filter.prompt);
+      // Combine the filter's base prompt with the personalization prompt
+      const combinedPrompt = personalPrompt
+        ? `${filter.prompt}\n${personalPrompt}`
+        : filter.prompt;
+      const result = await applyImageFilter(imagesToProcess, combinedPrompt);
       setGeneratedImage(result);
       
       // Extract filename from URL if it's an R2 URL
@@ -61,7 +66,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
     } finally {
       setIsLoading(false);
     }
-  }, [uploadedImage1, uploadedImage2, filter.prompt, filterType]);
+  }, [uploadedImage1, uploadedImage2, filter.prompt, filterType, personalPrompt]);
 
   const handleShare = useCallback(async () => {
     if (!generatedImage) return;
@@ -124,29 +129,23 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
   const isApplyDisabled = isLoading || !uploadedImage1 || (filterType === 'merge' && !uploadedImage2);
 
   return (
-    <div className="max-w-4xl mx-auto animate-fade-in">
-      
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => setViewState({ view: 'marketplace' })}
-          className="flex items-center gap-2 text-content-200 dark:text-dark-content-200 hover:text-content-100 dark:hover:text-dark-content-100 transition-colors"
-        >
-          <BackArrowIcon />
-          Back to Marketplace
-        </button>
-        <h1 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100">
-          Apply &quot;{filter.name}&quot; Filter
-        </h1>
+    <div className="max-w-2xl mx-auto animate-fade-in flex flex-col gap-6">
+      {/* Filter name and description at the top */}
+      <div className="p-4 bg-base-100 dark:bg-dark-base-100 rounded shadow">
+        <h1 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100 mb-2">{filter.name}</h1>
+        <p className="text-content-200 dark:text-dark-content-200">{filter.description}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        <div className="space-y-4">
-          <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg">
-            <h2 className="text-lg font-semibold text-content-100 dark:text-dark-content-100 mb-4">
-              Upload {filterType === 'merge' ? 'First' : ''} Image
-            </h2>
-            <div className="border-2 border-dashed border-border-color dark:border-dark-border-color rounded-lg p-6 text-center">
+      {/* Central area: upload, preview, and result */}
+      <div className="bg-base-200 dark:bg-dark-base-200 p-6 rounded-lg flex flex-col items-center gap-4">
+        {/* Upload area (single or merge) */}
+        <div className="w-full flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex-1 flex flex-col items-center">
+            <label htmlFor="upload1" className="cursor-pointer flex flex-col items-center gap-2 w-full">
+              <UploadIcon />
+              <span className="text-content-200 dark:text-dark-content-200">
+                {uploadedImage1 ? 'Change Image' : 'Click or drag to upload'}
+              </span>
               <input
                 type="file"
                 accept="image/*,.heif,.heic"
@@ -163,31 +162,22 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
                 className="hidden"
                 id="upload1"
               />
-              <label
-                htmlFor="upload1"
-                className="cursor-pointer flex flex-col items-center gap-2"
-              >
+            </label>
+            {uploadedImage1 && (
+              <img
+                src={uploadedImage1}
+                alt="Uploaded image 1"
+                className="mt-4 max-w-full max-h-64 object-contain rounded shadow"
+              />
+            )}
+          </div>
+          {filterType === 'merge' && (
+            <div className="flex-1 flex flex-col items-center">
+              <label htmlFor="upload2" className="cursor-pointer flex flex-col items-center gap-2 w-full">
                 <UploadIcon />
                 <span className="text-content-200 dark:text-dark-content-200">
-                  {uploadedImage1 ? 'Change Image' : 'Click to upload'}
+                  {uploadedImage2 ? 'Change Image' : 'Click or drag to upload'}
                 </span>
-              </label>
-              {uploadedImage1 && (
-                <img
-                  src={uploadedImage1}
-                  alt="Uploaded image 1"
-                  className="mt-4 max-w-full max-h-48 object-contain rounded"
-                />
-              )}
-            </div>
-          </div>
-
-          {filterType === 'merge' && (
-            <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg">
-              <h2 className="text-lg font-semibold text-content-100 dark:text-dark-content-100 mb-4">
-                Upload Second Image
-              </h2>
-              <div className="border-2 border-dashed border-border-color dark:border-dark-border-color rounded-lg p-6 text-center">
                 <input
                   type="file"
                   accept="image/*,.heif,.heic"
@@ -204,92 +194,90 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
                   className="hidden"
                   id="upload2"
                 />
-                <label
-                  htmlFor="upload2"
-                  className="cursor-pointer flex flex-col items-center gap-2"
-                >
-                  <UploadIcon />
-                  <span className="text-content-200 dark:text-dark-content-200">
-                    {uploadedImage2 ? 'Change Image' : 'Click to upload'}
-                  </span>
-                </label>
-                {uploadedImage2 && (
-                  <img
-                    src={uploadedImage2}
-                    alt="Uploaded image 2"
-                    className="mt-4 max-w-full max-h-48 object-contain rounded"
-                  />
-                )}
-              </div>
+              </label>
+              {uploadedImage2 && (
+                <img
+                  src={uploadedImage2}
+                  alt="Uploaded image 2"
+                  className="mt-4 max-w-full max-h-64 object-contain rounded shadow"
+                />
+              )}
             </div>
           )}
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg">
-            <h2 className="text-lg font-semibold text-content-100 dark:text-dark-content-100 mb-4">
-              Filtered Result
-            </h2>
-            <div className="border-2 border-dashed border-border-color dark:border-dark-border-color rounded-lg p-6 text-center min-h-[200px] flex items-center justify-center">
-              {isLoading ? (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
-                  <span className="text-content-200 dark:text-dark-content-200">Applying filter...</span>
-                </div>
-              ) : generatedImage ? (
-                <img
-                  src={generatedImage}
-                  alt="Filtered result"
-                  className="max-w-full max-h-64 object-contain rounded"
-                />
-              ) : (
-                <span className="text-content-200 dark:text-dark-content-200">
-                  Upload an image and click &quot;Apply Filter&quot; to see the result
-                </span>
-              )}
-            </div>
-          </div>
-
-          {error && (
-            <div className="bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <button
-              onClick={handleApplyFilter}
-              disabled={isApplyDisabled}
-              className="w-full bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Applying Filter...' : 'Apply Filter'}
-            </button>
-
-            {generatedImage && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  onClick={handleShare}
-                  disabled={isSharing || isLoading}
-                  className="w-full flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 dark:bg-dark-base-300 dark:hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  <ShareIcon />
-                  {isWindows ? 'Share (WhatsApp)' : 'Share'}
-                </button>
-                <a
-                  href={generatedImage}
-                  download={generatedImageFilename || `filtered-${Date.now()}.png`}
-                  className="w-full flex items-center justify-center gap-2 bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 border border-border-color dark:border-dark-border-color text-content-100 dark:text-dark-content-100 font-bold py-3 px-4 rounded-lg transition-colors text-center"
-                >
-                  <DownloadIcon />
-                  Download
-                </a>
+        {/* Result image or loading spinner */}
+        <div className="w-full flex flex-col items-center mt-6">
+          <div className="border-2 border-dashed border-border-color dark:border-dark-border-color rounded-lg p-6 min-h-[200px] w-full flex items-center justify-center bg-base-100 dark:bg-dark-base-100">
+            {isLoading ? (
+              <div className="flex flex-col items-center gap-2">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
+                <span className="text-content-200 dark:text-dark-content-200">Applying filter...</span>
               </div>
+            ) : generatedImage ? (
+              <img
+                src={generatedImage}
+                alt="Filtered result"
+                className="max-w-full max-h-96 object-contain rounded shadow-lg"
+              />
+            ) : (
+              <span className="text-content-200 dark:text-dark-content-200">
+                {uploadedImage1 ? 'Ready to apply filter!' : 'Upload an image to get started.'}
+              </span>
             )}
           </div>
+          {/* Download/Share buttons if result exists */}
+          {generatedImage && (
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={handleShare}
+                disabled={isSharing || isLoading}
+                className="flex items-center gap-2 bg-neutral-200 hover:bg-neutral-300 dark:bg-dark-neutral-200 dark:hover:bg-dark-neutral-300 text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <ShareIcon />
+                {isWindows ? 'Share (WhatsApp)' : 'Share'}
+              </button>
+              <a
+                href={generatedImage}
+                download={generatedImageFilename || `filtered-${Date.now()}.png`}
+                className="flex items-center gap-2 bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 border border-border-color dark:border-dark-border-color text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg transition-colors text-center"
+              >
+                <DownloadIcon />
+                Download
+              </a>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Windows/Desktop WhatsApp-only share modal */}
+      {/* Error message if any */}
+      {error && (
+        <div className="bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
+
+      {/* Personalization prompt and apply button at the bottom */}
+      <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-content-100 dark:text-dark-content-100 mb-2">Personalization Prompt</h2>
+        <textarea
+          className="w-full p-2 border border-border-color dark:border-dark-border-color rounded resize-none text-content-100 dark:text-dark-content-100 bg-base-100 dark:bg-dark-base-100"
+          rows={3}
+          placeholder="Add your own twist to the filter prompt (optional)"
+          value={personalPrompt}
+          onChange={e => setPersonalPrompt(e.target.value)}
+        />
+        <p className="text-xs text-content-200 dark:text-dark-content-200 mt-1">This will be added to the filter&apos;s base prompt for this image only.</p>
+        <button
+          onClick={handleApplyFilter}
+          disabled={isApplyDisabled}
+          className="w-full bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+        >
+          {isLoading ? 'Applying Filter...' : 'Apply Filter'}
+        </button>
+      </div>
+
+      {/* Share modal for Windows/desktop */}
       {generatedImage && (
         <ShareModal
           isOpen={isShareModalOpen}
