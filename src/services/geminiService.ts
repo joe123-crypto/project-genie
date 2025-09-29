@@ -70,6 +70,9 @@ export const applyImageFilter = async (
   if (data.transformedImage) {
     return data.transformedImage;
   }
+  if (data.imageUrl){
+    return data.imageUrl;
+  }
   throw new Error("No image returned from backend");
 };
 
@@ -108,6 +111,9 @@ export const generateImage = async (prompt: string): Promise<string> => {
     }
     if (data.transformedImage) {
       return data.transformedImage;
+    }
+    if (data.imageUrl){
+      return data.imageUrl;
     }
  
     console.error("No image in response:", data);
@@ -304,6 +310,9 @@ export const mergeImages = async (
     }
     if (data.transformedImage) {
       return data.transformedImage;
+    }
+    if (data.imageUrl){
+      return data.imageUrl;
     }
     throw new Error("No merged image returned from backend");
   } catch (error) {

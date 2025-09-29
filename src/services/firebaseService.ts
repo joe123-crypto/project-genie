@@ -1,5 +1,5 @@
-﻿// Updated firebaseService.ts to only call our API routes
-import { Filter, User } from '../types';
+// Updated firebaseService.ts to only call our API routes
+import { Filter, User, Outfit } from '../types';
 
 /**
  * Fetches all filters from the backend API
@@ -133,6 +133,58 @@ export const incrementFilterAccessCount = async (filterId: string): Promise<void
         }
     } catch (error) {
         console.error('Error incrementing access count:', error);
+        // This is a non-critical operation, so we don't throw
+    }
+};
+
+/**
+ * Fetches all outfits from the backend API
+ * @returns A promise that resolves to an array of Outfit objects
+ */
+export const getOutfits = async (): Promise<Outfit[]> => {
+    try {
+        const response = await fetch('/api/firebase?action=getOutfits', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch outfits');
+        }
+
+        const data = await response.json();
+        console.log("outfits",data.outfits);
+        return data.outfits || [];
+    } catch (error) {
+        console.error('Error fetching outfits:', error);
+        throw error;
+    }
+};
+
+/**
+ * Increments the access count for an outfit
+ * @param outfitId - The ID of the outfit
+ * @returns A promise that resolves when the count is incremented
+ */
+export const incrementOutfitAccessCount = async (outfitId: string): Promise<void> => {
+    try {
+        const response = await fetch('/api/firebase?action=incrementOutfitAccessCount', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ outfitId }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to increment outfit access count');
+        }
+    } catch (error) {
+        console.error('Error incrementing outfit access count:', error);
         // This is a non-critical operation, so we don't throw
     }
 };

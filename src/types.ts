@@ -1,11 +1,26 @@
-﻿export interface Filter {
+export interface Outfit {
   id: string;
   name: string;
   description: string;
   prompt: string;
   previewImageUrl: string;
   category: string;
-  type?: 'single' | 'merge'; // Add new type property
+  type?: "single" | "merge"; // Add new type property
+  userId?: string;
+  username?: string;
+  accessCount?: number;
+  // FIX: Add optional createdAt property to match Firestore data and fix destructuring in App.tsx.
+  createdAt?: string;
+}
+
+export interface Filter {
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+  previewImageUrl: string;
+  category: string;
+  type?: "single" | "merge"; // Add new type property
   userId?: string;
   username?: string;
   accessCount?: number;
@@ -32,9 +47,11 @@ export interface Share {
 }
 
 export type ViewState =
-  | { view: 'marketplace' }
-  | { view: 'apply'; filter: Filter }
-  | { view: 'create' }
-  | { view: 'edit'; filter: Filter }
-  | { view: 'auth' }
-  | { view: 'shared'; shareId: string };
+  | { view: "marketplace" }
+  | { view: "apply"; filter: Filter }
+  | { view: "create" }
+  | { view: "edit"; filter: Filter }
+  | { view: "auth" }
+  | { view: "shared"; shareId: string }
+  | { view: "outfits" }
+  | { view: "applyOutfit"; outfit: Outfit };
