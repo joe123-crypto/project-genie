@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import admin from 'firebase-admin';
 
-// Initialize Firebase Admin if not already
+// Initialize Firebase Admin
 if (!admin.apps.length) {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
@@ -17,30 +17,50 @@ const db = admin.firestore();
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
-    // Save a shared image
-    const { imageUrl, filterName, username } = req.body;
-    if (!imageUrl || !filterName) {
-      return res.status(400).json({ error: 'Missing imageUrl or filterName' });
+    try {
+      const { imageUrl, filterName, username } = req.body;
+      if (!imageUrl || !filterName) {
+        console.warn("Missing fields: ",{imageUrl,filterName,username});
+        return res.status(400).json({ error: 'Missing imageUrl or filterName' });
+      }
+
+      const docRef = await db.collection('sharedImages').add({
+        imageUrl,
+        filterName,
+        username: username || null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      const appUrl = process.env.APP_URL || (req.headers.origin ?? 'http://localhost:3000');
+      const shareUrl = `${appUrl}/shared/${docRef.id}`;
+
+      console.log("Created share doc: ",{shareId: docRef.id, shareUrl});
+      
+      return res.status(200).json({ shareId: docRef.id, shareUrl });
+    } catch (err: any) {
+      console.error("Error creating share:", err);
+      return res.status(500).json({ error: err.message });
     }
-    const docRef = await db.collection('sharedImages').add({
-      imageUrl,
-      filterName,
-      username: username || null,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    return res.status(200).json({ shareId: docRef.id });
   }
+
   if (req.method === 'GET') {
-    // Retrieve a shared image by ID
-    const { id } = req.query;
-    if (!id || typeof id !== 'string') {
-      return res.status(400).json({ error: 'Missing or invalid id' });
+    try {
+      const { id } = req.query;
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: 'Missing or invalid id' });
+      }
+
+      const doc = await db.collection('sharedImages').doc(id).get();
+      if (!doc.exists) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      return res.status(200).json({ id: doc.id, ...doc.data() });
+    } catch (err: any) {
+      console.error("Error fetching share:", err);
+      return res.status(500).json({ error: err.message });
     }
-    const doc = await db.collection('sharedImages').doc(id).get();
-    if (!doc.exists) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-    return res.status(200).json({ ...doc.data(), id: doc.id });
   }
-  res.status(405).json({ error: 'Method not allowed' });
+
+  return res.status(405).json({ error: 'Method not allowed' });
 }

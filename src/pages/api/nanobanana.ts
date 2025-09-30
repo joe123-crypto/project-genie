@@ -161,10 +161,6 @@ export default async function handler(
       "filtered"
     );
     
-    console.log("posting to frontend:",{
-      imageUrl: r2Url,
-      mimeType: mediaType,
-    });
 
     return res.status(200).json({
       imageUrl: r2Url,

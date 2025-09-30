@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { applyImageFilter } from '../services/geminiService';
+import { shareImage,ShareResult} from '../services/shareService';
 import { Filter, User, ViewState } from '../types';
 import { UploadIcon, ShareIcon, DownloadIcon, BackArrowIcon } from './icons';
 import ShareModal from './ShareModal';
@@ -28,6 +29,8 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
 
   const isWindows = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent);
 
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+
   const handleApplyFilter = useCallback(async () => {
     setError(null);
 
@@ -45,23 +48,29 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
     setGeneratedImageFilename(null);
 
     try {
-      // Combine the filter's base prompt with the personalization prompt
       const combinedPrompt = personalPrompt
         ? `${filter.prompt}\n${personalPrompt}`
         : filter.prompt;
+
       const result = await applyImageFilter(imagesToProcess, combinedPrompt);
       setGeneratedImage(result);
-      
-      // Extract filename from URL if it's an R2 URL
+
       if (result && result.includes('r2.dev')) {
-        const urlParts = result.split('/');
-        const filename = urlParts[urlParts.length - 1];
-        setGeneratedImageFilename(filename);
+        // Extract full key, e.g. "filtered/abc.png"
+        const keyStart = result.indexOf("filtered/");
+        if (keyStart !== -1) {
+          const key = result.substring(keyStart);
+          setGeneratedImageFilename(key);
+        } else {
+          const urlParts = result.split('/');
+          const filename = urlParts[urlParts.length - 1];
+          setGeneratedImageFilename(`filtered/${filename}`);
+        }
       } else {
-        // Generate a random filename for base64 URLs
+        // Base64 case: generate a random filtered/ filename
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 8);
-        setGeneratedImageFilename(`filtered-${timestamp}-${randomId}.png`);
+        setGeneratedImageFilename(`filtered/filtered-${timestamp}-${randomId}.png`);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
@@ -72,81 +81,64 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
 
   const handleShare = useCallback(async () => {
     if (!generatedImage) return;
-
+  
     setIsSharing(true);
     setShareStatus('idle');
     setError(null);
-
+  
     try {
-      // 1. Call the share API to get a shareId
-      const response = await fetch('/api/share', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageUrl: generatedImage,
-          filterName: filter.name,
-          username: null, // No username in User type
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data.shareId) {
-        throw new Error(data.error || 'Failed to create share link');
+      const result: ShareResult = await shareImage(generatedImage, filter, user);
+      console.log("📤 Share result:", result.status, result.shareUrl);
+  
+      setShareUrl(result.shareUrl); // always set the returned URL
+  
+      if (result.status === 'modal') {
+        // Open Genie’s ShareModal on Windows
+        setIsShareModalOpen(true);
+      } else {
+        // Otherwise just track the normal status ("shared" | "copied")
+        setShareStatus(result.status);
       }
-      const appUrl = window.location.origin;
-      const shareUrl = `${appUrl}/shared/${data.shareId}`;
-      const shareText = `Check out this image I created with the '${filter.name}' filter!\n${shareUrl}\nCreate your own here: ${appUrl}`;
-
-      // Use Web Share API with file on supported/mobile
-      if (!isWindows && navigator.share && navigator.canShare) {
-        try {
-          const res = await fetch(generatedImage);
-          const blob = await res.blob();
-          const filename = generatedImageFilename || `filtered-${Date.now()}.png`;
-          const file = new File([blob], filename, { type: 'image/png' });
-
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({ title: 'Genie', text: shareText, url: shareUrl, files: [file] });
-            setShareStatus('shared');
-            setIsSharing(false);
-            return;
-          }
-        } catch (shareErr) {
-          // Fall through to modal/copy flow
-          console.log('Web Share failed, falling back:', shareErr);
-        }
-      }
-
-      // On Windows or when Web Share is unavailable, show WhatsApp-only modal
-      setIsShareModalOpen(true);
-      setShareStatus('idle');
-      // Optionally, you can store the shareUrl in state and pass to ShareModal
     } catch (err: unknown) {
-      setError(err instanceof Error ? `Sharing failed: ${err.message}` : 'An unknown error occurred while sharing.');
+      setError(err instanceof Error ? `Sharing failed: ${err.message}` : 'Unknown error');
       setShareStatus('error');
     } finally {
       setIsSharing(false);
     }
-  }, [generatedImage, filter.name, isWindows, generatedImageFilename, user]);
-
+  }, [generatedImage, filter, user]);
+    
+  
   // Save handler: re-upload the generated image to the saved/ folder
   const handleSave = useCallback(async () => {
-    if (!generatedImage) return;
+    if (!generatedImageFilename) return;
+
     setIsSaving(true);
     setSaveStatus('idle');
     setError(null);
+
     try {
-      // Call applyImageFilter with save flag true to upload to saved/ folder
-      // Use the generated image as input
-      const result = await applyImageFilter([generatedImage], filter.prompt, true);
+      const response = await fetch('/api/save-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: generatedImageFilename }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Save failed');
+
+      if (data.url) {
+        setGeneratedImage(data.url);
+        setGeneratedImageFilename(data.url.substring(data.url.indexOf("saved/")));
+      }
+
       setSaveStatus('saved');
-      // Optionally, you could update generatedImage to the saved/ URL
     } catch (err: unknown) {
       setError(err instanceof Error ? `Save failed: ${err.message}` : 'An unknown error occurred while saving.');
       setSaveStatus('error');
     } finally {
       setIsSaving(false);
     }
-  }, [generatedImage, filter.prompt]);
+  }, [generatedImageFilename]);  
 
   const isApplyDisabled = isLoading || !uploadedImage1 || (filterType === 'merge' && !uploadedImage2);
 
@@ -310,13 +302,13 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
         </button>
       </div>
 
-      {/* Share modal for Windows/desktop */}
-      {generatedImage && (
+      {generatedImage && shareUrl && (
         <ShareModal
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
           imageUrl={generatedImage}
           filterName={filter.name}
+          shareUrl={shareUrl}
           filename={generatedImageFilename || undefined}
         />
       )}
