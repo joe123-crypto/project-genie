@@ -51,7 +51,7 @@ export const shareImage = async (
   const appUrl = window.location.origin;
   const shareText = `Check out this image I created with the '${filter?.name ?? ""}' filter on Genie! Create your own here: ${appUrl}`;
   const filename = `filtered-${Date.now()}.png`;
-
+  console.log(base64ImageDataUrl);
   // ✅ On mobile (not Windows), try Web Share API
   if (!isWindows() && navigator.share && navigator.canShare) {
     try {
