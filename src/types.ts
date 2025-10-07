@@ -50,6 +50,8 @@ export type ViewState =
   | { view: "marketplace" }
   | { view: "apply"; filter: Filter }
   | { view: "create" }
+  | { view: "createFilter" }
+  | { view: "createOutfit" }
   | { view: "edit"; filter: Filter }
   | { view: "auth" }
   | { view: "shared"; shareId: string }

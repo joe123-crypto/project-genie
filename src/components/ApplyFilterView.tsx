@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { applyImageFilter } from '../services/geminiService';
 import { shareImage,ShareResult} from '../services/shareService';
 import { Filter, User, ViewState } from '../types';
@@ -6,12 +6,16 @@ import { UploadIcon, ShareIcon, DownloadIcon, BackArrowIcon } from './icons';
 import ShareModal from './ShareModal';
 
 interface ApplyFilterViewProps {
-  filter: Filter;
+  filter?: Filter;
+  filterId?: string;
   setViewState: (state: ViewState) => void;
   user: User | null;
 }
 
-const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState, user }) => {
+
+const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter, filterId, setViewState, user }) => {
+  const [filter, setFilter] = useState<Filter | null>(initialFilter || null);
+  const [loadingFilter, setLoadingFilter] = useState<boolean>(!!filterId && !initialFilter);
   const [uploadedImage1, setUploadedImage1] = useState<string | null>(null);
   const [uploadedImage2, setUploadedImage2] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -25,11 +29,31 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
   const [isSaving, setIsSaving] = useState(false); // Track save button state
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle'); // Track save result
 
-  const filterType = filter.type || 'single';
+  const filterType = filter?.type ?? 'single';
+  const filterPrompt = filter?.prompt ??  '';
 
   const isWindows = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent);
 
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchFilter = async () => {
+      if (filterId && !filter) {
+        setLoadingFilter(true);
+        try {
+          const res = await fetch(`/api/filters?id=${filterId}`);
+          if (!res.ok) throw new Error("Failed to fetch filter");
+          const data = await res.json();
+          setFilter(data);
+        } catch (err) {
+          console.error("❌ Error fetching filter:", err);
+        } finally {
+          setLoadingFilter(false);
+        }
+      }
+    };
+    fetchFilter();
+  }, [filterId, filter]);
 
   const handleApplyFilter = useCallback(async () => {
     setError(null);
@@ -49,10 +73,11 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
 
     try {
       const combinedPrompt = personalPrompt
-        ? `${filter.prompt}\n${personalPrompt}`
-        : filter.prompt;
-
-      const result = await applyImageFilter(imagesToProcess, combinedPrompt);
+        ? `${filterPrompt}\n${personalPrompt}`
+        : filterPrompt;
+      
+      console.log(filterPrompt);
+      const result = await applyImageFilter(imagesToProcess, combinedPrompt,"filtered");
       setGeneratedImage(result);
 
       if (result && result.includes('r2.dev')) {
@@ -77,7 +102,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
     } finally {
       setIsLoading(false);
     }
-  }, [uploadedImage1, uploadedImage2, filter.prompt, filterType, personalPrompt]);
+  }, [uploadedImage1, uploadedImage2, filterPrompt, filterType, personalPrompt]);
 
   const handleShare = useCallback(async () => {
     if (!generatedImage) return;
@@ -87,8 +112,11 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
     setError(null);
   
     try {
+      if(!filter) {
+        console.error("No filter given");
+        return;
+      }
       const result: ShareResult = await shareImage(generatedImage, filter, user);
-      console.log("📤 Share result:", result.status, result.shareUrl);
   
       setShareUrl(result.shareUrl); // always set the returned URL
   
@@ -141,6 +169,24 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter, setViewState,
   }, [generatedImageFilename]);  
 
   const isApplyDisabled = isLoading || !uploadedImage1 || (filterType === 'merge' && !uploadedImage2);
+  
+  if (loadingFilter) {
+    return <div className="text-center mt-10">Loading filter...</div>;
+  }
+
+  if (!filter) {
+    return (
+      <div className="text-center mt-10">
+        <p className="text-red-500">Filter not found.</p>
+        <button
+          onClick={() => setViewState({ view: 'marketplace' })}
+          className="mt-4 bg-brand-primary text-white px-4 py-2 rounded-lg"
+        >
+          Back to Marketplace
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in flex flex-col gap-6">

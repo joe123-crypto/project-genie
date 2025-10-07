@@ -18,15 +18,18 @@ const db = admin.firestore();
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
-      const { imageUrl, filterName, username } = req.body;
+      // in your POST handler
+      const { imageUrl, filterName, username, filterId } = req.body; // <-- include filterId
+
       if (!imageUrl || !filterName) {
-        console.warn("Missing fields: ",{imageUrl,filterName,username});
+        console.warn("Missing fields: ", { imageUrl, filterName, username, filterId });
         return res.status(400).json({ error: 'Missing imageUrl or filterName' });
       }
 
       const docRef = await db.collection('sharedImages').add({
         imageUrl,
         filterName,
+        filterId: filterId || null,   // ✅ store filterId
         username: username || null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -34,9 +37,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const appUrl = process.env.APP_URL || (req.headers.origin ?? 'http://localhost:3000');
       const shareUrl = `${appUrl}/shared/${docRef.id}`;
 
-      console.log("Created share doc: ",{shareId: docRef.id, shareUrl});
+      console.log("Created share doc: ", { shareId: docRef.id, shareUrl });
+
+      return res.status(200).json({ shareId: docRef.id, shareUrl, filterId }); // ✅ return it too
       
-      return res.status(200).json({ shareId: docRef.id, shareUrl });
     } catch (err: any) {
       console.error("Error creating share:", err);
       return res.status(500).json({ error: err.message });

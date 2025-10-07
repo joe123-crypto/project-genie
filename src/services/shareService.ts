@@ -3,6 +3,7 @@
 interface SharedImage {
   imageUrl: string;
   filterName: string;
+  filterId?: string;   // ✅ added filterId support
   username?: string;
   [key: string]: unknown;
 }
@@ -25,7 +26,6 @@ function isWindows(): boolean {
 
 export const getSharedImage = async (shareId: string): Promise<SharedImage> => {
   try {
-
     const response = await fetch(`/api/share?id=${shareId}`, {
       method: 'GET',
     });
@@ -74,14 +74,14 @@ export const shareImage = async (
     }
   }
 
-  // ✅ Backend fallback (Windows OR failed Web Share)
+  // ✅ Backend fallback
   try {
     const payload = {
       imageUrl: base64ImageDataUrl,
       filterName: filter.name,
-      username: user?.email ?? null,
+      filterId: filter.id,           // ✅ pass filterId so shared page can link back
+      username: user?.email ?? null, // keeping email as before
     };
-
 
     const response = await fetch('/api/share', {
       method: 'POST',

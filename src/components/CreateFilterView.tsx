@@ -1,76 +1,41 @@
 import React, { useState } from 'react';
 import { Filter, ViewState, User } from '../types';
-import { BackArrowIcon, UploadIcon, SparklesIcon } from './icons';
+import { BackArrowIcon, SparklesIcon } from './icons';
 import Spinner from './Spinner';
 import { improvePrompt, generateImageFromPrompt } from '../services/geminiService';
 import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from '../utils/fileUtils';
 import { saveFilter } from '../services/firebaseService';
 import { getValidIdToken } from '../services/authService';
 
-interface StudioViewProps {
+interface CreateFilterViewProps {
   setViewState: (viewState: ViewState) => void;
   user: User | null;
   addFilter?: (newFilter: Filter) => void;
-  filterToEdit?: Filter;
-  onUpdateFilter?: (filterToUpdate: Filter) => Promise<void> | void;
+  filterToEdit?: Filter; // ✅ for editing
+  onUpdateFilter?: (filterToUpdate: Filter) => Promise<void> | void; // ✅ for updates
+  onBack?: () => void;
 }
 
-// Type selection screen component
-const FilterTypeSelection: React.FC<{ onSelect: (type: 'instant' | 'studio') => void }> = ({ onSelect }) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-      <button
-        onClick={() => onSelect('instant')}
-        className="flex flex-col items-center justify-center p-8 bg-base-200 dark:bg-dark-base-200 rounded-lg border-2 border-border-color dark:border-dark-border-color hover:border-brand-primary dark:hover:border-dark-brand-primary transition-all hover:shadow-lg"
-      >
-        <div className="h-16 w-16 bg-brand-primary/10 dark:bg-dark-brand-primary/10 rounded-full flex items-center justify-center mb-4">
-          <SparklesIcon className="h-8 w-8 text-brand-primary dark:text-dark-brand-primary" />
-        </div>
-        <h3 className="text-xl font-bold text-content-100 dark:text-dark-content-100 mb-2">Instant Filter</h3>
-        <p className="text-content-200 dark:text-dark-content-200 text-center">
-          Create a filter quickly with AI assistance for prompts and image generation
-        </p>
-      </button>
 
-      <button
-        onClick={() => onSelect('studio')}
-        className="flex flex-col items-center justify-center p-8 bg-base-200 dark:bg-dark-base-200 rounded-lg border-2 border-border-color dark:border-dark-border-color hover:border-brand-primary dark:hover:border-dark-brand-primary transition-all hover:shadow-lg"
-      >
-        <div className="h-16 w-16 bg-brand-primary/10 dark:bg-dark-brand-primary/10 rounded-full flex items-center justify-center mb-4">
-          <svg 
-            className="h-8 w-8 text-brand-primary dark:text-dark-brand-primary"
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
-          </svg>
-        </div>
-        <h3 className="text-xl font-bold text-content-100 dark:text-dark-content-100 mb-2">Filter Studio</h3>
-        <p className="text-content-200 dark:text-dark-content-200 text-center">
-          Advanced tools for creating sophisticated filters with complete control
-        </p>
-      </button>
-    </div>
-  );
-};
-
-// Instant Filter form component
-const InstantFilterForm: React.FC<{
-  onBack: () => void;
-  onSave: (filter: Omit<Filter, 'id'>) => void;
-}> = ({ onBack, onSave }) => {
+const CreateFilterView: React.FC<CreateFilterViewProps> = ({
+  setViewState,
+  user,
+  addFilter,
+  filterToEdit,
+  onUpdateFilter,
+  onBack,
+}) => {
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    prompt: '',
-    previewImageUrl: '',
-    category: '',
+    name: filterToEdit?.name || '',
+    description: filterToEdit?.description || '',
+    prompt: filterToEdit?.prompt || '',
+    previewImageUrl: filterToEdit?.previewImageUrl || '',
+    category: filterToEdit?.category || '',
   });
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
 
+  // Handle image upload
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -81,7 +46,6 @@ const InstantFilterForm: React.FC<{
     }
 
     try {
-      setImageFile(file);
       const base64 = await fileToBase64WithHEIFSupport(file);
       setFormData(prev => ({ ...prev, previewImageUrl: base64 }));
     } catch {
@@ -89,34 +53,25 @@ const InstantFilterForm: React.FC<{
     }
   };
 
+  // AI improve / generate prompt
   const handleGeneratePrompt = async () => {
-    if (!formData.prompt.trim()) {
-      // If no prompt typed yet, ask AI to create one from scratch
-      setIsGeneratingPrompt(true);
-      try {
-        const improved = await improvePrompt('Create a creative and detailed image generation prompt suitable for a photo filter. Return only the prompt.');
-        setFormData(prev => ({ ...prev, prompt: improved }));
-      } catch (e) {
-        console.error(e);
-        alert('Failed to generate prompt.');
-      } finally {
-        setIsGeneratingPrompt(false);
-      }
-      return;
-    }
-
     setIsGeneratingPrompt(true);
     try {
-      const improved = await improvePrompt(formData.prompt);
+      const improved = await improvePrompt(
+        formData.prompt.trim()
+          ? formData.prompt
+          : 'Create a creative and detailed image generation prompt suitable for a photo filter. Return only the prompt.'
+      );
       setFormData(prev => ({ ...prev, prompt: improved }));
     } catch (e) {
       console.error(e);
-      alert('Failed to improve prompt.');
+      alert('Failed to generate or improve prompt.');
     } finally {
       setIsGeneratingPrompt(false);
     }
   };
 
+  // AI generate preview image
   const handleGenerateImage = async () => {
     if (!formData.prompt.trim()) {
       alert('Please enter or generate a prompt first.');
@@ -134,23 +89,61 @@ const InstantFilterForm: React.FC<{
     }
   };
 
+  // Save filter to Firestore
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+  
+    if (!formData.name.trim() || !formData.prompt.trim() || !formData.category.trim()) {
+      alert('Please provide a name, category, and prompt.');
+      return;
+    }
+  
+    try {
+      const idToken = await getValidIdToken();
+      const payload: Omit<Filter, 'id'> = {
+        name: formData.name,
+        description: formData.description,
+        prompt: formData.prompt,
+        previewImageUrl: formData.previewImageUrl,
+        category: formData.category,
+        type: 'single',
+        userId: user?.uid,
+        username: user?.email?.split('@')[0] || user?.email || 'anonymous',
+      };
+  
+      // ✅ if editing, update instead of saving new
+      if (filterToEdit && onUpdateFilter) {
+        await onUpdateFilter({ ...filterToEdit, ...payload });
+      } else {
+        const idToken = await getValidIdToken();
+        const saved = await saveFilter(payload, idToken || '');
+        if (addFilter) addFilter(saved);
+      }
+  
+      setViewState({ view: 'marketplace' });
+    } catch (e) {
+      console.error('Failed to save filter', e);
+      alert('Failed to save filter. Please try again.');
+    }
+  };
+
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto animate-fade-in">
       <button
-        onClick={onBack}
+        onClick={() => (onBack ? onBack() : setViewState({ view: "create" }))}
         className="flex items-center gap-2 text-content-200 dark:text-dark-content-200 hover:text-content-100 dark:hover:text-dark-content-100 mb-6 font-semibold"
       >
         <BackArrowIcon />
-        Back
+        Back to Menu
       </button>
 
       <div className="bg-base-200 dark:bg-dark-base-200 p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-content-100 dark:text-dark-content-100 mb-6">Create Instant Filter</h2>
-        
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          onSave(formData);
-        }} className="space-y-6">
+        <h2 className="text-2xl font-bold text-content-100 dark:text-dark-content-100 mb-6">
+          Create Filter
+        </h2>
+
+        <form onSubmit={handleSave} className="space-y-6">
+          {/* Filter Name */}
           <div>
             <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
               Filter Name
@@ -164,19 +157,23 @@ const InstantFilterForm: React.FC<{
               required
             />
           </div>
+
+          {/* Category */}
           <div>
             <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
               Category
             </label>
             <input
               type="text"
-              name="category"
               value={formData.category}
-              onChange={(e) => setFormData({...formData, category: e.target.value})}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              className="w-full p-2 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100"
+              placeholder="Category (e.g. Portrait, Fun, Artistic)"
               required
             />
           </div>
+
+          {/* Description */}
           <div>
             <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
               Description
@@ -190,6 +187,7 @@ const InstantFilterForm: React.FC<{
             />
           </div>
 
+          {/* Prompt */}
           <div>
             <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
               Prompt
@@ -220,6 +218,7 @@ const InstantFilterForm: React.FC<{
             </div>
           </div>
 
+          {/* Preview Image */}
           <div>
             <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
               Preview Image
@@ -234,7 +233,7 @@ const InstantFilterForm: React.FC<{
                   />
                 </div>
               )}
-              
+
               <div className="flex gap-2">
                 <label className="flex-1 cursor-pointer">
                   <div className="px-4 py-2 bg-neutral-200 dark:bg-dark-neutral-200 text-content-100 dark:text-dark-content-100 rounded-lg hover:bg-neutral-300 dark:hover:bg-dark-neutral-300 transition-colors text-center">
@@ -266,6 +265,7 @@ const InstantFilterForm: React.FC<{
             </div>
           </div>
 
+          {/* Save */}
           <div className="flex justify-end pt-4">
             <button
               type="submit"
@@ -276,70 +276,6 @@ const InstantFilterForm: React.FC<{
           </div>
         </form>
       </div>
-    </div>
-  );
-};
-
-const CreateFilterView: React.FC<StudioViewProps> = (props) => {
-  const [filterType, setFilterType] = useState<'selection' | 'instant' | 'studio'>('selection');
-
-  const handleSave = async (filterData: Omit<Filter, 'id'>) => {
-    // Validate minimal fields
-    if (!filterData.name.trim() || !filterData.prompt.trim() || !filterData.category.trim()) {
-      alert('Please provide a name, category, and prompt.');
-      return;
-    }
-
-    try {
-      const idToken = await getValidIdToken();
-
-      const payload: Omit<Filter, 'id'> = {
-        name: filterData.name,
-        description: filterData.description,
-        prompt: filterData.prompt,
-        previewImageUrl: filterData.previewImageUrl,
-        category: filterData.category,
-        type: 'single',
-        userId: props.user?.uid,
-        username: props.user?.email?.split('@')[0] || props.user?.email || 'anonymous',
-        // accessCount and createdAt are set server-side
-      };
-
-      const saved = await saveFilter(payload, idToken || '');
-      if (props.addFilter) props.addFilter(saved);
-      props.setViewState({ view: 'marketplace' });
-    } catch (e) {
-      console.error('Failed to save filter', e);
-      alert('Failed to save filter. Please try again.');
-    }
-  };
-
-  return (
-    <div className="animate-fade-in">
-      {filterType === 'selection' && (
-        <FilterTypeSelection
-          onSelect={(type) => setFilterType(type)}
-        />
-      )}
-      {filterType === 'instant' && (
-        <InstantFilterForm
-          onBack={() => setFilterType('selection')}
-          onSave={handleSave}
-        />
-      )}
-      {filterType === 'studio' && (
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-content-100 dark:text-dark-content-100">
-            Filter Studio - Coming Soon
-          </h2>
-          <button
-            onClick={() => setFilterType('selection')}
-            className="mt-4 px-4 py-2 text-content-200 dark:text-dark-content-200 hover:text-content-100 dark:hover:text-dark-content-100"
-          >
-            Go Back
-          </button>
-        </div>
-      )}
     </div>
   );
 };

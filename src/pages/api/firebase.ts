@@ -3,7 +3,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import * as admin from "firebase-admin";
 import { S3Client, PutObjectCommand, PutObjectCommandInput } from "@aws-sdk/client-s3";
 
-// Initialize Firebase Admin
+/* -------------------------------------------------------------------------- */
+/*                               FIREBASE ADMIN                               */
+/* -------------------------------------------------------------------------- */
 if (!admin.apps.length) {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
@@ -14,113 +16,90 @@ if (!admin.apps.length) {
   }
 
   admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId,
-      clientEmail,
-      privateKey,
-    }),
+    credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
   });
 }
 
 const db = admin.firestore();
 
-// Minimal Filter type used in this route
-interface Filter {
-  id?: string;
-  name?: string;
-  description?: string;
-  previewImageUrl?: string;
-  createdAt?: any;
-  accessCount?: number;
-  [key: string]: unknown;
-}
-
-// Response type for the API
-interface FirebaseResponse {
-  filters?: Filter[];
-  filter?: Filter;
-  outfits?: Filter[];
-  success?: boolean;
-  error?: string;
-}
-
-// --- Cloudflare R2 (S3-compatible) setup ---
-const r2BucketName = process.env.R2_BUCKET_NAME || "genie-bucket";
+/* -------------------------------------------------------------------------- */
+/*                              CLOUDFLARE R2 SETUP                           */
+/* -------------------------------------------------------------------------- */
+const r2BucketName = process.env.R2_BUCKET_NAME!;
 const r2Client = new S3Client({
-  region: process.env.R2_REGION || "auto",
+  region: "auto", // R2 always uses 'auto' region
   endpoint: process.env.R2_ENDPOINT,
   forcePathStyle: true,
-  credentials: process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY ? {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-  } : undefined,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
+  },
 });
 
+/* -------------------------------------------------------------------------- */
+/*                              HELPER FUNCTIONS                              */
+/* -------------------------------------------------------------------------- */
+
 /**
- * Parses a data URL (data:mime;base64,...) into { mimeType, buffer }.
+ * Converts a base64 data URL → { mimeType, Buffer }.
+ * Example input: data:image/png;base64,iVBORw0...
  */
 function parseDataUrlToBuffer(dataUrl: string): { mimeType: string; buffer: Buffer } {
   const match = /^data:(.+);base64,(.*)$/.exec(dataUrl);
-  if (!match) {
-    throw new Error("Invalid data URL");
-  }
+  if (!match) throw new Error("Invalid data URL format");
   const mimeType = match[1];
-  const base64Data = match[2];
-  const buffer = Buffer.from(base64Data, "base64");
+  const buffer = Buffer.from(match[2], "base64");
   return { mimeType, buffer };
 }
 
 /**
- * Uploads a data URL image to Cloudflare R2 under a deterministic key and returns a public URL.
+ * Uploads an image (in base64) to R2 under a folder/id/preview key
+ * and returns a publicly accessible URL.
  */
-async function uploadPreviewToR2(key: string, dataUrl: string): Promise<string> {
+async function uploadPreviewToR2(folder: string, id: string, dataUrl: string): Promise<string> {
   const { mimeType, buffer } = parseDataUrlToBuffer(dataUrl);
+  const key = `${folder}/${id}/preview`;
 
   const params: PutObjectCommandInput = {
     Bucket: r2BucketName,
     Key: key,
     Body: buffer,
     ContentType: mimeType,
-    ACL: "public-read", // ACL accepted by R2 for public buckets; can be omitted if bucket policy is public
   };
 
   await r2Client.send(new PutObjectCommand(params));
 
-  // Prefer a configured public base URL.
-  const publicBase = process.env.R2_PUBLIC_BASE_URL;
-  if (publicBase) {
-    return `${publicBase.replace(/\/$/, "")}/${key}`;
-  }
-  // Fallback to path-style URL.
-  const endpoint = (process.env.R2_ENDPOINT || "").replace(/^https?:\/\//, "").replace(/\/$/, "");
-  return `https://${endpoint}/${r2BucketName}/${key}`;
+  // Return a public-facing URL based on your configured base
+  const base = process.env.R2_PUBLIC_BASE_URL!;
+  return `${base.replace(/\/$/, "")}/${key}`;
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<FirebaseResponse>
-) {
+/* -------------------------------------------------------------------------- */
+/*                                API HANDLER                                 */
+/* -------------------------------------------------------------------------- */
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { action } = req.query;
 
   try {
     switch (action) {
+      /* ------------------------------ GET FILTERS ------------------------------ */
       case "getFilters": {
         const snapshot = await db.collection("filters").get();
-        const filters: Filter[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const filters = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         return res.status(200).json({ filters });
       }
 
+      /* ------------------------------ SAVE FILTER ------------------------------ */
       case "saveFilter": {
-        const { filter } = req.body as { filter?: Filter };
+        const { filter } = req.body;
         if (!filter) return res.status(400).json({ error: "Missing filter data" });
 
         const docRef = db.collection("filters").doc();
-        let previewImageUrl: string | unknown = filter.previewImageUrl;
+        let previewImageUrl = filter.previewImageUrl;
 
+        // Upload base64 image to R2 → return public URL
         if (typeof previewImageUrl === "string" && previewImageUrl.startsWith("data:")) {
-          const key = `filters/${docRef.id}/preview`;
-          const publicUrl = await uploadPreviewToR2(key, previewImageUrl);
-          previewImageUrl = publicUrl;
+          previewImageUrl = await uploadPreviewToR2("filters", docRef.id, previewImageUrl);
         }
 
         await docRef.set({
@@ -130,42 +109,72 @@ export default async function handler(
           accessCount: 0,
         });
 
-        const newFilterData = (await docRef.get()).data() as Filter;
-        const newFilter = { id: docRef.id, ...newFilterData };
+        const newFilter = { id: docRef.id, ...(await docRef.get()).data() };
         return res.status(200).json({ filter: newFilter });
       }
 
+      /* ------------------------------ SAVE OUTFIT ------------------------------ */
+      case "saveOutfit": {
+        const { outfit } = req.body;
+        if (!outfit) return res.status(400).json({ error: "Missing outfit data" });
+
+        const docRef = db.collection("outfits").doc();
+        let previewImageUrl = outfit.previewImageUrl;
+
+        // Upload to R2 under "outfits/{id}/preview"
+        if (typeof previewImageUrl === "string" && previewImageUrl.startsWith("data:")) {
+          previewImageUrl = await uploadPreviewToR2("outfits", docRef.id, previewImageUrl);
+        }
+
+        await docRef.set({
+          ...outfit,
+          previewImageUrl,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          accessCount: 0,
+        });
+
+        const newOutfit = { id: docRef.id, ...(await docRef.get()).data() };
+        return res.status(200).json({ outfit: newOutfit });
+      }
+
+      /* ----------------------------- UPDATE FILTER ----------------------------- */
       case "updateFilter": {
-        const { filterId, filterData } = req.body as { filterId?: string; filterData?: Partial<Filter> };
-        if (!filterId || !filterData) return res.status(400).json({ error: "Missing filterId or filterData" });
+        const { filterId, filterData } = req.body;
+        if (!filterId || !filterData)
+          return res.status(400).json({ error: "Missing filterId or filterData" });
 
         const docRef = db.collection("filters").doc(filterId);
-        const updatedData: Partial<Filter> = { ...filterData };
-        const incomingPreview = updatedData.previewImageUrl;
-        
-        if (typeof incomingPreview === "string" && incomingPreview.startsWith("data:")) {
-          const key = `filters/${filterId}/preview`;
-          const publicUrl = await uploadPreviewToR2(key, incomingPreview);
-          updatedData.previewImageUrl = publicUrl;
+        const updatedData = { ...filterData };
+
+        // Replace base64 image with uploaded one
+        if (
+          typeof updatedData.previewImageUrl === "string" &&
+          updatedData.previewImageUrl.startsWith("data:")
+        ) {
+          updatedData.previewImageUrl = await uploadPreviewToR2(
+            "filters",
+            filterId,
+            updatedData.previewImageUrl
+          );
         }
 
         await docRef.update(updatedData);
-
-        const updatedFilterData = (await docRef.get()).data() as Filter;
-        const updatedFilter = { id: docRef.id, ...updatedFilterData };
+        const updatedFilter = { id: filterId, ...(await docRef.get()).data() };
         return res.status(200).json({ filter: updatedFilter });
       }
 
+      /* ------------------------------ DELETE FILTER ----------------------------- */
       case "deleteFilter": {
-        const { filterId } = req.body as { filterId?: string };
+        const { filterId } = req.body;
         if (!filterId) return res.status(400).json({ error: "Missing filterId" });
 
         await db.collection("filters").doc(filterId).delete();
         return res.status(200).json({ success: true });
       }
 
+      /* ------------------------ INCREMENT FILTER ACCESS ------------------------ */
       case "incrementAccessCount": {
-        const { filterId } = req.body as { filterId?: string };
+        const { filterId } = req.body;
         if (!filterId) return res.status(400).json({ error: "Missing filterId" });
 
         await db.collection("filters").doc(filterId).update({
@@ -174,15 +183,16 @@ export default async function handler(
         return res.status(200).json({ success: true });
       }
 
+      /* ------------------------------ GET OUTFITS ------------------------------ */
       case "getOutfits": {
         const snapshot = await db.collection("outfits").get();
-        const outfits: Filter[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        //console.log(outfits);
+        const outfits = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         return res.status(200).json({ outfits });
       }
 
+      /* ----------------------- INCREMENT OUTFIT ACCESS ------------------------- */
       case "incrementOutfitAccessCount": {
-        const { outfitId } = req.body as { outfitId?: string };
+        const { outfitId } = req.body;
         if (!outfitId) return res.status(400).json({ error: "Missing outfitId" });
 
         await db.collection("outfits").doc(outfitId).update({
@@ -191,14 +201,13 @@ export default async function handler(
         return res.status(200).json({ success: true });
       }
 
+      /* -------------------------------- DEFAULT -------------------------------- */
       default:
         return res.status(400).json({ error: "Unknown action" });
     }
   } catch (err: unknown) {
     console.error("Firebase API error:", err);
-    if (err instanceof Error) {
-      return res.status(500).json({ error: err.message });
-    }
-    return res.status(500).json({ error: "Internal server error" });
+    const message = err instanceof Error ? err.message : "Internal server error";
+    return res.status(500).json({ error: message });
   }
 }

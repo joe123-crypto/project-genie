@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { getSharedImage } from '../services/shareService';
 import Spinner from './Spinner';
-import { ViewState } from '../types'; // keep if you already have this
+import { ViewState, Filter } from '../types'; // ✅ Filter included
 
 interface SharedImageViewProps {
   shareId: string;
   setViewState: (viewState: ViewState) => void;
 }
 
-// Define a local type that matches what getSharedImage actually returns
 interface SharedImage {
   imageUrl: string;
   filterName: string;
+  filterId?: string; // ✅ added filterId support
   username?: string;
 }
 
@@ -70,7 +70,7 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
     );
   }
 
-  if (!shareData) return null; // TS safe
+  if (!shareData) return null;
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in text-center">
@@ -90,12 +90,27 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
             className="object-contain w-full h-full"
           />
         </div>
-        <button
-          onClick={() => setViewState({ view: 'marketplace' })}
-          className="w-full sm:w-auto bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg"
-        >
-          Create Your Own!
-        </button>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          {shareData.filterId && (
+            <button
+              onClick={() =>
+                setViewState({
+                  view: 'apply',
+                  filter: { id: shareData.filterId, name: shareData.filterName } as Filter, // ✅ minimal filter object
+                })
+              }
+              className="w-full sm:w-auto bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg"
+            >
+              Create Your Own
+            </button>
+          )}
+          <button
+            onClick={() => setViewState({ view: 'marketplace' })}
+            className="w-full sm:w-auto bg-neutral-200 hover:bg-neutral-300 dark:bg-dark-neutral-200 dark:hover:bg-dark-neutral-300 text-content-100 dark:text-dark-content-100 font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg"
+          >
+            Go Back to Marketplace
+          </button>
+        </div>
       </div>
     </div>
   );

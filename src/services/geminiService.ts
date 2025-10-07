@@ -1,81 +1,58 @@
-﻿// Updated geminiService.ts to use AI SDK instead of @google/genai
-// This service will make API calls to our Next.js API routes that use the AI SDK
+﻿import { downscale } from "../utils/downscale";
 
 /**
- * Applies a filter to one or more images using a prompt.
- * @param base64ImageDataUrls - An array of base64 encoded images.
- * @param prompt - The prompt describing the filter or merge effect.
- * @returns A promise that resolves to the public URL of the filtered image.
+ * Applies a filter to a single image using a prompt.
+ * Supports both PNG and WebP via downscale().
+ *
+ * @param inputs - One or more image sources (File, base64, or URL)
+ * @param prompt - The text prompt describing the filter or effect
+ * @param save - Optional flag indicating whether to persist result
+ * @returns Promise<string> - URL or base64 of the filtered image
  */
 export const applyImageFilter = async (
   inputs: (File | string)[],
   prompt: string,
-  save?: boolean // New optional parameter
+  save?: string
 ): Promise<string> => {
   if (inputs.length === 0) throw new Error("At least one image is required");
 
-  // We only support single-image filter here; if multiple provided, use mergeImages.
+  // Only supports a single image; use mergeImages for multiple
   const first = inputs[0];
-  let dataUrl: string;
-  if (typeof first === 'string') {
-    dataUrl = first;
-  } else {
-    // File -> data URL
-    dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(first);
-    });
-  }
 
-  // Ensure PNG encoding
-  const canvas = document.createElement('canvas');
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = reject;
-    image.src = dataUrl;
-  });
-  const maxDim = 1024;
-  const srcW = img.naturalWidth || img.width;
-  const srcH = img.naturalHeight || img.height;
-  const maxSrcDim = Math.max(srcW, srcH);
-  const scale = maxSrcDim > maxDim ? maxDim / maxSrcDim : 1;
-  const targetW = Math.round(srcW * scale);
-  const targetH = Math.round(srcH * scale);
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas not available');
-  ctx.drawImage(img, 0, 0, targetW, targetH);
-  const pngDataUrl = canvas.toDataURL('image/png');
-  const imageBase64 = pngDataUrl.split(',')[1];
-
+  // ✅ Downscale the input image (WebP by default, quality 0.8)
+  const imageBase64 = await downscale(first, 1024, "webp", 0.8);
+  const mediaType = "image/png";
+  // ✅ Send request to backend
   const response = await fetch("/api/nanobanana", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       textPrompt: prompt,
-      imageBase64,
-      save, // Pass the save flag to the backend
+      images: [
+        {
+          mediaType,
+          data: imageBase64,
+        },
+      ],
+      save,
     }),
   });
 
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "Failed to apply filter");
+
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to apply filter");
+  }
+
+  // ✅ Handle various possible backend responses
+  if (data.imageUrl) return data.imageUrl;
+  if (data.transformedImage) return data.transformedImage;
   if (data.imageBase64) {
-    return `data:image/png;base64,${data.imageBase64}`;
+    return `data:${data.mimeType || mediaType};base64,${data.imageBase64}`;
   }
-  if (data.transformedImage) {
-    return data.transformedImage;
-  }
-  if (data.imageUrl){
-    return data.imageUrl;
-  }
+
   throw new Error("No image returned from backend");
 };
-
 
 /**
  * Generates an image from a prompt only (no input images).
@@ -170,7 +147,7 @@ export const improvePrompt = async (prompt: string): Promise<string> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ 
-        prompt: `Improve this prompt to be more creative, detailed, and specific for image generation: ${prompt}` 
+        prompt: `Understand what the user needs and improve this prompt to be more detailed. Do not exaggerate beyond what the user needs, only make it more naunce so that the model understands what the user wants: ${prompt}. Return only the improved prompt, no other text.`
       }),
     });
 
@@ -193,104 +170,96 @@ export const improvePrompt = async (prompt: string): Promise<string> => {
 };
 
 /**
- * Generates a trending filter based on current trends and popular styles.
- * @returns A promise that resolves to trending filter data.
- */
-export const generateTrendingFilter = async (): Promise<{ name: string; description: string; prompt: string; previewImageUrl?: string }> => {
-  try {
-    const response = await fetch("/api/gemini", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ 
-        prompt: "Generate a trending photo filter idea for 2024. Include a creative name, description, and detailed prompt for image generation. Format as JSON with keys: name, description, prompt" 
-      }),
-    });
-
-    // Parse the response only once
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.error || "Failed to generate trending filter");
-    }
-
-    if (!data.text) {
-      throw new Error("No trending filter returned from backend");
-    }
-
-    // Try to parse the JSON response
-    try {
-      const filterData = JSON.parse(data.text);
-      return {
-        name: filterData.name || "Trending Filter",
-        description: filterData.description || "A popular photo filter",
-        prompt: filterData.prompt || "Create a trending photo filter effect",
-        previewImageUrl: filterData.previewImageUrl
-      };
-    } catch (parseError) {
-      // If JSON parsing fails, return a default structure
-      return {
-        name: "Trending Filter",
-        description: data.text || "A popular photo filter",
-        prompt: data.text || "Create a trending photo filter effect"
-      };
-    }
-  } catch (error) {
-    console.error("Error generating trending filter:", error);
-    throw error;
-  }
-};
-
-/**
  * Applies a filter to multiple images and merges them using a prompt.
  * @param base64ImageDataUrls - An array of base64 encoded images.
  * @param prompt - The prompt describing the merge effect.
  * @returns A promise that resolves to the merged base64 image URL.
  */
 export const mergeImages = async (
-  base64ImageDataUrls: string[],
+  imageInputs: (File | string) [],
   prompt: string
 ): Promise<string> => {
-  if (base64ImageDataUrls.length < 2) {
+  if (imageInputs.length < 2) {
     throw new Error("At least two images are required to merge.");
   }
+  const mergePrompt = `
+You are a professional virtual stylist and photo editor.
+
+Combine two images:
+1. The first image shows the person. Keep their body shape, face, skin, hair, pose, and lighting exactly the same.
+2. The second image shows the outfit or fashion style to apply.
+
+Completely replace the clothing from the first image with the outfit from the second image.
+Do not blend or overlay the new clothing on top of the old one.
+The old clothing must be fully removed — no outlines, wrinkles, seams, buttons, textures, colors, or fragments from it may remain visible.
+Ensure the person looks like they are genuinely wearing the new outfit, as if photographed in it.
+
+Maintain:
+- The original face, hair, skin, and background from the first image.
+- The same body proportions, lighting, and shadows.
+- Perfect realism and photographic consistency.
+- Natural texture transitions between skin and fabric.
+
+Never:
+- Leave traces of the old clothing.
+- Add extra elements, accessories, or invented background changes.
+- Alter the person’s body, pose, or identity.
+
+Output a realistic, high-quality image where the new outfit seamlessly replaces the old one.
+
+--- Additional visual style guidance from the outfit filter:
+${prompt}
+`;
 
   try {
-    // Send only the first two images for merging as PNG base64 inputs (extend if backend supports many)
-    const toBase64 = async (dataUrl: string) => {
-      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve(image);
-        image.onerror = reject;
-        image.src = dataUrl;
+    /**
+     * Converts either a data URL or a remote URL (e.g. R2 image) to pure base64 safely.
+     * Uses Blob + FileReader, so the canvas never gets tainted.
+     */
+    const [imageBase64A, imageBase64B ] = await Promise.all([
+      downscale(imageInputs[0],1024,"webp", 0.8),
+      downscale(imageInputs[1],1024,"webp", 0.8)
+    ])
+    /*
+    const toBase64 = async (inputUrl: string): Promise<string> => {
+      // Case 1: Already a base64 data URL (starts with data:image)
+      if (inputUrl.startsWith('data:image')) {
+        return inputUrl.split(',')[1];
+      }
+
+      // Case 2: Remote image (R2, Firebase, etc.)
+      const response = await fetch(inputUrl, { mode: 'cors' });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const reader = new FileReader();
+
+      return new Promise((resolve, reject) => {
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          const base64 = result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
       });
-      const canvas = document.createElement('canvas');
-      const maxDim = 1024;
-      const srcW = img.naturalWidth || img.width;
-      const srcH = img.naturalHeight || img.height;
-      const maxSrcDim = Math.max(srcW, srcH);
-      const scale = maxSrcDim > maxDim ? maxDim / maxSrcDim : 1;
-      const targetW = Math.round(srcW * scale);
-      const targetH = Math.round(srcH * scale);
-      canvas.width = targetW;
-      canvas.height = targetH;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas not available');
-      ctx.drawImage(img, 0, 0, targetW, targetH);
-      return canvas.toDataURL('image/png').split(',')[1];
     };
 
-    const imageBase64A = await toBase64(base64ImageDataUrls[0]);
-    const imageBase64B = await toBase64(base64ImageDataUrls[1]);
-
+    // Convert both images to safe base64 strings
+    const [imageBase64A,imageBase64B] = await Promise.all([ //imageBase64B] = await Promise.all([
+      toBase64(base64ImageDataUrls[0]),
+      toBase64(base64ImageDataUrls[1]),
+    ]);*/
+    
+    
+    // Send both images and the prompt to your backend for merging
     const response = await fetch("/api/nanobanana", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        textPrompt: prompt,
+        textPrompt: mergePrompt,
         images: [
           { mediaType: 'image/png', data: imageBase64A },
           { mediaType: 'image/png', data: imageBase64B },
@@ -298,28 +267,24 @@ export const mergeImages = async (
       }),
     });
 
-    // Parse the response only once
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.error || "Failed to merge images");
     }
 
-    if (data.imageBase64) {
-      return `data:image/png;base64,${data.imageBase64}`;
-    }
-    if (data.transformedImage) {
-      return data.transformedImage;
-    }
-    if (data.imageUrl){
-      return data.imageUrl;
-    }
+    // Return the generated image URL or base64 from backend
+    if (data.imageBase64) return `data:image/png;base64,${data.imageBase64}`;
+    if (data.transformedImage) return data.transformedImage;
+    if (data.imageUrl) return data.imageUrl;
+
     throw new Error("No merged image returned from backend");
   } catch (error) {
     console.error("Error merging images:", error);
     throw error;
   }
 };
+
 
 // Alias functions for backward compatibility
 export const generateImageFromPrompt = generateImage;

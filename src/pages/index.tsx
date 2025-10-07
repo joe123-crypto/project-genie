@@ -2,6 +2,10 @@
 import { useState, useCallback, useEffect } from "react";
 import { Filter, ViewState, User, Outfit } from "../types";
 import OutfitCard from "../components/OutfitCard";
+import CreateMenu from "../components/CreateMenu";
+import CreateFilterView from "../components/CreateFilterView";
+import CreateOutfitView from "../components/CreateOutfitView";
+
 
 
 import Marketplace from "../components/Marketplace";
@@ -286,7 +290,14 @@ export default function Home() {
       case "apply":
         return <ApplyFilterView filter={viewState.filter} setViewState={setViewState} user={user} />;
       case "create":
-        return <StudioView setViewState={setViewState} user={user} addFilter={addFilter} />;
+        return (
+          <CreateMenu
+            setViewState={setViewState}
+            user={user}
+            addFilter={addFilter}
+            onBack={()=> setViewState({view: "create"})}
+          />
+        );   
       case "edit":
         return <StudioView setViewState={setViewState} user={user} filterToEdit={viewState.filter} onUpdateFilter={handleUpdateFilter} />;
       case "auth":
@@ -308,10 +319,15 @@ export default function Home() {
             </div>
           </div>
         );
-      case "applyOutfit":
-        return <div>Apply Outfit View - TODO: Create ApplyOutfitView component</div>;
-      default:
-        return <div>Unknown view state</div>;
+        case "applyOutfit":
+          return (
+            <ApplyOutfitView
+              outfit={viewState.outfit}   // this comes from handleSelectOutfit
+              setViewState={setViewState}
+              user={user}
+            />
+          );
+        
     }
   };
 
@@ -335,7 +351,7 @@ export default function Home() {
                   onClick={() => setViewState({ view: "create" })}
                   className={commonClasses.button.primary}
                 >
-                  Create Filter
+                  Create
                 </button>
                 <button
                   onClick={handleSignOut}

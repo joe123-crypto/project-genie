@@ -27,6 +27,7 @@ export const getFilters = async (): Promise<Filter[]> => {
     }
 };
 
+
 /**
  * Saves a filter to the backend
  * @param filter - The filter object to save
@@ -112,6 +113,85 @@ export const updateFilter = async (filterId: string, filterData: Omit<Filter, 'i
     }
 };
 
+/**
+ * Saves a filter to the backend
+ * @param outfitData - The filter object to save
+ * @param idToken - The user's ID token for authentication
+ * @returns A promise that resolves to the saved Filter object
+ */
+
+export const saveOutfit = async (outfitData: Omit<Outfit, 'id'>, idToken: string) => {
+    try {
+      // 1️⃣ Validate image input
+      if (!outfitData.previewImageUrl || !outfitData.previewImageUrl.startsWith('data:image/')) {
+        throw new Error('Invalid or missing image for outfit.');
+      }
+  
+      // 2️⃣ Request signed upload URL from backend
+      const uploadResponse = await fetch('/api/upload-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          contentType: 'image/png',
+          folder: 'outfits',
+        }),
+      });
+  
+      if (!uploadResponse.ok) {
+        const text = await uploadResponse.text();
+        throw new Error(`Failed to get upload URL: ${text}`);
+      }
+  
+      const { uploadUrl, fileUrl } = await uploadResponse.json();
+      if (!uploadUrl || !fileUrl) throw new Error('Upload URL missing from response.');
+  
+      // 3️⃣ Convert base64 → Blob and upload directly to Cloudflare R2
+      const base64Data = outfitData.previewImageUrl.split(',')[1];
+      const imageBlob = await fetch(`data:image/png;base64,${base64Data}`).then(res => res.blob());
+  
+      const uploadPut = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'image/png' },
+        body: imageBlob,
+      });
+  
+      if (!uploadPut.ok) {
+        throw new Error(`Failed to upload image to R2: ${uploadPut.statusText}`);
+      }
+  
+      // 4️⃣ Save metadata to Firestore
+      const response = await fetch('/api/firebase?action=saveOutfit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          outfit: {
+            ...outfitData,
+            previewImageUrl: fileUrl, // ✅ public image URL
+            createdAt: new Date().toISOString(),
+          },
+        }),
+      });
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save outfit to Firestore.');
+      }
+  
+      return data.outfit;
+    } catch (err) {
+      console.error('❌ Error in saveOutfit:', err);
+      throw err;
+    }
+  };
+  
+  
 /**
  * Increments the access count for a filter
  * @param filterId - The ID of the filter
