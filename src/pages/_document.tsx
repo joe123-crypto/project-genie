@@ -18,7 +18,7 @@ export default function Document() {
         />
 
         {/* ✅ Canonical URL for SEO */}
-        <link rel="canonical" href="https://project-genie-sigma.vercel.app/" />
+        <link rel="canonical" href="https://project-genie-sigma.vercel.app" />
 
         {/* ✅ App description (SEO + social previews) */}
         <meta
@@ -36,15 +36,15 @@ export default function Document() {
         />
         <meta
           property="og:url"
-          content="https://project-genie-sigma.vercel.app/"
+          content="https://project-genie-sigma.vercel.app"
         />
         <meta
           property="og:image"
-          content="https://project-genie-sigma.vercel.app/favicon.ico"
+          content="https://project-genie-sigma.vercel.app/1759166840424-2zo5cm378da.png"
         />
         <meta
           property="og:image:secure_url"
-          content="https://project-genie-sigma.vercel.app/favicon.ico"
+          content="https://project-genie-sigma.vercel.app/1759166840424-2zo5cm378da.png"
         />
         <meta property="og:image:type" content="image/png" />
         <meta property="og:image:alt" content="Preview of Genie app showing AI filters" />
@@ -62,7 +62,7 @@ export default function Document() {
         />
         <meta
           name="twitter:image"
-          content="https://project-genie-sigma.vercel.app/favicon.ico"
+          content="https://project-genie-sigma.vercel.app/1759166840424-2zo5cm378da.png"
         />
 
         {/* ✅ Theme colors for browser bars (light + dark) */}
@@ -82,7 +82,7 @@ export default function Document() {
         <link rel="manifest" href="/manifest.json" />
 
         {/* ✅ Optional: Apple touch icon for iOS home screen */}
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/1759166840424-2zo5cm378da.png" />
       </Head>
 
       <body className="antialiased bg-base-100 text-content-100 dark:bg-dark-base-100 dark:text-dark-content-100">
