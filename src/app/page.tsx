@@ -1,3 +1,5 @@
+'use client';
+
 // pages/index.tsx
 import { useState, useCallback, useEffect } from "react";
 import { Filter, ViewState, User, Outfit } from "../types";
@@ -413,7 +415,3 @@ export default function Home() {
     </div>
   );
 }
-
-
-
-
