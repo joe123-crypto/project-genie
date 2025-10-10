@@ -24,7 +24,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}%20${encodedUrl}`;
   const xUrl = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
-  const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodedUrl}&title=${encodedText}`;
+  const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
 
   return (
     <div
@@ -98,7 +98,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
             Share to LinkedIn
           </a>
         </div>
-      </div>
+.      </div>
     </div>
   );
 };

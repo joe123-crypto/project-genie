@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "NODE_OPTIONS='--tls-min-v1.2' next dev",
     "build": "NODE_OPTIONS='--tls-min-v1.2' next build",
-    "start": "next start",
+    "start": "NODE_OPTIONS='--tls-min-v1.2' next start",
     "lint": "eslint"
   },
   "dependencies": {
