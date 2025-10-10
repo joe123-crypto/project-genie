@@ -2,6 +2,9 @@ import { Metadata } from "next";
 import Link from "next/link";
 import React from "react";
 
+// -------------------------------
+// 1. Fetch shared image data
+// -------------------------------
 interface SharedImageProps {
   id: string;
   imageUrl: string;
@@ -12,11 +15,15 @@ interface SharedImageProps {
 }
 
 async function getSharedImage(id: string): Promise<SharedImageProps> {
-  // Force HTTPS to ensure crawlers can access
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://project-genie-sigma.vercel.app`;
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    "https://project-genie-sigma.vercel.app";
 
   try {
-    const res = await fetch(`${baseUrl}/api/share?id=${id}`);
+    const res = await fetch(`${baseUrl}/api/share?id=${id}`, {
+      next: { revalidate: 60 }, // optional cache revalidation
+    });
+
     if (!res.ok) {
       return { id, notFound: true, imageUrl: "", filterName: "" };
     }
@@ -37,46 +44,66 @@ async function getSharedImage(id: string): Promise<SharedImageProps> {
   }
 }
 
-
-export async function generateMetadata({ params }: any): Promise<Metadata> {
+// -------------------------------
+// 2. Metadata for crawlers / social media
+// -------------------------------
+export async function generateMetadata({
+  params,
+}: any): Promise<Metadata> {
   const { id } = params;
   const { imageUrl, filterName, username } = await getSharedImage(id);
-  const absoluteUrl = `https://project-genie-sigma.vercel.app/shared/${id}?v=${new Date().getTime()}`;
-  const mimeType = imageUrl.endsWith(".webp") ? "image/webp" : "image/png";
+  const absoluteUrl = `https://project-genie-sigma.vercel.app/shared/${id}`;
+
+  const cacheBuster = new Date().getTime();
+  const finalImage = imageUrl
+    ? `${imageUrl}?v=${cacheBuster}`
+    : "https://project-genie-sigma.vercel.app/og-image.png";
+
+  const pageTitle = `Genie | ${filterName}`;
+  const description = `Check out this image created with the '${filterName}' filter on Genie!`;
+  const ogTitle = `Created with '${filterName}' filter`;
+  const ogDescription = `Check out this image created on Genie${
+    username ? ` by ${username}` : ""
+  }`;
 
   return {
-    title: `Genie | ${filterName}`,
-    description: `Check out this image created with the '${filterName}' filter on Genie!`,
+    title: pageTitle,
+    description: description,
     openGraph: {
-      title: `Created with '${filterName}' filter`,
-      description: `Check out this image created on Genie${username ? ` by ${username}` : ""}`,
-      type: "website",
+      title: ogTitle,
+      description: ogDescription,
       url: absoluteUrl,
+      siteName: "Genie",
+      type: "website",
       images: [
         {
-          url: imageUrl,
-          secureUrl: imageUrl,
-          type: mimeType,
+          url: finalImage,
+          secureUrl: finalImage, // ✅ old-parser compatibility
           width: 1200,
           height: 630,
+          alt: `Image created with the '${filterName}' filter`,
         },
       ],
-      siteName: "Genie",
-      locale: "en_US",
     },
     twitter: {
       card: "summary_large_image",
-      title: `Created with '${filterName}' filter`,
-      description: `Check out this image created on Genie!`,
-      images: [imageUrl],
+      title: ogTitle,
+      description: ogDescription,
+      images: [finalImage],
+    },
+    metadataBase: new URL("https://project-genie-sigma.vercel.app"),
+    alternates: {
+      canonical: absoluteUrl,
     },
     other: {
-      "og:image": imageUrl,
-      "og:image:secure_url": imageUrl,
-    }
+      "linkedin:owner": "William T.",
+    },
   };
 }
 
+// -------------------------------
+// 3. Component UI
+// -------------------------------
 const SharedImageView: React.FC<SharedImageProps> = ({
   id,
   imageUrl,
@@ -95,8 +122,15 @@ const SharedImageView: React.FC<SharedImageProps> = ({
 
   const shareUrl = `https://project-genie-sigma.vercel.app/shared/${id}`;
   const shareText = `Check out this image created with the '${filterName}' filter on Genie!`;
-  const twitterShareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
-  const linkedinShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+  const twitterShareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(
+    shareUrl
+  )}&text=${encodeURIComponent(shareText)}`;
+  const linkedinShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(
+    shareUrl
+  )}`;
+  const whatsappShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(
+    shareText + " " + shareUrl
+  )}`;
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in text-center mt-10">
@@ -136,7 +170,9 @@ const SharedImageView: React.FC<SharedImageProps> = ({
         </div>
 
         <div className="mt-8 border-t border-base-300 dark:border-dark-base-300 pt-6">
-          <p className="text-content-200 dark:text-dark-content-200 mb-3 font-semibold">Share this creation</p>
+          <p className="text-content-200 dark:text-dark-content-200 mb-3 font-semibold">
+            Share this creation
+          </p>
           <div className="flex justify-center gap-4">
             <a
               href={twitterShareUrl}
@@ -154,6 +190,14 @@ const SharedImageView: React.FC<SharedImageProps> = ({
             >
               <span>Share on LinkedIn</span>
             </a>
+            <a
+              href={whatsappShareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 shadow-lg"
+            >
+              <span>Share on WhatsApp</span>
+            </a>
           </div>
         </div>
       </div>
@@ -161,6 +205,9 @@ const SharedImageView: React.FC<SharedImageProps> = ({
   );
 };
 
+// -------------------------------
+// 4. Page entry point
+// -------------------------------
 export default async function SharedImagePage({ params }: any) {
   const props = await getSharedImage(params.id);
   return <SharedImageView {...props} />;

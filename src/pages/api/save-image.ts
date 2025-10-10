@@ -4,6 +4,8 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import { NodeHttpHandler } from "@aws-sdk/node-http-handler";
+import { Agent } from "https";
 
 // Create the R2 client using environment variables
 const r2 = new S3Client({
@@ -13,6 +15,12 @@ const r2 = new S3Client({
     accessKeyId: process.env.R2_ACCESS_KEY_ID!,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
   },
+  requestHandler: new NodeHttpHandler({
+    httpsAgent: new Agent({
+      // @ts-ignore
+      secureProtocol: "TLSv1_2_method",
+    }),
+  }),
 });
 
 export default async function handler(
