@@ -54,10 +54,7 @@ export async function generateMetadata({
   const { imageUrl, filterName, username } = await getSharedImage(id);
   const absoluteUrl = `https://project-genie-sigma.vercel.app/shared/${id}`;
 
-  const cacheBuster = new Date().getTime();
-  const finalImage = imageUrl
-    ? `${imageUrl}?v=${cacheBuster}`
-    : "https://project-genie-sigma.vercel.app/og-image.png";
+  const finalImage = imageUrl || "https://project-genie-sigma.vercel.app/og-image.png";
 
   const pageTitle = `Genie | ${filterName}`;
   const description = `Check out this image created with the '${filterName}' filter on Genie!`;
@@ -78,7 +75,7 @@ export async function generateMetadata({
       images: [
         {
           url: finalImage,
-          secureUrl: finalImage, // ✅ old-parser compatibility
+          secureUrl: finalImage,
           width: 1200,
           height: 630,
           alt: `Image created with the '${filterName}' filter`,
