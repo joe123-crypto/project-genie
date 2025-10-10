@@ -23,11 +23,47 @@ export const applyImageFilter = async (
   const imageBase64 = await downscale(first, 1024, "webp", 0.8);
   const mediaType = "image/png";
   // ✅ Send request to backend
+  const applyFilterPrompt = `
+<SYSTEM>
+You are a professional visual editor and AI image retoucher.
+
+You must follow these principles unless explicitly told otherwise in the user's instructions below.
+
+1. Purpose:
+   - Apply visual filters or artistic effects to the provided image
+     without changing the identity,or emotional expression
+     of any person in it.
+
+2. Preservation rules:
+   - Keep all **facial features, expressions, gaze direction, and poses**
+     exactly as they appear in the original image.
+   - Do not make anyone smile, frown, look away, or change their emotion
+     unless explicitly requested by the user.
+   - Maintain the **same face, proportions, skin tone, hairstyle, and body shape**.
+   - Keep the **same framing, composition, and orientation**.
+
+4. Prohibited actions (unless the user explicitly overrides them):
+   - Changing facial expression or head position.
+   - Altering or reinterpreting identity.
+
+Output requirements:
+   - The final image must look like the **same photo, same person, but with the 
+     additions described by the user.
+</SYSTEM>
+
+<USER>
+Apply the following filter or style effect to the provided image, following all system rules above:
+
+${prompt}
+</USER>
+`;
+
+
   const response = await fetch("/api/nanobanana", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      textPrompt: prompt,
+      textPrompt: applyFilterPrompt,
       images: [
         {
           mediaType,
@@ -186,26 +222,29 @@ export const mergeImages = async (
 You are a professional virtual stylist and photo editor.
 
 Combine two images:
-1. The first image shows the person. Keep their body shape, face, skin, hair, pose, and lighting exactly the same.
+1. The first image shows the person. Keep their **facial structure, expression, gaze direction, pose, body shape, skin tone, hair, and lighting exactly the same.** 
+   Do not modify or reinterpret the face in any way — the expression, emotion, eye direction, and mouth position must remain identical to the original.
 2. The second image shows the outfit or fashion style to apply.
 
 Completely replace the clothing from the first image with the outfit from the second image.
 Do not blend or overlay the new clothing on top of the old one.
 The old clothing must be fully removed — no outlines, wrinkles, seams, buttons, textures, colors, or fragments from it may remain visible.
-Ensure the person looks like they are genuinely wearing the new outfit, as if photographed in it.
+
+Ensure the person looks naturally photographed wearing the new outfit, with perfect realism and texture blending between skin and fabric.
 
 Maintain:
-- The original face, hair, skin, and background from the first image.
-- The same body proportions, lighting, and shadows.
-- Perfect realism and photographic consistency.
-- Natural texture transitions between skin and fabric.
+- The original face, hair, skin tone, expression, gaze direction, and background from the first image.
+- The same body proportions, pose, lighting, and shadows.
+- Photographic consistency and realism.
+- Natural transitions between clothing and skin.
 
 Never:
+- Alter or reinterpret the person's face, expression, emotion, or head orientation.
 - Leave traces of the old clothing.
-- Add extra elements, accessories, or invented background changes.
-- Alter the person’s body, pose, or identity.
+- Add invented accessories or background changes.
+- Change the person's body proportions, pose, or identity.
 
-Output a realistic, high-quality image where the new outfit seamlessly replaces the old one.
+Output a **realistic, high-quality image** where the person retains their exact face and expression, but now appears genuinely dressed in the new outfit.
 
 --- Additional visual style guidance from the outfit filter:
 ${prompt}

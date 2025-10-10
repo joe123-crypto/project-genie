@@ -10,7 +10,7 @@ import { Agent } from "https";
 // Create the R2 client using environment variables
 const r2 = new S3Client({
   region: "auto",
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  endpoint: process.env.R2_ENDPOINT,
   credentials: {
     accessKeyId: process.env.R2_ACCESS_KEY_ID!,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
@@ -64,7 +64,7 @@ export default async function handler(
     );
 
     // Construct a public URL (assuming bucket is public)
-    const publicUrl = `https://${process.env.R2_PUBLIC_DOMAIN}/${newKey}`;
+    const publicUrl = `${process.env.R2_PUBLIC_BASE_URL}/${newKey}`;
 
     return res.status(200).json({ url: publicUrl });
   } catch (err: any) {
