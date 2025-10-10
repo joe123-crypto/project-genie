@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { applyImageFilter } from '../services/geminiService';
 import { shareImage, ShareResult } from '../services/shareService';
 import { Filter, User, ViewState } from '../types';
-import { UploadIcon, ShareIcon, DownloadIcon, BackArrowIcon } from './icons';
+import { UploadIcon, ShareIcon, DownloadIcon } from './icons';
 import ShareModal from './ShareModal';
 
 interface ApplyFilterViewProps {
@@ -21,7 +21,6 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
   const [generatedImageFilename, setGeneratedImageFilename] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error' | 'shared'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [personalPrompt, setPersonalPrompt] = useState("");
@@ -100,7 +99,6 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     if (!generatedImage) return;
 
     setIsSharing(true);
-    setShareStatus('idle');
     setError(null);
 
     try {
@@ -114,12 +112,9 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
 
       if (result.status === 'modal') {
         setIsShareModalOpen(true);
-      } else {
-        setShareStatus(result.status);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? `Sharing failed: ${err.message}` : 'Unknown error');
-      setShareStatus('error');
     } finally {
       setIsSharing(false);
     }
@@ -365,7 +360,6 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
           imageUrl={generatedImage}
           filterName={filter.name}
           shareUrl={shareUrl}
-          filename={generatedImageFilename || undefined}
         />
       )}
     </div>

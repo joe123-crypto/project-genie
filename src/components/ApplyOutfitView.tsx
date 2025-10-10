@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { mergeImages } from '../services/geminiService';
-import { Outfit, User, ViewState } from '../types';
-import { UploadIcon, ShareIcon, DownloadIcon, SaveIcon } from './icons'; // Assuming SaveIcon exists
+import { Outfit, User } from '../types';
+import { UploadIcon, ShareIcon, DownloadIcon } from './icons';
 import ShareModal from './ShareModal';
 
 // Helper to call our API
@@ -20,11 +20,10 @@ async function callApi(action: string, body: object) {
 
 interface ApplyOutfitViewProps {
   outfit: Outfit;
-  setViewState: (state: ViewState) => void;
   user: User | null;
 }
 
-const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, setViewState, user }) => {
+const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null); // This will now store the persistent URL
   const [isLoading, setIsLoading] = useState(false);
@@ -196,7 +195,6 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, setViewState,
           onClose={() => setIsShareModalOpen(false)}
           imageUrl={generatedImage}
           filterName={outfit.name}
-          filterId={outfit.id}
         />
       )}
     </div>

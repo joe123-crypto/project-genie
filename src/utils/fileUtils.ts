@@ -32,7 +32,7 @@ export const fileToBase64WithHEIFSupport = async (file: File): Promise<string> =
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
-  } catch (libErr) {
+  } catch {
     // Fall back to browser decoding (Safari/iOS supports HEIF natively)
   }
 
@@ -63,7 +63,7 @@ const convertHeifLikeToJpeg = async (file: File): Promise<string> => {
       ctx.drawImage(bitmap, 0, 0);
       URL.revokeObjectURL(objectUrl);
       return canvas.toDataURL("image/jpeg", 0.92);
-    } catch (e) {
+    } catch {
       // Fall through to <img> decoding path
     }
   }
@@ -86,7 +86,7 @@ const convertHeifLikeToJpeg = async (file: File): Promise<string> => {
         reject(err);
       }
     };
-    img.onerror = (e) => {
+    img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
       reject(new Error("Failed to decode HEIF/HEIC image in this browser"));
     };

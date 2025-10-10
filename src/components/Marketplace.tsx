@@ -1,8 +1,7 @@
 
 import React, { useMemo } from 'react';
-import { Filter, ViewState, User } from '../types';
+import { Filter, User } from '../types';
 import FilterCard from './FilterCard';
-import { PlusIcon } from './icons';
 
 interface MarketplaceProps {
   filters: Filter[];

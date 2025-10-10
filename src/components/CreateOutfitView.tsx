@@ -5,22 +5,20 @@ import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from "../utils/fi
 import { saveOutfit } from "../services/firebaseService";
 import { getValidIdToken } from "../services/authService";
 
-interface CreateFilterViewProps {
+interface CreateOutfitViewProps {
   setViewState: (viewState: ViewState) => void;
   user: User | null;
   addOutfit?: (newOutfit: Outfit) => void;
   filterToEdit?: Outfit; // renamed from outfitToEdit
-  onUpdateFilter?: (filterToUpdate: Outfit) => Promise<void> | void; // added this for editing
   onBack?: () => void;
 }
 
 
-const CreateFilterView: React.FC<CreateFilterViewProps> = ({
+const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
   setViewState,
   user,
   addOutfit,
   filterToEdit,
-  onUpdateFilter,
   onBack,
 }) => {
   const [formData, setFormData] = useState({
@@ -189,4 +187,4 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
   );
 };
 
-export default CreateFilterView;
+export default CreateOutfitView;

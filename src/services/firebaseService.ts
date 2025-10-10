@@ -1,5 +1,5 @@
 // Updated firebaseService.ts to only call our API routes
-import { Filter, User, Outfit } from '../types';
+import { Filter, Outfit } from '../types';
 
 /**
  * Fetches all filters from the backend API

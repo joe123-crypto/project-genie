@@ -3,13 +3,7 @@
 // pages/index.tsx
 import { useState, useCallback, useEffect } from "react";
 import { Filter, ViewState, User, Outfit } from "../types";
-import OutfitCard from "../components/OutfitCard";
 import CreateMenu from "../components/CreateMenu";
-import CreateFilterView from "../components/CreateFilterView";
-import CreateOutfitView from "../components/CreateOutfitView";
-
-
-
 import Marketplace from "../components/Marketplace";
 import ApplyFilterView from "../components/ApplyFilterView";
 import ApplyOutfitView from "../components/ApplyOutfitView";
@@ -44,7 +38,6 @@ export default function Home() {
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [viewState, setViewState] = useState<ViewState>({ view: "marketplace" });
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(false);
   const [isDark, setIsDark] = useState(false);
@@ -114,7 +107,6 @@ export default function Home() {
 
     const initializeApp = async () => {
       try {
-        setError(null);
         setIsLoading(true);
         const fetchedFilters = await getFilters();
         setFilters(fetchedFilters);
@@ -139,7 +131,7 @@ export default function Home() {
         }));
         localStorage.setItem("outfits", JSON.stringify(minimalOutfitCache));
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error while loading filters.");
+        console.error(err);
       } finally {
         setIsLoading(false);
       }
@@ -196,7 +188,6 @@ export default function Home() {
         updateLocalCache(filters.filter(f => f.id !== filterId));
       } catch (err) {
         console.error(err);
-        setError(err instanceof Error ? err.message : "Unknown error");
         throw err;
       }
     },
@@ -210,13 +201,12 @@ export default function Home() {
       try {
         const idToken = await getValidIdToken();
         if (!idToken) throw new Error("Session expired");
-        const { id, userId, username, accessCount, createdAt, ...dataToUpdate } =
+        const { id, ...dataToUpdate } =
           filterToUpdate;
         const updatedFilter = await updateFilter(id, dataToUpdate, idToken);
         updateLocalCache(filters.map(f => (f.id === id ? updatedFilter : f)));
       } catch (err) {
         console.error(err);
-        setError(err instanceof Error ? err.message : "Unknown error");
         throw err;
       }
     },
@@ -325,7 +315,6 @@ export default function Home() {
           return (
             <ApplyOutfitView
               outfit={viewState.outfit}   // this comes from handleSelectOutfit
-              setViewState={setViewState}
               user={user}
             />
           );

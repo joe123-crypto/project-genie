@@ -1,5 +1,5 @@
 import React from "react";
-import { DownloadIcon, WhatsAppIcon } from "./icons";
+import { WhatsAppIcon } from "./icons";
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -7,7 +7,6 @@ interface ShareModalProps {
   imageUrl: string;       // 👈 preview image (R2 link or base64)
   filterName: string;
   shareUrl?: string;       // 👈 canonical share link (/shared/:id)
-  filename?: string;
 }
 
 const ShareModal: React.FC<ShareModalProps> = ({
@@ -16,17 +15,12 @@ const ShareModal: React.FC<ShareModalProps> = ({
   imageUrl,
   filterName,
   shareUrl,
-  filename,
 }) => {
   if (!isOpen) return null;
   //console.log(shareUrl);
   const shareText = `Check out this image I created with the "${filterName}" filter!\n${shareUrl}`;
   const encodedText = encodeURIComponent(shareText);
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
-
-  const downloadFilename =
-    filename ||
-    `filtered-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.png`;
 
   return (
     <div

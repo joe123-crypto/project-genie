@@ -115,7 +115,6 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
       if (filterToEdit && onUpdateFilter) {
         await onUpdateFilter({ ...filterToEdit, ...payload });
       } else {
-        const idToken = await getValidIdToken();
         const saved = await saveFilter(payload, idToken || '');
         if (addFilter) addFilter(saved);
       }
