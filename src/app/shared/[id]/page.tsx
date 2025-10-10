@@ -41,7 +41,7 @@ async function getSharedImage(id: string): Promise<SharedImageProps> {
 export async function generateMetadata({ params }: any): Promise<Metadata> {
   const { id } = params;
   const { imageUrl, filterName, username } = await getSharedImage(id);
-  const absoluteUrl = `https://project-genie-sigma.vercel.app/shared/${id}`;
+  const absoluteUrl = `https://project-genie-sigma.vercel.app/shared/${id}?v=${new Date().getTime()}`;
   const mimeType = imageUrl.endsWith(".webp") ? "image/webp" : "image/png";
 
   return {
@@ -55,6 +55,7 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
       images: [
         {
           url: imageUrl,
+          secureUrl: imageUrl,
           type: mimeType,
           width: 1200,
           height: 630,
@@ -69,6 +70,10 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
       description: `Check out this image created on Genie!`,
       images: [imageUrl],
     },
+    other: {
+      "og:image": imageUrl,
+      "og:image:secure_url": imageUrl,
+    }
   };
 }
 
