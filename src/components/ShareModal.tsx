@@ -1,5 +1,5 @@
 import React from "react";
-import { WhatsAppIcon } from "./icons";
+import { WhatsAppIcon, XIcon, LinkedInIcon } from "./icons";
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -17,10 +17,14 @@ const ShareModal: React.FC<ShareModalProps> = ({
   shareUrl,
 }) => {
   if (!isOpen) return null;
-  //console.log(shareUrl);
-  const shareText = `Check out this image I created with the "${filterName}" filter!\n${shareUrl}`;
+
+  const shareText = `Check out this image I created with the "${filterName}" filter!`;
   const encodedText = encodeURIComponent(shareText);
-  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
+  const encodedUrl = encodeURIComponent(shareUrl || imageUrl);
+
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}%20${encodedUrl}`;
+  const xUrl = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+  const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodedUrl}&title=${encodedText}`;
 
   return (
     <div
@@ -74,6 +78,24 @@ const ShareModal: React.FC<ShareModalProps> = ({
           >
             <WhatsAppIcon />
             Share to WhatsApp
+          </a>
+          <a
+            href={xUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-3 bg-black hover:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg"
+          >
+            <XIcon />
+            Share to X
+          </a>
+          <a
+            href={linkedInUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-3 bg-[#0A66C2] hover:bg-[#004182] text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg"
+          >
+            <LinkedInIcon />
+            Share to LinkedIn
           </a>
         </div>
       </div>
