@@ -93,6 +93,11 @@ const SharedImageView: React.FC<SharedImageProps> = ({
     );
   }
 
+  const shareUrl = `https://project-genie-sigma.vercel.app/shared/${id}`;
+  const shareText = `Check out this image created with the '${filterName}' filter on Genie!`;
+  const twitterShareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+  const linkedinShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+
   return (
     <div className="max-w-2xl mx-auto animate-fade-in text-center mt-10">
       <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg shadow-xl">
@@ -128,6 +133,28 @@ const SharedImageView: React.FC<SharedImageProps> = ({
           >
             Go Back To Marketplace
           </Link>
+        </div>
+
+        <div className="mt-8 border-t border-base-300 dark:border-dark-base-300 pt-6">
+          <p className="text-content-200 dark:text-dark-content-200 mb-3 font-semibold">Share this creation</p>
+          <div className="flex justify-center gap-4">
+            <a
+              href={twitterShareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-[#1DA1F2] hover:bg-[#0c85d0] text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 shadow-lg"
+            >
+              <span>Share on X</span>
+            </a>
+            <a
+              href={linkedinShareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-[#0A66C2] hover:bg-[#004182] text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 shadow-lg"
+            >
+              <span>Share on LinkedIn</span>
+            </a>
+          </div>
         </div>
       </div>
     </div>

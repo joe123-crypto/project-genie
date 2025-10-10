@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { applyImageFilter } from '../services/geminiService';
-import { shareImage,ShareResult} from '../services/shareService';
+import { shareImage, ShareResult } from '../services/shareService';
 import { Filter, User, ViewState } from '../types';
 import { UploadIcon, ShareIcon, DownloadIcon, BackArrowIcon } from './icons';
 import ShareModal from './ShareModal';
@@ -11,7 +11,6 @@ interface ApplyFilterViewProps {
   setViewState: (state: ViewState) => void;
   user: User | null;
 }
-
 
 const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter, filterId, setViewState, user }) => {
   const [filter, setFilter] = useState<Filter | null>(initialFilter || null);
@@ -25,12 +24,12 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error' | 'shared'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
-  const [personalPrompt, setPersonalPrompt] = useState(""); // Personalization prompt state
-  const [isSaving, setIsSaving] = useState(false); // Track save button state
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle'); // Track save result
+  const [personalPrompt, setPersonalPrompt] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
   const filterType = filter?.type ?? 'single';
-  const filterPrompt = filter?.prompt ??  '';
+  const filterPrompt = filter?.prompt ?? '';
 
   const isWindows = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent);
 
@@ -72,30 +71,23 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     setGeneratedImageFilename(null);
 
     try {
-      const combinedPrompt = personalPrompt
-        ? `${filterPrompt}\n${personalPrompt}`
-        : filterPrompt;
-      
-      console.log(filterPrompt);
-      const result = await applyImageFilter(imagesToProcess, combinedPrompt,"filtered");
+      const combinedPrompt = personalPrompt ? `${filterPrompt}\n${personalPrompt}` : filterPrompt;
+      const result = await applyImageFilter(imagesToProcess, combinedPrompt, "filtered");
       setGeneratedImage(result);
 
       if (result && result.includes('r2.dev')) {
-        // Extract full key, e.g. "filtered/abc.png"
         const keyStart = result.indexOf("filtered/");
         if (keyStart !== -1) {
           const key = result.substring(keyStart);
           setGeneratedImageFilename(key);
         } else {
           const urlParts = result.split('/');
-          const filename = urlParts[urlParts.length - 1];
-          setGeneratedImageFilename(`filtered/${filename}`);
+          setGeneratedImageFilename(urlParts[urlParts.length - 1]);
         }
       } else {
-        // Base64 case: generate a random filtered/ filename
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 8);
-        setGeneratedImageFilename(`filtered/filtered-${timestamp}-${randomId}.png`);
+        setGeneratedImageFilename(`filtered-${timestamp}-${randomId}.png`);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
@@ -106,25 +98,23 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
 
   const handleShare = useCallback(async () => {
     if (!generatedImage) return;
-  
+
     setIsSharing(true);
     setShareStatus('idle');
     setError(null);
-  
+
     try {
-      if(!filter) {
+      if (!filter) {
         console.error("No filter given");
         return;
       }
       const result: ShareResult = await shareImage(generatedImage, filter, user);
-  
-      setShareUrl(result.shareUrl); // always set the returned URL
-  
+
+      setShareUrl(result.shareUrl);
+
       if (result.status === 'modal') {
-        // Open Genie’s ShareModal on Windows
         setIsShareModalOpen(true);
       } else {
-        // Otherwise just track the normal status ("shared" | "copied")
         setShareStatus(result.status);
       }
     } catch (err: unknown) {
@@ -134,9 +124,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
       setIsSharing(false);
     }
   }, [generatedImage, filter, user]);
-    
-  
-  // Save handler: re-upload the generated image to the saved/ folder
+
   const handleSave = useCallback(async () => {
     if (!generatedImageFilename) return;
 
@@ -166,10 +154,37 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     } finally {
       setIsSaving(false);
     }
-  }, [generatedImageFilename]);  
+  }, [generatedImageFilename]);
+
+  const handleDownload = useCallback(async () => {
+    if (!generatedImage) return;
+
+    try {
+      // Fetch the image data, works for both data URLs and remote URLs (if CORS is configured)
+      const response = await fetch(generatedImage);
+      if (!response.ok) throw new Error('Failed to fetch image for download.');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link to trigger the download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = generatedImageFilename || 'creation.png';
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up the temporary link and object URL
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+    } catch (err) {
+        setError(err instanceof Error ? `Download failed: ${err.message}` : 'Download failed');
+    }
+  }, [generatedImage, generatedImageFilename]);
 
   const isApplyDisabled = isLoading || !uploadedImage1 || (filterType === 'merge' && !uploadedImage2);
-  
+
   if (loadingFilter) {
     return <div className="text-center mt-10">Loading filter...</div>;
   }
@@ -190,15 +205,12 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in flex flex-col gap-6">
-      {/* Filter name and description at the top */}
       <div className="p-4 bg-base-100 dark:bg-dark-base-100 rounded shadow">
         <h1 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100 mb-2">{filter.name}</h1>
         <p className="text-content-200 dark:text-dark-content-200">{filter.description}</p>
       </div>
 
-      {/* Central area: upload, preview, and result */}
       <div className="bg-base-200 dark:bg-dark-base-200 p-6 rounded-lg flex flex-col items-center gap-4">
-        {/* Upload area (single or merge) */}
         <div className="w-full flex flex-col sm:flex-row gap-4 justify-center">
           <div className="flex-1 flex flex-col items-center">
             <label htmlFor="upload1" className="cursor-pointer flex flex-col items-center gap-2 w-full">
@@ -266,7 +278,6 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
           )}
         </div>
 
-        {/* Result image or loading spinner */}
         <div className="w-full flex flex-col items-center mt-6">
           <div className="border-2 border-dashed border-border-color dark:border-dark-border-color rounded-lg p-6 min-h-[200px] w-full flex items-center justify-center bg-base-100 dark:bg-dark-base-100">
             {isLoading ? (
@@ -275,20 +286,25 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
                 <span className="text-content-200 dark:text-dark-content-200">Applying filter...</span>
               </div>
             ) : generatedImage ? (
-              <img
-                src={generatedImage}
-                alt="Filtered result"
-                className="max-w-full max-h-96 object-contain rounded shadow-lg"
-              />
+              <div className="relative">
+                <img
+                  src={generatedImage}
+                  alt="Filtered result"
+                  className="max-w-full max-h-96 object-contain rounded shadow-lg"
+                />
+                <div 
+                  className="absolute inset-0 bg-transparent"
+                  onContextMenu={(e) => e.preventDefault()}
+                ></div>
+              </div>
             ) : (
               <span className="text-content-200 dark:text-dark-content-200">
                 {uploadedImage1 ? 'Ready to apply filter!' : 'Upload an image to get started.'}
               </span>
             )}
           </div>
-          {/* Download/Share buttons if result exists */}
           {generatedImage && (
-            <div className="flex gap-3 mt-4">
+            <div className="flex gap-3 mt-4 flex-wrap justify-center">
               <button
                 onClick={handleShare}
                 disabled={isSharing || isLoading}
@@ -297,38 +313,32 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
                 <ShareIcon />
                 {isWindows ? 'Share (WhatsApp)' : 'Share'}
               </button>
-              <a
-                href={generatedImage}
-                download={generatedImageFilename || `filtered-${Date.now()}.png`}
+              <button
+                onClick={handleDownload}
                 className="flex items-center gap-2 bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 border border-border-color dark:border-dark-border-color text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg transition-colors text-center"
               >
                 <DownloadIcon />
                 Download
-              </a>
-              {/* Save button to upload to saved/ folder */}
+              </button>
               <button
                 onClick={handleSave}
-                disabled={isSaving || isLoading}
+                disabled={isSaving || isLoading || saveStatus === 'saved'}
                 className="flex items-center gap-2 bg-green-200 hover:bg-green-300 dark:bg-green-800 dark:hover:bg-green-700 text-green-900 dark:text-green-100 font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
               >
-                {isSaving ? 'Saving...' : 'Save'}
+                {isSaving ? 'Saving...' : (saveStatus === 'saved' ? 'Saved!' : 'Save')}
               </button>
-              {/* Show save status */}
-              {saveStatus === 'saved' && <span className="text-green-600 dark:text-green-300 ml-2">Saved!</span>}
-              {saveStatus === 'error' && <span className="text-red-600 dark:text-red-300 ml-2">Save failed</span>}
             </div>
           )}
         </div>
       </div>
 
-      {/* Error message if any */}
       {error && (
-        <div className="bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded">
-          {error}
+        <div className="bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded fixed bottom-4 right-4 shadow-lg z-50">
+          <p className='font-bold'>Error</p>
+          <p>{error}</p>
         </div>
       )}
 
-      {/* Personalization prompt and apply button at the bottom */}
       <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-content-100 dark:text-dark-content-100 mb-2">Personalization Prompt</h2>
         <textarea

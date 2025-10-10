@@ -27,7 +27,7 @@ const db = admin.firestore();
 /* -------------------------------------------------------------------------- */
 const r2BucketName = process.env.R2_BUCKET_NAME!;
 const r2Client = new S3Client({
-  region: "auto", // R2 always uses 'auto' region
+  region: "auto",
   endpoint: process.env.R2_ENDPOINT,
   forcePathStyle: true,
   credentials: {
@@ -40,10 +40,6 @@ const r2Client = new S3Client({
 /*                              HELPER FUNCTIONS                              */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Converts a base64 data URL → { mimeType, Buffer }.
- * Example input: data:image/png;base64,iVBORw0...
- */
 function parseDataUrlToBuffer(dataUrl: string): { mimeType: string; buffer: Buffer } {
   const match = /^data:(.+);base64,(.*)$/.exec(dataUrl);
   if (!match) throw new Error("Invalid data URL format");
@@ -52,11 +48,7 @@ function parseDataUrlToBuffer(dataUrl: string): { mimeType: string; buffer: Buff
   return { mimeType, buffer };
 }
 
-/**
- * Uploads an image (in base64) to R2 under a folder/id/preview key
- * and returns a publicly accessible URL.
- */
-async function uploadPreviewToR2(folder: string, id: string, dataUrl: string): Promise<string> {
+async function uploadPermanentAssetToR2(folder: string, id: string, dataUrl: string): Promise<string> {
   const { mimeType, buffer } = parseDataUrlToBuffer(dataUrl);
   const key = `${folder}/${id}/preview`;
 
@@ -68,8 +60,24 @@ async function uploadPreviewToR2(folder: string, id: string, dataUrl: string): P
   };
 
   await r2Client.send(new PutObjectCommand(params));
+  const base = process.env.R2_PUBLIC_BASE_URL!;
+  return `${base.replace(/\/$/, "")}/${key}`;
+}
 
-  // Return a public-facing URL based on your configured base
+async function uploadTemporaryImageToR2(folder: string, dataUrl: string): Promise<string> {
+  const { mimeType, buffer } = parseDataUrlToBuffer(dataUrl);
+  const extension = mimeType.split('/')[1] || 'png';
+  const name = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const key = `${folder}/${name}.${extension}`;
+
+  const params: PutObjectCommandInput = {
+      Bucket: r2BucketName,
+      Key: key,
+      Body: buffer,
+      ContentType: mimeType,
+  };
+
+  await r2Client.send(new PutObjectCommand(params));
   const base = process.env.R2_PUBLIC_BASE_URL!;
   return `${base.replace(/\/$/, "")}/${key}`;
 }
@@ -82,14 +90,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     switch (action) {
-      /* ------------------------------ GET FILTERS ------------------------------ */
+      /* ------------------------------ FILTERS ------------------------------ */
       case "getFilters": {
         const snapshot = await db.collection("filters").get();
         const filters = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         return res.status(200).json({ filters });
       }
-
-      /* ------------------------------ SAVE FILTER ------------------------------ */
       case "saveFilter": {
         const { filter } = req.body;
         if (!filter) return res.status(400).json({ error: "Missing filter data" });
@@ -97,9 +103,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const docRef = db.collection("filters").doc();
         let previewImageUrl = filter.previewImageUrl;
 
-        // Upload base64 image to R2 → return public URL
         if (typeof previewImageUrl === "string" && previewImageUrl.startsWith("data:")) {
-          previewImageUrl = await uploadPreviewToR2("filters", docRef.id, previewImageUrl);
+          previewImageUrl = await uploadPermanentAssetToR2("filters", docRef.id, previewImageUrl);
         }
 
         await docRef.set({
@@ -112,8 +117,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const newFilter = { id: docRef.id, ...(await docRef.get()).data() };
         return res.status(200).json({ filter: newFilter });
       }
+      case "updateFilter": {
+        const { filterId, filterData } = req.body;
+        if (!filterId || !filterData) return res.status(400).json({ error: "Missing filterId or filterData" });
 
-      /* ------------------------------ SAVE OUTFIT ------------------------------ */
+        const docRef = db.collection("filters").doc(filterId);
+        const updatedData = { ...filterData };
+
+        if (typeof updatedData.previewImageUrl === "string" && updatedData.previewImageUrl.startsWith("data:")) {
+          updatedData.previewImageUrl = await uploadPermanentAssetToR2("filters", filterId, updatedData.previewImageUrl);
+        }
+
+        await docRef.update(updatedData);
+        const updatedFilter = { id: filterId, ...(await docRef.get()).data() };
+        return res.status(200).json({ filter: updatedFilter });
+      }
+      case "deleteFilter": {
+        const { filterId } = req.body;
+        if (!filterId) return res.status(400).json({ error: "Missing filterId" });
+        await db.collection("filters").doc(filterId).delete();
+        return res.status(200).json({ success: true });
+      }
+      case "incrementFilterAccessCount": {
+        const { filterId } = req.body;
+        if (!filterId) return res.status(400).json({ error: "Missing filterId" });
+        await db.collection("filters").doc(filterId).update({ accessCount: admin.firestore.FieldValue.increment(1) });
+        return res.status(200).json({ success: true });
+      }
+
+      /* ------------------------------ OUTFITS ------------------------------ */
+      case "getOutfits": {
+        const snapshot = await db.collection("outfits").get();
+        const outfits = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        return res.status(200).json({ outfits });
+      }
       case "saveOutfit": {
         const { outfit } = req.body;
         if (!outfit) return res.status(400).json({ error: "Missing outfit data" });
@@ -121,9 +158,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const docRef = db.collection("outfits").doc();
         let previewImageUrl = outfit.previewImageUrl;
 
-        // Upload to R2 under "outfits/{id}/preview"
         if (typeof previewImageUrl === "string" && previewImageUrl.startsWith("data:")) {
-          previewImageUrl = await uploadPreviewToR2("outfits", docRef.id, previewImageUrl);
+          previewImageUrl = await uploadPermanentAssetToR2("outfits", docRef.id, previewImageUrl);
         }
 
         await docRef.set({
@@ -136,72 +172,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const newOutfit = { id: docRef.id, ...(await docRef.get()).data() };
         return res.status(200).json({ outfit: newOutfit });
       }
-
-      /* ----------------------------- UPDATE FILTER ----------------------------- */
-      case "updateFilter": {
-        const { filterId, filterData } = req.body;
-        if (!filterId || !filterData)
-          return res.status(400).json({ error: "Missing filterId or filterData" });
-
-        const docRef = db.collection("filters").doc(filterId);
-        const updatedData = { ...filterData };
-
-        // Replace base64 image with uploaded one
-        if (
-          typeof updatedData.previewImageUrl === "string" &&
-          updatedData.previewImageUrl.startsWith("data:")
-        ) {
-          updatedData.previewImageUrl = await uploadPreviewToR2(
-            "filters",
-            filterId,
-            updatedData.previewImageUrl
-          );
-        }
-
-        await docRef.update(updatedData);
-        const updatedFilter = { id: filterId, ...(await docRef.get()).data() };
-        return res.status(200).json({ filter: updatedFilter });
-      }
-
-      /* ------------------------------ DELETE FILTER ----------------------------- */
-      case "deleteFilter": {
-        const { filterId } = req.body;
-        if (!filterId) return res.status(400).json({ error: "Missing filterId" });
-
-        await db.collection("filters").doc(filterId).delete();
-        return res.status(200).json({ success: true });
-      }
-
-      /* ------------------------ INCREMENT FILTER ACCESS ------------------------ */
-      case "incrementAccessCount": {
-        const { filterId } = req.body;
-        if (!filterId) return res.status(400).json({ error: "Missing filterId" });
-
-        await db.collection("filters").doc(filterId).update({
-          accessCount: admin.firestore.FieldValue.increment(1),
-        });
-        return res.status(200).json({ success: true });
-      }
-
-      /* ------------------------------ GET OUTFITS ------------------------------ */
-      case "getOutfits": {
-        const snapshot = await db.collection("outfits").get();
-        const outfits = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        return res.status(200).json({ outfits });
-      }
-
-      /* ----------------------- INCREMENT OUTFIT ACCESS ------------------------- */
       case "incrementOutfitAccessCount": {
         const { outfitId } = req.body;
         if (!outfitId) return res.status(400).json({ error: "Missing outfitId" });
-
-        await db.collection("outfits").doc(outfitId).update({
-          accessCount: admin.firestore.FieldValue.increment(1),
-        });
+        await db.collection("outfits").doc(outfitId).update({ accessCount: admin.firestore.FieldValue.increment(1) });
         return res.status(200).json({ success: true });
       }
 
-      /* -------------------------------- DEFAULT -------------------------------- */
+      /* ------------------------ TRANSIENT & SAVED IMAGES ----------------------- */
+      case "storeFilteredImage": {
+        const { image } = req.body;
+        if (!image || !image.startsWith("data:")) {
+          return res.status(400).json({ error: "Missing image data" });
+        }
+        const imageUrl = await uploadTemporaryImageToR2("filtered", image);
+        return res.status(200).json({ imageUrl });
+      }
+      case "saveCreation": {
+        const { creation } = req.body;
+        if (!creation) return res.status(400).json({ error: "Missing creation data" });
+
+        const docRef = db.collection("saved").doc();
+        let previewImageUrl = creation.previewImageUrl;
+
+        // Note: Here, we expect the URL from the 'filtered' folder, but for consistency in making it a permanent 'saved' asset, we re-upload it.
+        if (typeof previewImageUrl === "string" && previewImageUrl.startsWith("data:")) {
+          previewImageUrl = await uploadPermanentAssetToR2("saved", docRef.id, previewImageUrl);
+        }
+        
+        await docRef.set({
+          ...creation,
+          previewImageUrl,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        const newCreation = { id: docRef.id, ...await (await docRef.get()).data(), previewImageUrl };
+        return res.status(200).json({ creation: newCreation });
+      }
+
       default:
         return res.status(400).json({ error: "Unknown action" });
     }
