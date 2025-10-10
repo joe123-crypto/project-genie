@@ -12,7 +12,15 @@ export const metadata: Metadata = {
     images: [
       {
         url: "https://project-genie-sigma.vercel.app/header-icon.svg",
+        width: 1200,
+        height: 630,
       },
+      {
+        url: "https://project-genie-sigma.vercel.app/1759166840424-2zo5cm378da.png",
+        width: 1200,
+        height: 630,
+      },
+
     ],
     locale: "en_US",
     type: "website",
@@ -21,7 +29,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "Genie — AI Filters That Work Like Magic",
     description: "Create, remix, and share AI-powered photo filters that look amazing on any picture.",
-    images: ["https://project-genie-sigma.vercel.app/header-icon.svg"],
+    images: ["https://project-genie-sigma.vercel.app/header-icon.svg","https://project-genie-sigma.vercel.app/1759166840424-2zo5cm378da.png"],
   },
 };
 
