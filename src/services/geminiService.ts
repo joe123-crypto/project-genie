@@ -183,7 +183,7 @@ export const improvePrompt = async (prompt: string): Promise<string> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ 
-        prompt: `Understand what the user needs and improve this prompt to be more detailed. Do not exaggerate beyond what the user needs, only make it more naunce so that the model understands what the user wants: ${prompt}. Return only the improved prompt, no other text.`
+        prompt: `Understand what the user needs and improve this prompt to be more detailed. Do not exaggerate beyond what the user wants, only make it more naunce so that the model understands what the user wants: ${prompt}. Return only the improved prompt, no other text.`
       }),
     });
 
@@ -256,11 +256,7 @@ ${prompt}
      * Converts either a data URL or a remote URL (e.g. R2 image) to pure base64 safely.
      * Uses Blob + FileReader, so the canvas never gets tainted.
      */
-    const [imageBase64A, imageBase64B ] = await Promise.all([
-      downscale(imageInputs[0],1024,"webp", 0.8),
-      downscale(imageInputs[1],1024,"webp", 0.8)
-    ])
-    /*
+    
     const toBase64 = async (inputUrl: string): Promise<string> => {
       // Case 1: Already a base64 data URL (starts with data:image)
       if (inputUrl.startsWith('data:image')) {
@@ -288,10 +284,10 @@ ${prompt}
     };
 
     // Convert both images to safe base64 strings
-    const [imageBase64A,imageBase64B] = await Promise.all([ //imageBase64B] = await Promise.all([
-      toBase64(base64ImageDataUrls[0]),
-      toBase64(base64ImageDataUrls[1]),
-    ]);*/
+    const [imageBase64A,imageBase64B] = await Promise.all([ 
+      toBase64(imageInputs[0] as string),
+      toBase64(imageInputs[1] as string),
+    ]);
     
     
     // Send both images and the prompt to your backend for merging
