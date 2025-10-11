@@ -11,7 +11,7 @@ import StudioView from "../components/CreateFilterView";
 import AuthView from "../components/AuthView";
 import SharedImageView from "../components/SharedImageView";
 import WelcomeModal from "../components/WelcomeModal";
-import { HeaderIcon, SunIcon, MoonIcon } from "../components/icons";
+import { SunIcon, MoonIcon } from "../components/icons";
 import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount } from "../services/firebaseService";
 import { loadUserSession, signOut, getValidIdToken } from "../services/authService";
 import Spinner from "../components/Spinner";
@@ -330,7 +330,7 @@ export default function Home() {
             className="flex items-center gap-3 cursor-pointer" 
             onClick={() => setViewState({ view: "marketplace" })}
           >
-            <HeaderIcon />
+            <img src="/lamp.png" alt="Genie Lamp" className="h-8 w-8" />
             <h1 className={`text-2xl sm:text-3xl ${commonClasses.text.heading}`}>
               Genie
             </h1>

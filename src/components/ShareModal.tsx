@@ -1,5 +1,5 @@
 import React from "react";
-import { WhatsAppIcon, XIcon, LinkedInIcon } from "./icons";
+import { WhatsAppIcon, XIcon, LinkedInIcon, FacebookIcon } from "./icons";
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -25,6 +25,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}%20${encodedUrl}`;
   const xUrl = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
   const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
+  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
 
   return (
     <div
@@ -97,8 +98,17 @@ const ShareModal: React.FC<ShareModalProps> = ({
             <LinkedInIcon />
             Share to LinkedIn
           </a>
+          <a
+            href={facebookUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-3 bg-[#1877F2] hover:bg-[#166FE5] text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg"
+          >
+            <FacebookIcon />
+            Share to Facebook
+          </a>
         </div>
-.      </div>
+      </div>
     </div>
   );
 };

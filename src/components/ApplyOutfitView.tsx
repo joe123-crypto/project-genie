@@ -4,20 +4,6 @@ import { Outfit, User } from '../types';
 import { UploadIcon, ShareIcon, DownloadIcon } from './icons';
 import ShareModal from './ShareModal';
 
-// Helper to call our API
-async function callApi(action: string, body: object) {
-  const response = await fetch(`/api/firebase?action=${action}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error || `API action '${action}' failed`);
-  }
-  return data;
-}
-
 interface ApplyOutfitViewProps {
   outfit: Outfit;
   user: User | null;
@@ -25,14 +11,14 @@ interface ApplyOutfitViewProps {
 
 const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null); // This will now store the persistent URL
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedImageFilename, setGeneratedImageFilename] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
-  // When a new image is generated and saved, we might want to show a success message briefly.
   useEffect(() => {
     if (saveStatus === 'saved') {
       const timer = setTimeout(() => setSaveStatus('idle'), 3000);
@@ -49,18 +35,27 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
     setIsLoading(true);
     setError(null);
     setGeneratedImage(null);
+    setGeneratedImageFilename(null);
     setSaveStatus('idle');
 
     try {
-      // Step 1: Get the base64 image from the AI service
-      const base64Image = await mergeImages([uploadedImage, outfit.previewImageUrl], outfit.prompt);
+      const result = await mergeImages([uploadedImage, outfit.previewImageUrl], outfit.prompt, "filtered");
+      setGeneratedImage(result);
 
-      // Step 2: Store this temporary image in the 'filtered/' directory via our API
-      const { imageUrl: persistentUrl } = await callApi('storeFilteredImage', { image: base64Image });
-
-      // Step 3: Update the view to display the new, persistent image URL
-      setGeneratedImage(persistentUrl);
-
+      if (result && result.includes('r2.dev')) {
+        const keyStart = result.indexOf("filtered/");
+        if (keyStart !== -1) {
+          const key = result.substring(keyStart);
+          setGeneratedImageFilename(key);
+        } else {
+          const urlParts = result.split('/');
+          setGeneratedImageFilename(urlParts[urlParts.length - 1]);
+        }
+      } else {
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2, 8);
+        setGeneratedImageFilename(`filtered-${timestamp}-${randomId}.png`);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred during generation.');
     } finally {
@@ -69,27 +64,27 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
   }, [uploadedImage, outfit.previewImageUrl, outfit.prompt]);
 
   const handleSave = useCallback(async () => {
-    if (!generatedImage || !user) {
-      setError('You must be logged in to save an image.');
-      return;
-    }
+    if (!generatedImageFilename || saveStatus === 'saved') return;
 
     setIsSaving(true);
-    setError(null);
     setSaveStatus('idle');
+    setError(null);
 
     try {
-      const creationData = {
-        userId: user.uid,
-        originalFilterId: outfit.id, // Link back to the outfit used
-        filterName: outfit.name,
-        previewImageUrl: generatedImage, // The persistent URL from the 'filtered/' folder
-      };
-      
-      // This API call will handle copying the image to 'saved/' and creating the DB record.
-      await callApi('saveCreation', { creation: creationData });
-      
-      setSaveStatus('saved');
+      const response = await fetch('/api/save-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: generatedImageFilename, destination: 'saved' }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Save failed');
+
+      if (data.url) {
+        setGeneratedImage(data.url);
+        setGeneratedImageFilename(data.url.substring(data.url.indexOf("saved/")));
+        setSaveStatus('saved');
+      }
 
     } catch (err: unknown) {
       setError(err instanceof Error ? `Save failed: ${err.message}` : 'An unknown error occurred while saving.');
@@ -97,10 +92,9 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
     } finally {
       setIsSaving(false);
     }
-  }, [generatedImage, outfit.id, outfit.name, user]);
+  }, [generatedImageFilename, saveStatus]);
 
   const isApplyDisabled = isLoading || !uploadedImage;
-  const generatedImageFilename = generatedImage ? generatedImage.split('/').pop() : 'creation.png';
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in flex flex-col gap-6 p-4">
@@ -169,7 +163,7 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
               <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-2 bg-neutral-200 hover:bg-neutral-300 dark:bg-dark-neutral-200 dark:hover:bg-dark-neutral-300 text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg shadow">
                 <ShareIcon /> Share
               </button>
-              <a href={generatedImage} download={generatedImageFilename} className="flex items-center gap-2 bg-base-300 hover:bg-base-400 dark:bg-dark-base-300 dark:hover:bg-dark-base-400 text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg shadow">
+              <a href={generatedImage} download={generatedImageFilename || 'creation.png'} className="flex items-center gap-2 bg-base-300 hover:bg-base-400 dark:bg-dark-base-300 dark:hover:bg-dark-base-400 text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg shadow">
                 <DownloadIcon /> Download
               </a>
               {user && (

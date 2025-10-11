@@ -4,14 +4,6 @@ interface IconProps {
   className?: string;
 }
 
-export const HeaderIcon: React.FC<IconProps> = ({ className = 'h-8 w-8 text-brand-primary dark:text-dark-brand-primary' }) => (
-    <svg viewBox="0 0 64 65" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-        <path d="M49.6364 13.5C49.6364 13.5 39.0909 21.9444 34.1818 31.7222C29.2727 41.5 34.1818 48.8333 40.5455 51.0556C46.9091 53.2778 55.2727 51.0556 59.2727 46.6111C55.2727 48.8333 48.9091 47.7222 46.9091 43.2778C44.9091 38.8333 46.9091 35.2778 49.6364 32.8333C49.6364 24.3889 57.2727 21.9444 61.4545 20.8333C57.2727 19.7222 51.6364 17.0556 49.6364 13.5Z" fill="currentColor"/>
-        <path d="M4.54545 44.6111C4.54545 44.6111 15.0909 38.3889 23.4545 40.6111C31.8182 42.8333 33.8182 51.0556 29.8182 55.5C25.8182 59.9444 16.2727 61.0556 10.9091 58.8333C13.2727 59.9444 19.6364 58.8333 22.2727 54.3889C24.9091 49.9444 22.2727 46.6111 18.2727 44.6111C14.2727 42.6111 7.90909 42.6111 4.54545 44.6111Z" fill="currentColor"/>
-        <path d="M2.18182 54.3889C2.18182 54.3889 12.7273 48.1667 21.0909 50.3889C29.4545 52.6111 31.4545 60.8333 27.4545 64.3889H6.90909C6.90909 64.3889 4.54545 62.1667 2.18182 54.3889Z" fill="currentColor"/>
-    </svg>
-);
-
 export const SunIcon: React.FC = () => (
     <svg className="h-6 w-6 text-content-100 dark:text-dark-content-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M12 12a5 5 0 100-10 5 5 0 000 10z" />
@@ -127,4 +119,10 @@ export const DollarIcon: React.FC<{ className?: string }> = ({ className = "h-5 
     <line x1="12" y1="1" x2="12" y2="23"></line>
     <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"></path>
   </svg>
+);
+
+export const FacebookIcon: React.FC = () => (
+    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"></path>
+    </svg>
 );

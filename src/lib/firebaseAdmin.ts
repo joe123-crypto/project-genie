@@ -1,26 +1,31 @@
+import admin from "firebase-admin";
 
-import admin from 'firebase-admin';
+let app: admin.app.App | null = null;
 
-// This function ensures that Firebase Admin is initialized only once.
 export function initializeFirebaseAdmin() {
+  if (app) return app;
+
   if (!admin.apps.length) {
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    // Important: Replace escaped newlines for the private key from environment variables
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\n/g, '\n');
+    // 🔥 Replace literal "\n" sequences with real line breaks
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
-    if (projectId && clientEmail && privateKey) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId,
-          clientEmail,
-          privateKey,
-        }),
-      });
-    } else {
-      // This will cause data fetching to fail, but the build will pass.
-      console.error("Firebase Admin credentials are not set in environment variables.");
+    if (!projectId || !clientEmail || !privateKey) {
+      console.error("❌ Missing Firebase Admin environment variables.");
+      throw new Error("Firebase Admin credentials are incomplete");
     }
+
+    app = admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId,
+        clientEmail,
+        privateKey,
+      }),
+    });
+  } else {
+    app = admin.app();
   }
-  return admin;
+
+  return app;
 }

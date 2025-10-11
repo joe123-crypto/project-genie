@@ -5,15 +5,7 @@ import React from "react";
 import { initializeFirebaseAdmin } from "@/lib/firebaseAdmin";
 
 // -------------------------------
-// 1. Define Page Props
-// -------------------------------
-type SharedPageProps = {
-  params: { id: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-};
-
-// -------------------------------
-// 2. Define Component Props
+// 1. Define Component Props
 // -------------------------------
 interface SharedImageProps {
   id: string;
@@ -25,7 +17,7 @@ interface SharedImageProps {
 }
 
 // -------------------------------
-// 3. Fetch shared image data
+// 2. Fetch shared image data
 // -------------------------------
 async function getSharedImage(id: string): Promise<SharedImageProps> {
   const admin = initializeFirebaseAdmin();
@@ -54,7 +46,7 @@ async function getSharedImage(id: string): Promise<SharedImageProps> {
 }
 
 // -------------------------------
-// 4. Generate Page Metadata
+// 3. Generate Page Metadata
 // -------------------------------
 export async function generateMetadata({ params }: {params : any}): Promise<Metadata> {
   const { id } = params;
@@ -97,7 +89,7 @@ export async function generateMetadata({ params }: {params : any}): Promise<Meta
 }
 
 // -------------------------------
-// 5. Component UI
+// 4. Component UI
 // -------------------------------
 const SharedImageView: React.FC<SharedImageProps> = ({
   id,
@@ -159,7 +151,7 @@ const SharedImageView: React.FC<SharedImageProps> = ({
 };
 
 // -------------------------------
-// 6. Page Entry Point
+// 5. Page Entry Point
 // -------------------------------
 export default async function SharedImagePage({ params }: {params : any}) {
   const props = await getSharedImage(params.id);

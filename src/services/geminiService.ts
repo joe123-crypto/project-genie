@@ -1,4 +1,4 @@
-﻿import { downscale } from "../utils/downscale";
+import { downscale } from "../utils/downscale";
 
 /**
  * Applies a filter to a single image using a prompt.
@@ -213,7 +213,8 @@ export const improvePrompt = async (prompt: string): Promise<string> => {
  */
 export const mergeImages = async (
   imageInputs: (File | string) [],
-  prompt: string
+  prompt: string,
+  save?: string
 ): Promise<string> => {
   if (imageInputs.length < 2) {
     throw new Error("At least two images are required to merge.");
@@ -303,6 +304,7 @@ ${prompt}
           { mediaType: 'image/png', data: imageBase64A },
           { mediaType: 'image/png', data: imageBase64B },
         ],
+        save,
       }),
     });
 

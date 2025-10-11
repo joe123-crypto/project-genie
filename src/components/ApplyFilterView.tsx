@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { applyImageFilter } from '../services/geminiService';
 import { shareImage, ShareResult } from '../services/shareService';
@@ -55,6 +56,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
 
   const handleApplyFilter = useCallback(async () => {
     setError(null);
+    setSaveStatus('idle'); // Reset save status
 
     const imagesToProcess: string[] = [];
     if (uploadedImage1) imagesToProcess.push(uploadedImage1);
@@ -95,33 +97,13 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     }
   }, [uploadedImage1, uploadedImage2, filterPrompt, filterType, personalPrompt]);
 
-  const handleShare = useCallback(async () => {
-    if (!generatedImage) return;
-
-    setIsSharing(true);
-    setError(null);
-
-    try {
-      if (!filter) {
-        console.error("No filter given");
-        return;
-      }
-      const result: ShareResult = await shareImage(generatedImage, filter, user);
-
-      setShareUrl(result.shareUrl);
-
-      if (result.status === 'modal') {
-        setIsShareModalOpen(true);
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? `Sharing failed: ${err.message}` : 'Unknown error');
-    } finally {
-      setIsSharing(false);
-    }
-  }, [generatedImage, filter, user]);
-
   const handleSave = useCallback(async () => {
-    if (!generatedImageFilename) return;
+    if (!generatedImageFilename || generatedImageFilename.startsWith('saved/')) {
+      if (generatedImageFilename?.startsWith('saved/')) {
+        setSaveStatus('saved');
+      }
+      return generatedImage;
+    }
 
     setIsSaving(true);
     setSaveStatus('idle');
@@ -131,7 +113,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
       const response = await fetch('/api/save-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: generatedImageFilename }),
+        body: JSON.stringify({ filename: generatedImageFilename, destination: 'saved' }),
       });
 
       const data = await response.json();
@@ -139,37 +121,71 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
 
       if (data.url) {
         setGeneratedImage(data.url);
-        setGeneratedImageFilename(data.url.substring(data.url.indexOf("saved/")));
+        const newFilename = data.url.substring(data.url.indexOf("saved/"));
+        setGeneratedImageFilename(newFilename);
+        setSaveStatus('saved');
+        return data.url;
       }
+      
+      setSaveStatus('error');
+      return generatedImage;
 
-      setSaveStatus('saved');
     } catch (err: unknown) {
       setError(err instanceof Error ? `Save failed: ${err.message}` : 'An unknown error occurred while saving.');
       setSaveStatus('error');
+      return generatedImage;
     } finally {
       setIsSaving(false);
     }
-  }, [generatedImageFilename]);
+  }, [generatedImage, generatedImageFilename]);
+
+  const handleShare = useCallback(async () => {
+    if (!generatedImage) return;
+
+    setIsSharing(true);
+    setError(null);
+
+    try {
+        const finalImageUrl = await handleSave();
+
+        if (!finalImageUrl) {
+            throw new Error("Could not get a saveable image URL.");
+        }
+
+        if (!filter) {
+            console.error("No filter given");
+            return;
+        }
+        const result: ShareResult = await shareImage(finalImageUrl, filter, user);
+
+        setShareUrl(result.shareUrl);
+
+        if (result.status === 'modal') {
+            setIsShareModalOpen(true);
+        }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? `Sharing failed: ${err.message}` : 'Unknown error');
+    } finally {
+      setIsSharing(false);
+    }
+  }, [generatedImage, filter, user, handleSave]);
 
   const handleDownload = useCallback(async () => {
     if (!generatedImage) return;
 
     try {
-      // Fetch the image data, works for both data URLs and remote URLs (if CORS is configured)
       const response = await fetch(generatedImage);
       if (!response.ok) throw new Error('Failed to fetch image for download.');
       
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       
-      // Create a temporary link to trigger the download
       const a = document.createElement('a');
       a.href = url;
       a.download = generatedImageFilename || 'creation.png';
       document.body.appendChild(a);
       a.click();
       
-      // Clean up the temporary link and object URL
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
@@ -306,7 +322,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
                 className="flex items-center gap-2 bg-neutral-200 hover:bg-neutral-300 dark:bg-dark-neutral-200 dark:hover:bg-dark-neutral-300 text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
               >
                 <ShareIcon />
-                {isWindows ? 'Share (WhatsApp)' : 'Share'}
+                {isWindows ? 'Share' : 'Share'}
               </button>
               <button
                 onClick={handleDownload}

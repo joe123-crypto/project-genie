@@ -50,12 +50,26 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
     if (!formData.previewImageUrl) return alert("Please upload a preview image.");
 
     try {
+      let finalImageUrl = formData.previewImageUrl;
+
+      if (formData.previewImageUrl && formData.previewImageUrl.startsWith('data:image')) {
+        const response = await fetch('/api/save-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: formData.previewImageUrl, destination: 'outfits' }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to save image');
+        finalImageUrl = data.url;
+      }
+
       const idToken = await getValidIdToken();
       const payload: Omit<Outfit, "id"> = {
         name: formData.name,
         description: formData.description,
         prompt: formData.additionalStyle,
-        previewImageUrl: formData.previewImageUrl,
+        previewImageUrl: finalImageUrl,
         userId: user?.uid,
         username: user?.email?.split("@")[0] || user?.email || "anonymous",
         type: "single",

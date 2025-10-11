@@ -3,24 +3,25 @@ import {
   S3Client,
   CopyObjectCommand,
   DeleteObjectCommand,
+  PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import { NodeHttpHandler } from "@aws-sdk/node-http-handler";
 import { Agent } from "https";
+import { v4 as uuidv4 } from 'uuid';
 
-// Create the R2 client using environment variables
 const r2 = new S3Client({
-  region: "auto",
-  endpoint: process.env.R2_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-  },
-  requestHandler: new NodeHttpHandler({
-    httpsAgent: new Agent({
-      // @ts-ignore
-      secureProtocol: "TLSv1_2_method",
+    region: "auto",
+    endpoint: process.env.R2_ENDPOINT,
+    credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+    },
+    requestHandler: new NodeHttpHandler({
+        httpsAgent: new Agent({
+            // @ts-ignore
+            secureProtocol: "TLSv1_2_method",
+        }),
     }),
-  }),
 });
 
 export default async function handler(
@@ -31,44 +32,63 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const { filename, image, destination } = req.body as {
+    filename?: string;
+    image?: string;
+    destination?: 'saved' | 'filters' | 'outfits';
+  };
+
+  const bucket = process.env.R2_BUCKET_NAME!;
+  console.log("Received destination:", destination);
+
   try {
-    const { filename } = req.body as { filename?: string };
+    if (destination === 'saved') {
+      if (!filename || !filename.startsWith("filtered/")) {
+        return res.status(400).json({ error: "Invalid request for saving an image." });
+      }
 
-    if (!filename) {
-      return res.status(400).json({ error: "Filename is required" });
+      const newKey = filename.replace(/^filtered\//, "saved/");
+      console.log("Saving to saved. New key:", newKey);
+
+      await r2.send(
+        new CopyObjectCommand({
+          Bucket: bucket,
+          CopySource: `${bucket}/${filename}`,
+          Key: newKey,
+        })
+      );
+      await r2.send(new DeleteObjectCommand({ Bucket: bucket, Key: filename }));
+
+      const publicUrl = `${process.env.R2_PUBLIC_BASE_URL}/${newKey}`;
+      return res.status(200).json({ url: publicUrl });
+
+    } else if (destination === 'filters' || destination === 'outfits') {
+      if (!image || !image.startsWith('data:image')) {
+        return res.status(400).json({ error: "Invalid request for creating a filter or outfit image." });
+      }
+      
+      const newKey = `${destination}/${uuidv4()}.png`;
+      console.log("Saving to filters or outfits. New key:", newKey);
+      const buffer = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ""), 'base64');
+
+      await r2.send(
+        new PutObjectCommand({
+            Bucket: bucket,
+            Key: newKey,
+            Body: buffer,
+            ContentType: 'image/png',
+        })
+      );
+
+      const publicUrl = `${process.env.R2_PUBLIC_BASE_URL}/${newKey}`;
+      return res.status(200).json({ url: publicUrl });
+
+    } else {
+      console.log("Invalid destination received:", destination);
+      return res.status(400).json({ error: "Invalid destination." });
     }
-
-    // Enforce directory change
-    if (!filename.startsWith("filtered/")) {
-      return res.status(400).json({ error: "Filename must be under filtered/" });
-    }
-
-    const bucket = process.env.R2_BUCKET_NAME!;
-    const newKey = filename.replace(/^filtered\//, "saved/");
-
-    // Copy the object to the new location
-    await r2.send(
-      new CopyObjectCommand({
-        Bucket: bucket,
-        CopySource: `${bucket}/${filename}`, // old key
-        Key: newKey, // new key
-      })
-    );
-
-    // Delete the old object
-    await r2.send(
-      new DeleteObjectCommand({
-        Bucket: bucket,
-        Key: filename,
-      })
-    );
-
-    // Construct a public URL (assuming bucket is public)
-    const publicUrl = `${process.env.R2_PUBLIC_BASE_URL}/${newKey}`;
-
-    return res.status(200).json({ url: publicUrl });
   } catch (err: any) {
-    console.error("Error moving file:", err);
-    return res.status(500).json({ error: err.message || "Internal server error" });
+    console.error("Error in save-image API:", err);
+    return res.status(500).json({ error: err.message || "Internal Server Error" });
   }
 }

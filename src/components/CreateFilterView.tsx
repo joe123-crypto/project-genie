@@ -16,7 +16,6 @@ interface CreateFilterViewProps {
   onBack?: () => void;
 }
 
-
 const CreateFilterView: React.FC<CreateFilterViewProps> = ({
   setViewState,
   user,
@@ -99,19 +98,32 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
     }
   
     try {
+      let finalImageUrl = formData.previewImageUrl;
+
+      if (formData.previewImageUrl && formData.previewImageUrl.startsWith('data:image')) {
+        const response = await fetch('/api/save-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: formData.previewImageUrl, destination: 'filters' }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to save image');
+        finalImageUrl = data.url;
+      }
+
       const idToken = await getValidIdToken();
       const payload: Omit<Filter, 'id'> = {
         name: formData.name,
         description: formData.description,
         prompt: formData.prompt,
-        previewImageUrl: formData.previewImageUrl,
+        previewImageUrl: finalImageUrl,
         category: formData.category,
         type: 'single',
         userId: user?.uid,
         username: user?.email?.split('@')[0] || user?.email || 'anonymous',
       };
   
-      // ✅ if editing, update instead of saving new
       if (filterToEdit && onUpdateFilter) {
         await onUpdateFilter({ ...filterToEdit, ...payload });
       } else {
