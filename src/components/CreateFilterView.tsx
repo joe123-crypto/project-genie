@@ -78,7 +78,7 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
     }
     setIsGeneratingImage(true);
     try {
-      const img = await generateImageFromPrompt(formData.prompt);
+      const img = await generateImageFromPrompt(formData.prompt, 'filters');
       setFormData(prev => ({ ...prev, previewImageUrl: img }));
     } catch (e) {
       console.error(e);
@@ -104,7 +104,11 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
         const response = await fetch('/api/save-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: formData.previewImageUrl, destination: 'filters' }),
+            body: JSON.stringify({ 
+              image: formData.previewImageUrl, 
+              destination: 'filters', 
+              directoryName: formData.name 
+            }),
         });
 
         const data = await response.json();

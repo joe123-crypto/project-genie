@@ -87,16 +87,17 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { textPrompt, images, imageBase64, mode } = req.body as {
+  const { textPrompt, images, imageBase64, destination } = req.body as {
     textPrompt?: string;
     images?: ImageInput[];
     imageBase64?: string;
-    mode?: "filtered" | "ai-generated"; 
+    destination?: string;
   };
 
   if (!textPrompt) {
     return res.status(400).json({ error: "textPrompt required" });
   }
+  console.log(destination);
   try {
     const result = await generateText({
       model: "google/gemini-2.5-flash-image-preview",
@@ -140,7 +141,6 @@ export default async function handler(
       ],
     });
 
-      // Look inside the first step’s content for a file
     const firstStep: any = result.steps?.[0];
     const filePart: any = firstStep?.content?.find((c: any) => c?.type === "file");
     const generatedFile = filePart?.file ?? filePart;
@@ -152,7 +152,7 @@ export default async function handler(
 
     const { base64Data, mediaType = "image/png" } = filePart.file;
     const filename = generateRandomFilename("png");
-    const folder = mode === "ai-generated" ? "ai-generated" : "filtered";
+    const folder = destination || "filtered";
 
     const r2Url = await uploadPreviewToR2(
       filename,

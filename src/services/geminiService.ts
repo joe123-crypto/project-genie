@@ -95,7 +95,7 @@ ${prompt}
  * @param prompt - The text prompt for image generation.
  * @returns A public URL of the generated image (uploaded to R2).
  */
-export const generateImage = async (prompt: string): Promise<string> => {
+export const generateImage = async (prompt: string, destination?: string): Promise<string> => {
   console.log("hello world");
   try {
     console.log("Generating image with prompt:", prompt);
@@ -106,7 +106,7 @@ export const generateImage = async (prompt: string): Promise<string> => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ textPrompt: prompt }),
+      body: JSON.stringify({ textPrompt: prompt, destination: destination }),
     });
 
     console.log("Response status:", response.status);
