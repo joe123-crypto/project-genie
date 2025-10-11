@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ shareId: docRef.id, shareUrl, imageUrl });
       
     } catch (err: any) {
-      console.error("Error creating share:", err);
+      console.error("Error creating share:", err.message || err);
       return res.status(500).json({ error: err.message });
     }
   }
@@ -74,25 +74,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const doc = await db.collection('sharedImages').doc(id).get();
+      
+      const isJsonRequest = req.headers.accept?.includes('application/json');
+
       if (!doc.exists) {
-        return res.status(404).json({ error: 'Not found' });
+        if (isJsonRequest) {
+          return res.status(404).json({ error: 'Image not found' });
+        }
+        return res.status(404).send('Not Found');
       }
       
       const data = doc.data();
-      const appUrl = process.env.APP_URL || 'http://localhost:3000';
-      const pageUrl = `${appUrl}/shared/${id}`;
-      const html = generateHtml(data?.imageUrl, data?.filterName, pageUrl);
+      if (!data) {
+        const errorMsg = 'Data is missing in the document';
+        if (isJsonRequest) {
+          return res.status(500).json({ error: errorMsg });
+        }
+        return res.status(500).send('Internal Server Error');
+      }
 
-      res.setHeader('Content-Type', 'text/html');
-      return res.status(200).send(html);
+      if (isJsonRequest) {
+        // For client-side navigation in the Next.js app
+        return res.status(200).json({
+          imageUrl: data.imageUrl,
+          filterName: data.filterName,
+          filterId: data.filterId || null,
+          username: data.username || null,
+        });
+      } else {
+        // For social media crawlers
+        const appUrl = process.env.APP_URL || 'http://localhost:3000';
+        const pageUrl = `${appUrl}/shared/${id}`;
+        const html = generateHtml(data.imageUrl, data.filterName, pageUrl);
+
+        res.setHeader('Content-Type', 'text/html');
+        return res.status(200).send(html);
+      }
 
     } catch (err: any) {
-      console.error("Error fetching share:", err);
-      // Return a json error for client-side fetches
+      console.error("Error fetching share:", err.message || err);
       if (req.headers.accept?.includes('application/json')) {
-        return res.status(500).json({ error: err.message });
+        return res.status(500).json({ error: err.message || 'Internal Server Error' });
       }
-      // Otherwise, show a simple error page
       return res.status(500).send('Internal Server Error');
     }
   }

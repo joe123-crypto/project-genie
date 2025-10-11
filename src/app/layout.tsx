@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     siteName: "Genie",
     images: [
       {
-        url: "https://project-genie-sigma.vercel.app/1759166840424-2zo5cm378da.png",
+        url: "https://project-genie-sigma.vercel.app/lamp.png",
         width: 1200,
         height: 630,
         alt: "Genie AI Filter Preview",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     description:
       "Create, remix, and share AI-powered photo filters that look amazing on any picture.",
     images: [
-      "https://project-genie-sigma.vercel.app/1759166840424-2zo5cm378da.png",
+      "https://project-genie-sigma.vercel.app/lamp.png",
     ],
   },
   robots: {
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     follow: true,
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: "/lamp.png",
   },
 };
 
