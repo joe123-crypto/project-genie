@@ -21,7 +21,7 @@ export const applyImageFilter = async (
 
   // ✅ Downscale the input image (WebP by default, quality 0.8)
   const imageBase64 = await downscale(first, 1024, "webp", 0.8);
-  const mediaType = "image/png";
+  const mediaType = "image/webp";
   // ✅ Send request to backend
   const applyFilterPrompt = `
 <SYSTEM>
@@ -252,44 +252,12 @@ ${prompt}
 `;
 
   try {
-    /**
-     * Converts either a data URL or a remote URL (e.g. R2 image) to pure base64 safely.
-     * Uses Blob + FileReader, so the canvas never gets tainted.
-     */
-    
-    const toBase64 = async (inputUrl: string): Promise<string> => {
-      // Case 1: Already a base64 data URL (starts with data:image)
-      if (inputUrl.startsWith('data:image')) {
-        return inputUrl.split(',')[1];
-      }
-
-      // Case 2: Remote image (R2, Firebase, etc.)
-      const response = await fetch(inputUrl, { mode: 'cors' });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.statusText}`);
-      }
-
-      const blob = await response.blob();
-      const reader = new FileReader();
-
-      return new Promise((resolve, reject) => {
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          const base64 = result.split(',')[1];
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    };
-
-    // Convert both images to safe base64 strings
-    const [imageBase64A,imageBase64B] = await Promise.all([ 
-      toBase64(imageInputs[0] as string),
-      toBase64(imageInputs[1] as string),
+    // Convert both images to safe base64 strings and downscale them
+    const [imageBase64A, imageBase64B] = await Promise.all([
+      downscale(imageInputs[0], 1024, "webp", 0.8),
+      downscale(imageInputs[1], 1024, "webp", 0.8),
     ]);
-    
-    
+
     // Send both images and the prompt to your backend for merging
     const response = await fetch("/api/nanobanana", {
       method: "POST",
@@ -297,18 +265,27 @@ ${prompt}
       body: JSON.stringify({
         textPrompt: mergePrompt,
         images: [
-          { mediaType: 'image/png', data: imageBase64A },
-          { mediaType: 'image/png', data: imageBase64B },
+          { mediaType: 'image/webp', data: imageBase64A },
+          { mediaType: 'image/webp', data: imageBase64B },
         ],
         save,
       }),
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      throw new Error(data.error || "Failed to merge images");
+      let errorText;
+      try {
+        // Try to parse the error response as JSON
+        const errorData = await response.json();
+        errorText = errorData.error || `Request failed with status ${response.status}`;
+      } catch (e) {
+        // If parsing fails, use the raw response text
+        errorText = await response.text().catch(() => `Request failed with status ${response.status}`);
+      }
+      throw new Error(errorText || "Failed to merge images");
     }
+
+    const data = await response.json();
 
     // Return the generated image URL or base64 from backend
     if (data.imageBase64) return `data:image/png;base64,${data.imageBase64}`;
