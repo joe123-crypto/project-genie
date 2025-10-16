@@ -157,12 +157,12 @@ export const saveOutfit = async (outfitData: Omit<Outfit, 'id'>, idToken: string
  */
 export const incrementFilterAccessCount = async (filterId: string): Promise<void> => {
     try {
-        const response = await fetch('/api/firebase?action=incrementAccessCount', {
+        const response = await fetch('/api/firebase?action=incrementFilterAccessCount', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ filterId }),
+            body: JSON.stringify({ id: filterId }),
         });
 
         if (!response.ok) {
@@ -214,7 +214,7 @@ export const incrementOutfitAccessCount = async (outfitId: string): Promise<void
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ outfitId }),
+            body: JSON.stringify({ id: outfitId }),
         });
 
         if (!response.ok) {

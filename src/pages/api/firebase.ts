@@ -65,9 +65,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ success: true });
       }
       case "incrementFilterAccessCount": {
-        const { filterId } = req.body;
-        if (!filterId) return res.status(400).json({ error: "Missing filterId" });
-        await db.collection("filters").doc(filterId).update({ accessCount: admin.firestore.FieldValue.increment(1) });
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: "Missing id" });
+        await db.collection("filters").doc(id).update({ accessCount: admin.firestore.FieldValue.increment(1) });
         return res.status(200).json({ success: true });
       }
 
@@ -92,9 +92,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ outfit: newOutfit });
       }
       case "incrementOutfitAccessCount": {
-        const { outfitId } = req.body;
-        if (!outfitId) return res.status(400).json({ error: "Missing outfitId" });
-        await db.collection("outfits").doc(outfitId).update({ accessCount: admin.firestore.FieldValue.increment(1) });
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: "Missing id" });
+        await db.collection("outfits").doc(id).update({ accessCount: admin.firestore.FieldValue.increment(1) });
         return res.status(200).json({ success: true });
       }
 
