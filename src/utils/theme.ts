@@ -39,6 +39,20 @@ export const themeColors = {
         hover: 'dark:hover:bg-dark-brand-secondary',
       }
     },
+
+    // Success colors
+    success: {
+      light: {
+        100: 'bg-green-200',
+        200: 'hover:bg-green-300',
+        text: 'text-green-900',
+      },
+      dark: {
+        100: 'dark:bg-green-800',
+        200: 'dark:hover:bg-green-700',
+        text: 'dark:text-green-100',
+      }
+    },
   
     // Neutral colors
     neutral: {
@@ -68,6 +82,8 @@ export const themeColors = {
       primary: `px-4 py-2 ${themeColors.brand.light.primary} ${themeColors.brand.light.hover} ${themeColors.brand.dark.primary} ${themeColors.brand.dark.hover} ${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-bold rounded-lg transition-colors`,
       
       secondary: `px-4 py-2 ${themeColors.neutral.light[200]} ${themeColors.neutral.light.hover} ${themeColors.neutral.dark[200]} ${themeColors.neutral.dark.hover} ${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-bold rounded-lg transition-colors`,
+
+      success: `w-full sm:w-auto ${themeColors.success.light[100]} ${themeColors.success.light[200]} ${themeColors.success.dark[100]} ${themeColors.success.dark[200]} ${themeColors.success.light.text} ${themeColors.success.dark.text} font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg`,
       
       icon: `p-2 rounded-lg ${themeColors.neutral.light[200]} ${themeColors.neutral.dark[200]} ${themeColors.neutral.light.hover} ${themeColors.neutral.dark.hover} transition-colors`,
     },

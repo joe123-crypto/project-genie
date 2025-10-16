@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getSharedImage } from '../services/shareService';
 import Spinner from './Spinner';
-import { ViewState, Filter } from '../types'; // ✅ Filter included
+import { ViewState, Filter } from '../types';
+import { getFilterById } from '../services/firebaseService';
 
 interface SharedImageViewProps {
   shareId: string;
@@ -11,7 +12,7 @@ interface SharedImageViewProps {
 interface SharedImage {
   imageUrl: string;
   filterName: string;
-  filterId?: string; // ✅ added filterId support
+  filterId?: string;
   username?: string;
 }
 
@@ -19,6 +20,7 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
   const [shareData, setShareData] = useState<SharedImage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isFetchingFilter, setIsFetchingFilter] = useState(false);
 
   useEffect(() => {
     const fetchShare = async () => {
@@ -41,6 +43,24 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
 
     fetchShare();
   }, [shareId]);
+
+  const handleCreateYourOwn = async () => {
+    if (!shareData?.filterId) return;
+
+    setIsFetchingFilter(true);
+    try {
+      const filter = await getFilterById(shareData.filterId);
+      setViewState({
+        view: 'apply',
+        filter: filter,
+      });
+    } catch (error) {
+      console.error("Failed to fetch filter details", error);
+      setError("Could not load the filter. Please try again later.");
+    } finally {
+      setIsFetchingFilter(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -93,15 +113,15 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           {shareData.filterId && (
             <button
-              onClick={() =>
-                setViewState({
-                  view: 'apply',
-                  filter: { id: shareData.filterId, name: shareData.filterName } as Filter, // ✅ minimal filter object
-                })
-              }
-              className="w-full sm:w-auto bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg"
+              onClick={handleCreateYourOwn}
+              disabled={isFetchingFilter}
+              className="w-full sm:w-auto bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Create Your Own
+              {isFetchingFilter ? (
+                <Spinner className="h-5 w-5 mx-auto" />
+              ) : (
+                'Create Your Own'
+              )}
             </button>
           )}
           <button

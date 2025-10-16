@@ -35,6 +35,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const filters = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         return res.status(200).json({ filters });
       }
+      case "getFilterById": {
+        const { id } = req.query;
+        if (!id || typeof id !== 'string') return res.status(400).json({ error: "Missing or invalid filter id" });
+
+        const docRef = db.collection("filters").doc(id);
+        const doc = await docRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: "Filter not found" });
+        }
+
+        const filter = { id: doc.id, ...doc.data() };
+        return res.status(200).json({ filter });
+      }
       case "saveFilter": {
         const { filter } = req.body;
         if (!filter) return res.status(400).json({ error: "Missing filter data" });

@@ -1,8 +1,8 @@
-
 import { Metadata } from "next";
 import Link from "next/link";
 import React from "react";
 import { initializeFirebaseAdmin } from "@/lib/firebaseAdmin";
+import { commonClasses } from "@/utils/theme";
 
 // -------------------------------
 // 1. Define Component Props
@@ -124,10 +124,10 @@ const SharedImageView: React.FC<SharedImageProps> = ({
           <img src={imageUrl} alt={`Image created with ${filterName} filter`} className="object-contain w-full h-full" loading="eager" />
         </div>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link href={filterId ? `/apply/${filterId}` : "/"} className="w-full sm:w-auto bg-green-200 hover:bg-green-300 dark:bg-green-800 dark:hover:bg-green-700 text-green-900 dark:text-green-100 font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg">
+          <Link href={filterId ? `/?view=apply&filterId=${filterId}` : "/"} className={commonClasses.button.success}>
             Create Your Own
           </Link>
-          <Link href="/" className="w-full sm:w-auto bg-neutral-200 hover:bg-neutral-300 dark:bg-dark-neutral-200 dark:hover:bg-dark-neutral-300 text-content-100 dark:text-dark-content-100 font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg">
+          <Link href="/" className={`${commonClasses.button.secondary} w-full sm:w-auto py-3 px-6`}>
             Go Back To Marketplace
           </Link>
         </div>

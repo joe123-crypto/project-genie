@@ -1,6 +1,5 @@
 'use client';
 
-// pages/index.tsx
 import { useState, useCallback, useEffect } from "react";
 import { Filter, ViewState, User, Outfit } from "../types";
 import CreateMenu from "../components/CreateMenu";
@@ -12,7 +11,7 @@ import AuthView from "../components/AuthView";
 import SharedImageView from "../components/SharedImageView";
 import WelcomeModal from "../components/WelcomeModal";
 import { SunIcon, MoonIcon } from "../components/icons";
-import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount } from "../services/firebaseService";
+import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById } from "../services/firebaseService";
 import { loadUserSession, signOut, getValidIdToken } from "../services/authService";
 import Spinner from "../components/Spinner";
 import { commonClasses } from "../utils/theme";
@@ -96,18 +95,32 @@ export default function Home() {
     const currentUser = loadUserSession();
     if (currentUser) setUser(currentUser);
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const shareId = urlParams.get("share");
-    if (shareId) {
-      setViewState({ view: "shared", shareId });
-      setIsLoading(false);
-      window.history.replaceState({}, document.title, window.location.pathname);
-      return;
-    }
-
     const initializeApp = async () => {
       try {
         setIsLoading(true);
+        const urlParams = new URLSearchParams(window.location.search);
+        const view = urlParams.get("view");
+        const filterId = urlParams.get("filterId");
+        const shareId = urlParams.get("share");
+
+        if (shareId) {
+          setViewState({ view: "shared", shareId });
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (view === "apply" && filterId) {
+          // Fetch the specific filter if the view is 'apply'
+          const selectedFilter = await getFilterById(filterId);
+          if (selectedFilter) {
+            setViewState({ view: "apply", filter: selectedFilter });
+          } else {
+            // Fallback to marketplace if filter not found
+            setViewState({ view: "marketplace" });
+          }
+          // Clean the URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+          setViewState({ view: "marketplace" });
+        }
+
         const fetchedFilters = await getFilters();
         setFilters(fetchedFilters);
 

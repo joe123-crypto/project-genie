@@ -27,6 +27,33 @@ export const getFilters = async (): Promise<Filter[]> => {
     }
 };
 
+/**
+ * Fetches a single filter by its ID from the backend API
+ * @param id - The ID of the filter to fetch
+ * @returns A promise that resolves to the Filter object
+ */
+export const getFilterById = async (id: string): Promise<Filter> => {
+    try {
+        const response = await fetch(`/api/firebase?action=getFilterById&id=${id}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch filter');
+        }
+
+        const data = await response.json();
+        return data.filter;
+    } catch (error) {
+        console.error(`Error fetching filter with id ${id}:`, error);
+        throw error;
+    }
+}
+
 
 /**
  * Saves a filter to the backend
