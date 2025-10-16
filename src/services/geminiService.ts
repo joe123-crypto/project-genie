@@ -294,7 +294,7 @@ ${prompt}
         // Try to parse the error response as JSON
         const errorData = await response.json();
         errorText = errorData.error || `Request failed with status ${response.status}`;
-      } catch (e) {
+      } catch {
         // If parsing fails, use the raw response text
         errorText = await response.text().catch(() => `Request failed with status ${response.status}`);
       }

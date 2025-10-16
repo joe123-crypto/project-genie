@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getSharedImage } from '../services/shareService';
 import Spinner from './Spinner';
-import { ViewState, Filter } from '../types';
+import { ViewState } from '../types';
 import { getFilterById } from '../services/firebaseService';
 
 interface SharedImageViewProps {
