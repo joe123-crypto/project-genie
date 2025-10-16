@@ -17,7 +17,14 @@ export const applyImageFilter = async (
   if (inputs.length === 0) throw new Error("At least one image is required");
 
   // Only supports a single image; use mergeImages for multiple
-  const first = inputs[0];
+  let first = inputs[0];
+
+  // Cache-busting for mobile browser issues
+  if (typeof first === 'string' && first.startsWith('http')) {
+    const url = new URL(first);
+    url.searchParams.set('t', Date.now().toString());
+    first = url.toString();
+  }
 
   // ✅ Downscale the input image (WebP by default, quality 0.8)
   const imageBase64 = await downscale(first, 1024, "webp", 0.8);
@@ -27,7 +34,7 @@ export const applyImageFilter = async (
 <SYSTEM>
 You are a professional visual editor and AI image retoucher.
 
-You must follow these principles unless explicitly told otherwise in the user's instructions below.
+You must follow these principles unless explicitly told otherwise in the user\'s instructions below.
 
 1. Purpose:
    - Apply visual filters or artistic effects to the provided image
@@ -240,10 +247,10 @@ Maintain:
 - Natural transitions between clothing and skin.
 
 Never:
-- Alter or reinterpret the person's face, expression, emotion, or head orientation.
+- Alter or reinterpret the person\'s face, expression, emotion, or head orientation.
 - Leave traces of the old clothing.
 - Add invented accessories or background changes.
-- Change the person's body proportions, pose, or identity.
+- Change the person\'s body proportions, pose, or identity.
 
 Output a **realistic, high-quality image** where the person retains their exact face and expression, but now appears genuinely dressed in the new outfit.
 
@@ -252,10 +259,19 @@ ${prompt}
 `;
 
   try {
+    const processedInputs = imageInputs.map(input => {
+      if (typeof input === 'string' && input.startsWith('http')) {
+        const url = new URL(input);
+        url.searchParams.set('t', Date.now().toString());
+        return url.toString();
+      }
+      return input;
+    });
+      
     // Convert both images to safe base64 strings and downscale them
     const [imageBase64A, imageBase64B] = await Promise.all([
-      downscale(imageInputs[0], 1024, "webp", 0.8),
-      downscale(imageInputs[1], 1024, "webp", 0.8),
+      downscale(processedInputs[0], 1024, "webp", 0.8),
+      downscale(processedInputs[1], 1024, "webp", 0.8),
     ]);
 
     // Send both images and the prompt to your backend for merging
