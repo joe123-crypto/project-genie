@@ -16,24 +16,18 @@ const ASPECT_RATIOS = ['aspect-square', 'aspect-[3/4]', 'aspect-[4/3]'];
 const Marketplace: React.FC<MarketplaceProps> = ({ filters, onSelectFilter, user, onDeleteFilter, onEditFilter }) => {
 
   const { trendingSection, otherSections } = useMemo(() => {
-    // Sort by access count, descending. Filters without a count are last.
     const sortedFilters = [...filters].sort((a, b) => (b.accessCount || 0) - (a.accessCount || 0));
-
-    // Get top 5 filters, but only if they have been accessed at least once.
     const trendingFilters = sortedFilters.slice(0, 5).filter(f => (f.accessCount || 0) > 0);
     const trendingIds = new Set(trendingFilters.map(f => f.id));
-
-    // All other filters are not trending.
     const otherFilters = filters.filter(f => !trendingIds.has(f.id));
     
-    // Group other filters by their category.
     const categoriesMap = new Map<string, Filter[]>();
+    const validCategories = new Set(['Fun', 'Useful', 'Futuristic', 'Other']);
+
     otherFilters.forEach(filter => {
         let category = filter.category;
-        // If a filter has the legacy "Trending" category but isn't popular enough
-        // to be in the main trending section, re-categorize it to avoid confusion.
-        if (category === 'Trending') {
-            category = 'AI Generated';
+        if (!category || !validCategories.has(category)) {
+            category = 'Other';
         }
 
         if (!categoriesMap.has(category)) {
@@ -42,8 +36,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ filters, onSelectFilter, user
         categoriesMap.get(category)!.push(filter);
     });
     
-    // Sort categories for consistent display order.
-    const preferredOrder = ['AI Generated', 'Useful', 'Fun'];
+    const preferredOrder = ['Fun', 'Useful', 'Futuristic', 'Other'];
     const sortedCategoryNames = Array.from(categoriesMap.keys()).sort((a, b) => {
         const indexA = preferredOrder.indexOf(a);
         const indexB = preferredOrder.indexOf(b);

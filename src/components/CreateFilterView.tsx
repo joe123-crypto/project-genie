@@ -178,14 +178,18 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
             <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
               Category
             </label>
-            <input
-              type="text"
+            <select
               value={formData.category}
               onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
               className="w-full p-2 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100"
-              placeholder="Category (e.g. Portrait, Fun, Artistic)"
               required
-            />
+            >
+              <option value="" disabled>Select a category</option>
+              <option value="Fun">Fun</option>
+              <option value="Useful">Useful</option>
+              <option value="Futuristic">Futuristic</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
 
           {/* Description */}

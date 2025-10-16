@@ -10,7 +10,7 @@ import StudioView from "../components/CreateFilterView";
 import AuthView from "../components/AuthView";
 import SharedImageView from "../components/SharedImageView";
 import WelcomeModal from "../components/WelcomeModal";
-import { SunIcon, MoonIcon } from "../components/icons";
+import { SunIcon, MoonIcon, WhatsAppIcon } from "../components/icons";
 import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById } from "../services/firebaseService";
 import { loadUserSession, signOut, getValidIdToken } from "../services/authService";
 import Spinner from "../components/Spinner";
@@ -383,23 +383,23 @@ export default function Home() {
         </header>
         {/* Add tabs for Filters and Outfits */}
         <div className="max-w-7xl mx-auto mb-8">
-          <div className="flex gap-4">
+          <div className="flex gap-8 border-b border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setViewState({ view: "marketplace" })}
-              className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+              className={`py-3 font-semibold transition-colors ${
                 viewState.view === "marketplace"
-                  ? "bg-brand-primary text-white"
-                  : "bg-base-200 dark:bg-dark-base-200 text-content-100 dark:text-dark-content-100 hover:bg-base-300 dark:hover:bg-dark-base-300"
+                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
               }`}
             >
               Filters
             </button>
             <button
               onClick={() => setViewState({ view: "outfits" })}
-              className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+              className={`py-3 font-semibold transition-colors ${
                 viewState.view === "outfits"
-                  ? "bg-brand-primary text-white"
-                  : "bg-base-200 dark:bg-dark-base-200 text-content-100 dark:text-dark-content-100 hover:bg-base-300 dark:hover:bg-dark-base-300"
+                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
               }`}
             >
               Outfits
@@ -414,6 +414,18 @@ export default function Home() {
           onClose={() => setIsWelcomeModalOpen(false)} 
         />
       )}
+      <footer className="text-center py-4  text-sm text-content-300 dark:text-dark-content-300">
+        <p>&copy; {new Date().getFullYear()} Genie. All rights reserved.</p>
+      </footer>
+      <a
+        href="https://chat.whatsapp.com/CJOxnqhRxW2DGjtujQqvKE"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 bg-green-500 text-white font-bold py-3 px-4 rounded-full shadow-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+      >
+        <WhatsAppIcon />
+        <span className="hidden sm:block">Join Community for Support</span>
+      </a>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { DollarIcon } from './icons';
+import { SparklesIcon } from './icons'; // Changed from DollarIcon to SparklesIcon
 import { commonClasses, themeColors } from '../utils/theme';
 
 interface WelcomeModalProps {
@@ -26,20 +26,17 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
       >
         {/* Icon container */}
         <div className={`mx-auto flex items-center justify-center h-16 w-16 rounded-full ${themeColors.brand.light.primary.replace('bg-', 'bg-opacity-20')} ${themeColors.brand.dark.primary.replace('dark:bg-', 'dark:bg-opacity-20')} mb-4`}>
-          <DollarIcon className={`h-8 w-8 ${themeColors.brand.light.primary.replace('bg-', 'text-')} ${themeColors.brand.dark.primary.replace('dark:bg-', 'dark:text-')}`} />
+          <SparklesIcon className={`h-8 w-8 ${themeColors.brand.light.primary.replace('bg-', 'text-')} ${themeColors.brand.dark.primary.replace('dark:bg-', 'dark:text-')}`} />
         </div>
 
         {/* Title */}
         <h3 className={`text-2xl ${commonClasses.text.heading} mb-3`}>
-          Welcome to the Creator Program!
+          Create your own filters
         </h3>
 
         {/* Description */}
         <p className={`${commonClasses.text.body} mb-6`}>
-          If your filter stays in the{' '}
-          <span className={commonClasses.text.heading}>Trending</span> section for 10 days,
-          you get a commission of{' '}
-          <span className={commonClasses.text.heading}>$0.25</span> per day.
+          You dont have to just use them, you can create filters that other people can use too
         </p>
 
         {/* Action Button */}
