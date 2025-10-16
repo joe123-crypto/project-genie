@@ -418,7 +418,7 @@ export default function Home() {
         <p>&copy; {new Date().getFullYear()} Genie. All rights reserved.</p>
       </footer>
       <a
-        href="https://chat.whatsapp.com/CJOxnqhRxW2DGjtujQqvKF"
+        href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 bg-green-500 text-white font-bold py-3 px-4 rounded-full shadow-lg hover:bg-green-600 transition-colors flex items-center gap-2"
