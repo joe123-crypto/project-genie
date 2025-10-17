@@ -34,6 +34,8 @@ export interface User {
     idToken: string;
     refreshToken: string;
     expiresAt: number;
+    displayName?: string;
+    photoURL?: string;
 }
 
 export interface Share {
@@ -56,4 +58,5 @@ export type ViewState =
   | { view: "auth" }
   | { view: "shared"; shareId: string }
   | { view: "outfits" }
-  | { view: "applyOutfit"; outfit: Outfit };
+  | { view: "applyOutfit"; outfit: Outfit }
+  | { view: "profile" };

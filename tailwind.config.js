@@ -30,6 +30,10 @@ module.exports = {
         'dark-neutral-300': 'var(--dark-neutral-300)',
         'dark-border-color': 'var(--dark-border-color)',
       },
+      fontFamily: {
+        sans: ['var(--font-inter)'],
+        heading: ['var(--font-poppins)'],
+      },
     },
   },
   plugins: [],

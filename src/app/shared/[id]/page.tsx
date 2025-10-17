@@ -3,6 +3,7 @@ import Link from "next/link";
 import React from "react";
 import { initializeFirebaseAdmin } from "@/lib/firebaseAdmin";
 import { commonClasses } from "@/utils/theme";
+import Image from "next/image";
 
 // -------------------------------
 // 1. Define Component Props
@@ -121,7 +122,7 @@ const SharedImageView: React.FC<SharedImageProps> = ({
         </h2>
         {username && <p className="text-content-200 dark:text-dark-content-200 mt-2">Shared by {username}</p>}
         <div className="my-6 w-full aspect-square bg-base-300 dark:bg-dark-base-300 rounded-lg flex items-center justify-center overflow-hidden">
-          <img src={imageUrl} alt={`Image created with ${filterName} filter`} className="object-contain w-full h-full" loading="eager" />
+          <Image src={imageUrl} alt={`Image created with ${filterName} filter`} className="object-contain w-full h-full" priority width={512} height={512} />
         </div>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href={filterId ? `/?view=apply&filterId=${filterId}` : "/"} className={commonClasses.button.success}>

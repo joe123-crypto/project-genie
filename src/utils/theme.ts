@@ -79,11 +79,11 @@ export const themeColors = {
   export const commonClasses = {
     // Button variants
     button: {
-      primary: `px-4 py-2 ${themeColors.brand.light.primary} ${themeColors.brand.light.hover} ${themeColors.brand.dark.primary} ${themeColors.brand.dark.hover} ${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-bold rounded-lg transition-colors`,
+      primary: `px-4 py-2 ${themeColors.brand.light.primary} ${themeColors.brand.light.hover} ${themeColors.brand.dark.primary} ${themeColors.brand.dark.hover} ${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-heading font-bold rounded-lg transition-colors`,
       
-      secondary: `px-4 py-2 ${themeColors.neutral.light[200]} ${themeColors.neutral.light.hover} ${themeColors.neutral.dark[200]} ${themeColors.neutral.dark.hover} ${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-bold rounded-lg transition-colors`,
+      secondary: `px-4 py-2 ${themeColors.neutral.light[200]} ${themeColors.neutral.light.hover} ${themeColors.neutral.dark[200]} ${themeColors.neutral.dark.hover} ${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-heading font-bold rounded-lg transition-colors`,
 
-      success: `w-full sm:w-auto ${themeColors.success.light[100]} ${themeColors.success.light[200]} ${themeColors.success.dark[100]} ${themeColors.success.dark[200]} ${themeColors.success.light.text} ${themeColors.success.dark.text} font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg`,
+      success: `w-full sm:w-auto ${themeColors.success.light[100]} ${themeColors.success.light[200]} ${themeColors.success.dark[100]} ${themeColors.success.dark[200]} ${themeColors.success.light.text} ${themeColors.success.dark.text} font-heading font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg`,
       
       icon: `p-2 rounded-lg ${themeColors.neutral.light[200]} ${themeColors.neutral.dark[200]} ${themeColors.neutral.light.hover} ${themeColors.neutral.dark.hover} transition-colors`,
     },
@@ -97,8 +97,8 @@ export const themeColors = {
   
     // Text variants
     text: {
-      heading: `${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-bold`,
-      body: `${themeColors.content.light[200]} ${themeColors.content.dark[200]}`,
+      heading: `${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-heading font-bold`,
+      body: `${themeColors.content.light[200]} ${themeColors.content.dark[200]} font-sans`,
     },
   
     // Transition effects

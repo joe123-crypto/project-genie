@@ -71,7 +71,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ filters, onSelectFilter, user
         <div className="space-y-10">
             {trendingSection.filters.length > 0 && (
                 <section>
-                    <h3 className="text-2xl font-bold text-content-100 dark:text-dark-content-100 mb-4 border-b-2 border-base-300 dark:border-dark-border-color pb-2">{trendingSection.name}</h3>
+                    <h3 className="text-2xl font-bold text-content-100 dark:text-dark-content-100 mb-4 pb-2">{trendingSection.name}</h3>
                     <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3 sm:gap-4 justify-items-center">
                         {trendingSection.filters.map((filter, index) => (
                             <FilterCard
@@ -91,7 +91,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ filters, onSelectFilter, user
             if (categorySection.filters.length === 0) return null;
             return (
                 <section key={categorySection.name}>
-                    <h3 className="text-2xl font-bold text-content-100 dark:text-dark-content-100 mb-4 border-b-2 border-base-300 dark:border-dark-border-color pb-2">{categorySection.name}</h3>
+                    <h3 className="text-2xl font-bold text-content-100 dark:text-dark-content-100 mb-4">{categorySection.name}</h3>
                     <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3 sm:gap-4 justify-items-center">
                         {categorySection.filters.map((filter, index) => (
                             <FilterCard

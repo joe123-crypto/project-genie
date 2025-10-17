@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useEffect } from "react";
@@ -11,10 +12,13 @@ import AuthView from "../components/AuthView";
 import SharedImageView from "../components/SharedImageView";
 import WelcomeModal from "../components/WelcomeModal";
 import { SunIcon, MoonIcon, WhatsAppIcon } from "../components/icons";
-import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById } from "../services/firebaseService";
+import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById, deleteUser } from "../services/firebaseService";
 import { loadUserSession, signOut, getValidIdToken } from "../services/authService";
 import Spinner from "../components/Spinner";
 import { commonClasses } from "../utils/theme";
+import UserIcon from '../components/UserIcon';
+import ConfirmationDialog from '../components/ConfirmationDialog';
+import ProfileView from '../components/ProfileView';
 
 // Only cache minimal filter info
 interface CachedFilter {
@@ -40,6 +44,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(false);
   const [isDark, setIsDark] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState<boolean>(false);
 
   // Load theme from localStorage
   useEffect(() => {
@@ -268,6 +273,23 @@ export default function Home() {
     setUser(null);
     setViewState({ view: "marketplace" });
   };
+  
+  const handleRemoveAccount = async () => {
+    setShowConfirmDialog(true);
+  };
+  
+  const confirmRemoveAccount = async () => {
+    try {
+      const idToken = await getValidIdToken();
+      if (!idToken) throw new Error("Session expired");
+      await deleteUser(idToken);
+      handleSignOut();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setShowConfirmDialog(false);
+    }
+  };
 
   // Render view
   const renderView = () => {
@@ -309,6 +331,8 @@ export default function Home() {
         return <AuthView setViewState={setViewState} onSignInSuccess={handleSignInSuccess} />;
       case "shared":
         return <SharedImageView shareId={viewState.shareId} setViewState={setViewState} />;
+      case "profile":
+        return <ProfileView user={user!} setViewState={setViewState} />;
       case "outfits":
         return (
           <div className="max-w-7xl mx-auto">
@@ -357,12 +381,12 @@ export default function Home() {
                 >
                   Create
                 </button>
-                <button
-                  onClick={handleSignOut}
-                  className={commonClasses.button.secondary}
-                >
-                  Sign Out
-                </button>
+                <UserIcon 
+                  user={user} 
+                  onSignOut={handleSignOut} 
+                  onGoToProfile={() => setViewState({ view: "profile" })}
+                  onRemoveAccount={handleRemoveAccount} 
+                />
               </>
             ) : (
               <button
@@ -412,6 +436,13 @@ export default function Home() {
         <WelcomeModal 
           isOpen={isWelcomeModalOpen} 
           onClose={() => setIsWelcomeModalOpen(false)} 
+        />
+      )}
+      {showConfirmDialog && (
+        <ConfirmationDialog
+          message="Are you sure you want to remove your account? This action is irreversible."
+          onConfirm={confirmRemoveAccount}
+          onCancel={() => setShowConfirmDialog(false)}
         />
       )}
       <footer className="text-center py-4  text-sm text-content-300 dark:text-dark-content-300">

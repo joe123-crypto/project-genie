@@ -111,6 +111,31 @@ export const deleteFilter = async (filterId: string, idToken: string): Promise<v
 };
 
 /**
+ * Deletes a user account from the backend
+ * @param idToken - The user's ID token for authentication
+ * @returns A promise that resolves when the user is deleted
+ */
+export const deleteUser = async (idToken: string): Promise<void> => {
+    try {
+        const response = await fetch('/api/user', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete user');
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        throw error;
+    }
+};
+
+/**
  * Updates a filter in the backend
  * @param filterId - The ID of the filter to update
  * @param filterData - The updated filter data

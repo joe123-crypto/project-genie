@@ -1,4 +1,4 @@
-﻿// Updated authService.ts to only call our API routes
+// Updated authService.ts to only call our API routes
 import { User } from '../types';
 
 const USER_SESSION_KEY = "genieUser";
@@ -101,6 +101,20 @@ export const loadUserSession = (): User | null => {
         localStorage.removeItem(USER_SESSION_KEY);
         return null;
     }
+};
+
+/**
+ * Updates the user session in localStorage
+ * @param updatedFields - The fields to update in the user session
+ * @returns The updated User object
+ */
+export const updateUserSession = (updatedFields: Partial<User>): User | null => {
+    const user = loadUserSession();
+    if (!user) return null;
+
+    const newUser = { ...user, ...updatedFields };
+    localStorage.setItem(USER_SESSION_KEY, JSON.stringify(newUser));
+    return newUser;
 };
 
 /**
