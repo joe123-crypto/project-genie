@@ -23,9 +23,9 @@ export const DefaultUserIcon: React.FC<IconProps> = ({ className = 'h-5 w-5' }) 
   );
   
 
-export const UploadIcon: React.FC = () => (
+export const UploadIcon: React.FC<IconProps> = ({ className = 'h-5 w-5' }) => (
   <svg
-    className="h-8 w-8 text-content-200 dark:text-dark-content-200"
+    className={className}
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -133,3 +133,18 @@ export const FacebookIcon: React.FC = () => (
         <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"></path>
     </svg>
 );
+
+export const SendIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5" }) => (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="22" y1="2" x2="11" y2="13" />
+      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    </svg>
+  );

@@ -11,7 +11,7 @@ import StudioView from "../components/CreateFilterView";
 import AuthView from "../components/AuthView";
 import SharedImageView from "../components/SharedImageView";
 import WelcomeModal from "../components/WelcomeModal";
-import { SunIcon, MoonIcon, WhatsAppIcon } from "../components/icons";
+import { SunIcon, MoonIcon } from "../components/icons";
 import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById, deleteUser } from "../services/firebaseService";
 import { loadUserSession, signOut, getValidIdToken } from "../services/authService";
 import Spinner from "../components/Spinner";
@@ -19,6 +19,7 @@ import { commonClasses } from "../utils/theme";
 import UserIcon from '../components/UserIcon';
 import ConfirmationDialog from '../components/ConfirmationDialog';
 import ProfileView from '../components/ProfileView';
+import Dashboard from '../components/Dashboard';
 
 // Only cache minimal filter info
 interface CachedFilter {
@@ -112,15 +113,12 @@ export default function Home() {
           setViewState({ view: "shared", shareId });
           window.history.replaceState({}, document.title, window.location.pathname);
         } else if (view === "apply" && filterId) {
-          // Fetch the specific filter if the view is 'apply'
           const selectedFilter = await getFilterById(filterId);
           if (selectedFilter) {
             setViewState({ view: "apply", filter: selectedFilter });
           } else {
-            // Fallback to marketplace if filter not found
             setViewState({ view: "marketplace" });
           }
-          // Clean the URL
           window.history.replaceState({}, document.title, window.location.pathname);
         } else {
           setViewState({ view: "marketplace" });
@@ -129,7 +127,6 @@ export default function Home() {
         const fetchedFilters = await getFilters();
         setFilters(fetchedFilters);
 
-        // Save minimal info to localStorage
         const minimalCache: CachedFilter[] = fetchedFilters.map(f => ({
           id: f.id,
           name: f.name,
@@ -138,7 +135,6 @@ export default function Home() {
         }));
         localStorage.setItem("filters", JSON.stringify(minimalCache));
 
-        // Fetch outfits from Firestore "outfits" collection
         const fetchedOutfits = await getOutfits();
         setOutfits(fetchedOutfits);
         const minimalOutfitCache: CachedOutfit[] = fetchedOutfits.map(o => ({
@@ -189,7 +185,6 @@ export default function Home() {
     }
   };
 
-  // Filter handlers
   const addFilter = useCallback(
     (newFilter: Filter) => updateLocalCache([newFilter, ...filters]),
     [filters]
@@ -219,8 +214,7 @@ export default function Home() {
       try {
         const idToken = await getValidIdToken();
         if (!idToken) throw new Error("Session expired");
-        const { id, ...dataToUpdate } =
-          filterToUpdate;
+        const { id, ...dataToUpdate } = filterToUpdate;
         const updatedFilter = await updateFilter(id, dataToUpdate, idToken);
         updateLocalCache(filters.map(f => (f.id === id ? updatedFilter : f)));
       } catch (err) {
@@ -250,7 +244,6 @@ export default function Home() {
     (outfit: Outfit) => {
       setViewState({ view: "applyOutfit", outfit });
       incrementOutfitAccessCount(outfit.id);
-      // incrementOutfitAccessCount(outfit.id);
       updateLocalOutfitCache(
         outfits.map(o =>
           o.id === outfit.id
@@ -291,7 +284,6 @@ export default function Home() {
     }
   };
 
-  // Render view
   const renderView = () => {
     if (isLoading && viewState.view !== "shared") {
       return (
@@ -351,17 +343,16 @@ export default function Home() {
         case "applyOutfit":
           return (
             <ApplyOutfitView
-              outfit={viewState.outfit}   // this comes from handleSelectOutfit
+              outfit={viewState.outfit}
               user={user}
             />
           );
-        
     }
   };
 
   return (
     <div className={`${commonClasses.container.base} min-h-screen flex flex-col ${commonClasses.transitions.default}`}>
-      <div className="flex-grow p-4 sm:p-6 md:p-8">
+      <div className="flex-grow p-4 sm:p-6 md:p-8 pb-56 sm:pb-24">
         <header className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
           <div 
             className="flex items-center gap-3 cursor-pointer" 
@@ -405,7 +396,7 @@ export default function Home() {
             </button>
           </div>
         </header>
-        {/* Add tabs for Filters and Outfits */}
+        
         <div className="max-w-7xl mx-auto mb-8">
           <div className="flex gap-8 border-b border-gray-200 dark:border-gray-700">
             <button
@@ -430,11 +421,13 @@ export default function Home() {
             </button>
           </div>
         </div>
+        
         {renderView()}
       </div>
+
       {isWelcomeModalOpen && (
         <WelcomeModal 
-          isOpen={isWelcomeModalOpen} 
+          isOpen={isWelcomeModalOpen}
           onClose={() => setIsWelcomeModalOpen(false)} 
         />
       )}
@@ -445,18 +438,15 @@ export default function Home() {
           onCancel={() => setShowConfirmDialog(false)}
         />
       )}
-      <footer className="text-center py-4  text-sm text-content-300 dark:text-dark-content-300">
-        <p>&copy; {new Date().getFullYear()} Genie. All rights reserved.</p>
+
+      <footer className="fixed bottom-0 left-0 right-0 z-10 bg-base-100 dark:bg-dark-base-100 border-t border-base-300 dark:border-dark-base-300 shadow-lg p-4">
+        <div className="mx-auto flex flex-col items-center">
+          <Dashboard />
+          <p className="text-xs text-content-200 dark:text-dark-content-200 mt-2">
+            © {new Date().getFullYear()} Genie. All rights reserved.
+          </p>
+        </div>
       </footer>
-      <a
-        href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 bg-green-500 text-white font-bold py-3 px-4 rounded-full shadow-lg hover:bg-green-600 transition-colors flex items-center gap-2"
-      >
-        <WhatsAppIcon />
-        <span className="hidden sm:block">Join Community for Support</span>
-      </a>
     </div>
   );
 }
