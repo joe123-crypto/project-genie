@@ -1,13 +1,30 @@
 // Updated firebaseService.ts to only call our API routes
 import { Filter, Outfit } from '../types';
 
+const getApiBaseUrl = () => {
+    if (typeof window !== 'undefined') {
+        return '';
+    }
+    const vercelUrl = process.env.VERCEL_URL;
+    if (vercelUrl) {
+        return `https://${vercelUrl}`;
+    }
+
+    const renderInternalHostname = process.env.RENDER_INTERNAL_HOSTNAME;
+    if (renderInternalHostname) {
+        return `http://${renderInternalHostname}:${process.env.PORT}`;
+    }
+
+    return 'http://localhost:3000';
+};
+
 /**
  * Fetches all filters from the backend API
  * @returns A promise that resolves to an array of Filter objects
  */
 export const getFilters = async (): Promise<Filter[]> => {
     try {
-        const response = await fetch('/api/firebase?action=getFilters', {
+        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=getFilters`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -34,7 +51,7 @@ export const getFilters = async (): Promise<Filter[]> => {
  */
 export const getFilterById = async (id: string): Promise<Filter> => {
     try {
-        const response = await fetch(`/api/firebase?action=getFilterById&id=${id}`, {
+        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=getFilterById&id=${id}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -63,7 +80,7 @@ export const getFilterById = async (id: string): Promise<Filter> => {
  */
 export const saveFilter = async (filter: Omit<Filter, 'id'>, idToken: string): Promise<Filter> => {
     try {
-        const response = await fetch('/api/firebase?action=saveFilter', {
+        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=saveFilter`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -92,7 +109,7 @@ export const saveFilter = async (filter: Omit<Filter, 'id'>, idToken: string): P
  */
 export const deleteFilter = async (filterId: string, idToken: string): Promise<void> => {
     try {
-        const response = await fetch('/api/firebase?action=deleteFilter', {
+        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=deleteFilter`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -117,7 +134,7 @@ export const deleteFilter = async (filterId: string, idToken: string): Promise<v
  */
 export const deleteUser = async (idToken: string): Promise<void> => {
     try {
-        const response = await fetch('/api/user', {
+        const response = await fetch(`${getApiBaseUrl()}/api/user`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -144,7 +161,7 @@ export const deleteUser = async (idToken: string): Promise<void> => {
  */
 export const updateFilter = async (filterId: string, filterData: Omit<Filter, 'id'>, idToken: string): Promise<Filter> => {
     try {
-        const response = await fetch('/api/firebase?action=updateFilter', {
+        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=updateFilter`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -174,7 +191,7 @@ export const updateFilter = async (filterId: string, filterData: Omit<Filter, 'i
 
 export const saveOutfit = async (outfitData: Omit<Outfit, 'id'>, idToken: string) => {
     try {
-        const response = await fetch('/api/firebase?action=saveOutfit', {
+        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=saveOutfit`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -209,7 +226,7 @@ export const saveOutfit = async (outfitData: Omit<Outfit, 'id'>, idToken: string
  */
 export const incrementFilterAccessCount = async (filterId: string): Promise<void> => {
     try {
-        const response = await fetch('/api/firebase?action=incrementFilterAccessCount', {
+        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=incrementFilterAccessCount`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -233,7 +250,7 @@ export const incrementFilterAccessCount = async (filterId: string): Promise<void
  */
 export const getOutfits = async (): Promise<Outfit[]> => {
     try {
-        const response = await fetch('/api/firebase?action=getOutfits', {
+        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=getOutfits`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -261,7 +278,7 @@ export const getOutfits = async (): Promise<Outfit[]> => {
  */
 export const incrementOutfitAccessCount = async (outfitId: string): Promise<void> => {
     try {
-        const response = await fetch('/api/firebase?action=incrementOutfitAccessCount', {
+        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=incrementOutfitAccessCount`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

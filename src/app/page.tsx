@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from "react";
+import dynamic from 'next/dynamic';
 import { Filter, ViewState, User, Outfit } from "../types";
 import CreateMenu from "../components/CreateMenu";
 import Marketplace from "../components/Marketplace";
@@ -11,8 +12,9 @@ import StudioView from "../components/CreateFilterView";
 import AuthView from "../components/AuthView";
 import SharedImageView from "../components/SharedImageView";
 import WelcomeModal from "../components/WelcomeModal";
-import { SunIcon, MoonIcon } from "../components/icons";
-import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById, deleteUser } from "../services/firebaseService";
+import { SunIcon, MoonIcon, WhatsAppIcon } from "../components/icons";
+import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById } from "../services/firebaseService";
+import { deleteUser } from "../services/userService";
 import { loadUserSession, signOut, getValidIdToken } from "../services/authService";
 import Spinner from "../components/Spinner";
 import { commonClasses } from "../utils/theme";
@@ -20,6 +22,8 @@ import UserIcon from '../components/UserIcon';
 import ConfirmationDialog from '../components/ConfirmationDialog';
 import ProfileView from '../components/ProfileView';
 import Dashboard from '../components/Dashboard';
+
+const CreateOutfitView = dynamic(() => import('../components/CreateOutfitView'), { ssr: false });
 
 // Only cache minimal filter info
 interface CachedFilter {
@@ -190,6 +194,11 @@ export default function Home() {
     [filters]
   );
 
+  const addOutfit = useCallback(
+    (newOutfit: Outfit) => updateLocalOutfitCache([newOutfit, ...outfits]),
+    [outfits]
+  );
+
   const handleDeleteFilter = useCallback(
     async (filterId: string) => {
       if (!user || user.email !== "munemojoseph332@gmail.com")
@@ -316,7 +325,9 @@ export default function Home() {
             addFilter={addFilter}
             onBack={()=> setViewState({view: "create"})}
           />
-        );   
+        );
+      case "createOutfit":
+        return <CreateOutfitView setViewState={setViewState} user={user} addOutfit={addOutfit} />;
       case "edit":
         return <StudioView setViewState={setViewState} user={user} filterToEdit={viewState.filter} onUpdateFilter={handleUpdateFilter} />;
       case "auth":
@@ -439,14 +450,22 @@ export default function Home() {
         />
       )}
 
-      <footer className="fixed bottom-0 left-0 right-0 z-10 bg-base-100 dark:bg-dark-base-100 border-t border-base-300 dark:border-dark-base-300 shadow-lg p-4">
-        <div className="mx-auto flex flex-col items-center">
-          <Dashboard />
-          <p className="text-xs text-content-200 dark:text-dark-content-200 mt-2">
-            © {new Date().getFullYear()} Genie. All rights reserved.
-          </p>
+      <div className="fixed bottom-0 left-0 right-0 z-10">
+        <div className="flex justify-end p-4">
+            <a href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center gap-2">
+              <WhatsAppIcon />
+              <span className="hidden sm:inline">Join community for support</span>
+            </a>
         </div>
-      </footer>
+        <footer className="bg-base-100 dark:bg-dark-base-100 border-t border-base-300 dark:border-dark-base-300 shadow-lg p-4">
+          <div className="mx-auto flex flex-col items-center">
+            <Dashboard user={user} setViewState={setViewState} addFilter={addFilter} />
+            <p className="text-xs text-content-200 dark:text-dark-content-200 mt-2">
+              © {new Date().getFullYear()} Genie. All rights reserved.
+            </p>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

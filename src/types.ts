@@ -19,13 +19,15 @@ export interface Filter {
   description: string;
   prompt: string;
   previewImageUrl: string;
+  accessCount: number;
+  createdAt: string;
+  updatedAt: string;
+  creatorId: string;
+  settings: any;
+  type?: "single" | "merge";
   category: string;
-  type?: "single" | "merge"; // Add new type property
   userId?: string;
   username?: string;
-  accessCount?: number;
-  // FIX: Add optional createdAt property to match Firestore data and fix destructuring in App.tsx.
-  createdAt?: string;
 }
 
 export interface User {

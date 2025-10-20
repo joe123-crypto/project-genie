@@ -61,3 +61,26 @@ export const uploadProfilePicture = async (uid: string, file: File, idToken: str
     throw error;
   }
 };
+
+/**
+ * Deletes a user's account.
+ * @param idToken The user's ID token.
+ */
+export const deleteUser = async (idToken: string): Promise<void> => {
+  try {
+    const response = await fetch('/api/user', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to delete user');
+    }
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw error;
+  }
+};

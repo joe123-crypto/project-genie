@@ -126,6 +126,11 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
         type: 'single',
         userId: user?.uid,
         username: user?.email?.split('@')[0] || user?.email || 'anonymous',
+        accessCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        creatorId: user?.uid || '',
+        settings: {},
       };
   
       if (filterToEdit && onUpdateFilter) {
