@@ -1,7 +1,6 @@
 // pages/api/firebase.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import * as admin from "firebase-admin";
-import { DecodedIdToken } from "firebase-admin/auth";
 
 const initializeFirebaseAdmin = () => {
   if (admin.apps.length > 0) {
@@ -27,20 +26,6 @@ const initializeFirebaseAdmin = () => {
   });
 };
 
-const verifyToken = async (req: NextApiRequest): Promise<DecodedIdToken | null> => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null;
-    }
-    const idToken = authHeader.split('Bearer ')[1];
-    try {
-        return await admin.auth().verifyIdToken(idToken);
-    } catch (error) {
-        console.error("Error verifying token:", error);
-        return null;
-    }
-}
-
 /* -------------------------------------------------------------------------- */
 /*                                API HANDLER                                 */
 /* -------------------------------------------------------------------------- */
@@ -48,17 +33,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     initializeFirebaseAdmin();
     const db = admin.firestore();
-    const { action } = req.query;
+    const { action, id } = req.query;
+    const { filter, filterId, filterData, outfit, creation, idToken } = req.body;
 
-    const needsAuth = ['saveFilter', 'updateFilter', 'deleteFilter', 'saveOutfit', 'saveCreation'];
-    let decodedToken: DecodedIdToken | null = null;
-
-    if (needsAuth.includes(action as string)) {
-        decodedToken = await verifyToken(req);
-        if (!decodedToken) {
-            return res.status(401).json({ error: "Unauthorized: Invalid or missing ID token." });
-        }
-    }
+    // The token verification logic has been removed as per your request.
 
     switch (action) {
       /* ------------------------------ FILTERS ------------------------------ */
@@ -68,7 +46,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ filters });
       }
       case "getFilterById": {
-        const { id } = req.query;
         if (!id || typeof id !== 'string') return res.status(400).json({ error: "Missing or invalid filter id" });
 
         const docRef = db.collection("filters").doc(id);
@@ -78,11 +55,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(404).json({ error: "Filter not found" });
         }
 
-        const filter = { id: doc.id, ...doc.data() };
-        return res.status(200).json({ filter });
+        const result = { id: doc.id, ...doc.data() };
+        return res.status(200).json({ filter: result });
       }
       case "saveFilter": {
-        const { filter } = req.body;
         if (!filter) return res.status(400).json({ error: "Missing filter data" });
 
         const docRef = db.collection("filters").doc();
@@ -90,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const newFilterData = {
           ...filter,
-          creatorId: decodedToken!.uid, // Set creatorId from verified token
+          creatorId: '', // creatorId is not set as authorization is removed
           createdAt: timestamp,
           updatedAt: timestamp,
           accessCount: 0,
@@ -101,7 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const newFilter = { 
           id: docRef.id, 
           ...filter,
-          creatorId: decodedToken!.uid,
+          creatorId: '',
           createdAt: new Date().toISOString(), 
           updatedAt: new Date().toISOString(),
           accessCount: 0 
@@ -109,20 +85,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ filter: newFilter });
       }
       case "updateFilter": {
-        const { filterId, filterData } = req.body;
         if (!filterId || !filterData) return res.status(400).json({ error: "Missing filterId or filterData" });
         
         const docRef = db.collection("filters").doc(filterId);
-        const doc = await docRef.get();
-
-        if (!doc.exists) {
-            return res.status(404).json({ error: "Filter not found" });
-        }
-
-        if (doc.data()?.creatorId !== decodedToken!.uid) {
-            return res.status(403).json({ error: "Forbidden: You are not the creator of this filter." });
-        }
-
         await docRef.update({
           ...filterData,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -132,25 +97,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ filter: updatedFilter });
       }
       case "deleteFilter": {
-        const { filterId } = req.body;
         if (!filterId) return res.status(400).json({ error: "Missing filterId" });
 
-        const docRef = db.collection("filters").doc(filterId);
-        const doc = await docRef.get();
-        if (!doc.exists) {
-            return res.status(404).json({ error: "Filter not found" });
-        }
-        if (doc.data()?.creatorId !== decodedToken!.uid) {
-            return res.status(403).json({ error: "Forbidden: You are not the creator of this filter." });
-        }
-
-        await docRef.delete();
+        await db.collection("filters").doc(filterId).delete();
         return res.status(200).json({ success: true });
       }
       case "incrementFilterAccessCount": {
-        const { id } = req.body;
-        if (!id) return res.status(400).json({ error: "Missing id" });
-        await db.collection("filters").doc(id).update({ accessCount: admin.firestore.FieldValue.increment(1) });
+        const { id: filterIdFromBody } = req.body;
+        if (!filterIdFromBody) return res.status(400).json({ error: "Missing id" });
+        await db.collection("filters").doc(filterIdFromBody).update({ accessCount: admin.firestore.FieldValue.increment(1) });
         return res.status(200).json({ success: true });
       }
 
@@ -161,7 +116,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ outfits });
       }
       case "saveOutfit": {
-        const { outfit } = req.body;
         if (!outfit) return res.status(400).json({ error: "Missing outfit data" });
         
         const docRef = db.collection("outfits").doc();
@@ -169,7 +123,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         await docRef.set({
           ...outfit,
-          creatorId: decodedToken!.uid,
+          creatorId: '', // creatorId is not set as authorization is removed
           createdAt: timestamp,
           updatedAt: timestamp,
           accessCount: 0,
@@ -178,7 +132,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const newOutfit = { 
           id: docRef.id, 
           ...outfit,
-          creatorId: decodedToken!.uid,
+          creatorId: '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           accessCount: 0
@@ -186,28 +140,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ outfit: newOutfit });
       }
       case "incrementOutfitAccessCount": {
-        const { id } = req.body;
-        if (!id) return res.status(400).json({ error: "Missing id" });
-        await db.collection("outfits").doc(id).update({ accessCount: admin.firestore.FieldValue.increment(1) });
+        const { id: outfitIdFromBody } = req.body;
+        if (!outfitIdFromBody) return res.status(400).json({ error: "Missing id" });
+        await db.collection("outfits").doc(outfitIdFromBody).update({ accessCount: admin.firestore.FieldValue.increment(1) });
         return res.status(200).json({ success: true });
       }
 
       /* ------------------------ TRANSIENT & SAVED IMAGES ----------------------- */
       case "saveCreation": {
-        const { creation } = req.body;
         if (!creation) return res.status(400).json({ error: "Missing creation data" });
 
         const docRef = db.collection("saved").doc();
         await docRef.set({
           ...creation,
-          userId: decodedToken!.uid,
+          userId: '', // userId is not set as authorization is removed
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         
         const newCreation = {
           id: docRef.id,
           ...creation,
-          userId: decodedToken!.uid,
+          userId: '',
           createdAt: new Date().toISOString(),
         }
         return res.status(200).json({ creation: newCreation });

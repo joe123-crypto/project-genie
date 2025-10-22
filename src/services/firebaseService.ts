@@ -75,7 +75,7 @@ export const getFilterById = async (id: string): Promise<Filter> => {
 /**
  * Saves a filter to the backend
  * @param filter - The filter object to save
- * @param idToken - The user's ID token for authentication
+ * @param idToken - The user's ID token for authentication (currently unused)
  * @returns A promise that resolves to the saved Filter object
  */
 export const saveFilter = async (filter: Omit<Filter, 'id'>, idToken: string): Promise<Filter> => {
@@ -84,9 +84,8 @@ export const saveFilter = async (filter: Omit<Filter, 'id'>, idToken: string): P
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
             },
-            body: JSON.stringify({ filter }),
+            body: JSON.stringify({ filter, idToken }), // idToken is passed in the body for now
         });
 
         if (!response.ok) {
@@ -111,7 +110,7 @@ export const saveFilter = async (filter: Omit<Filter, 'id'>, idToken: string): P
 /**
  * Deletes a filter from the backend
  * @param filterId - The ID of the filter to delete
- * @param idToken - The user's ID token for authentication
+ * @param idToken - The user's ID token for authentication (currently unused)
  * @returns A promise that resolves when the filter is deleted
  */
 export const deleteFilter = async (filterId: string, idToken: string): Promise<void> => {
@@ -120,9 +119,8 @@ export const deleteFilter = async (filterId: string, idToken: string): Promise<v
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`
             },
-            body: JSON.stringify({ filterId }),
+            body: JSON.stringify({ filterId, idToken }),
         });
 
         if (!response.ok) {
@@ -137,7 +135,7 @@ export const deleteFilter = async (filterId: string, idToken: string): Promise<v
 
 /**
  * Deletes a user account from the backend
- * @param idToken - The user's ID token for authentication
+ * @param idToken - The user's ID token for authentication (currently unused)
  * @returns A promise that resolves when the user is deleted
  */
 export const deleteUser = async (idToken: string): Promise<void> => {
@@ -146,8 +144,8 @@ export const deleteUser = async (idToken: string): Promise<void> => {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
             },
+            body: JSON.stringify({ idToken })
         });
 
         if (!response.ok) {
@@ -164,7 +162,7 @@ export const deleteUser = async (idToken: string): Promise<void> => {
  * Updates a filter in the backend
  * @param filterId - The ID of the filter to update
  * @param filterData - The updated filter data
- * @param idToken - The user's ID token for authentication
+ * @param idToken - The user's ID token for authentication (currently unused)
  * @returns A promise that resolves to the updated Filter object
  */
 export const updateFilter = async (filterId: string, filterData: Omit<Filter, 'id'>, idToken: string): Promise<Filter> => {
@@ -173,9 +171,8 @@ export const updateFilter = async (filterId: string, filterData: Omit<Filter, 'i
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`
             },
-            body: JSON.stringify({ filterId, filterData }),
+            body: JSON.stringify({ filterId, filterData, idToken }),
         });
 
         if (!response.ok) {
@@ -192,10 +189,10 @@ export const updateFilter = async (filterId: string, filterData: Omit<Filter, 'i
 };
 
 /**
- * Saves a filter to the backend
- * @param outfitData - The filter object to save
- * @param idToken - The user's ID token for authentication
- * @returns A promise that resolves to the saved Filter object
+ * Saves an outfit to the backend
+ * @param outfitData - The outfit object to save
+ * @param idToken - The user's ID token for authentication (currently unused)
+ * @returns A promise that resolves to the saved Outfit object
  */
 
 export const saveOutfit = async (outfitData: Omit<Outfit, 'id'>, idToken: string) => {
@@ -204,13 +201,13 @@ export const saveOutfit = async (outfitData: Omit<Outfit, 'id'>, idToken: string
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${idToken}`,
             },
             body: JSON.stringify({
                 outfit: {
                     ...outfitData,
                     createdAt: new Date().toISOString(),
                 },
+                idToken,
             }),
         });
 

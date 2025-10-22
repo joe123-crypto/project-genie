@@ -91,13 +91,14 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const { prompt } = req.body;
-  const { authorization } = req.headers;
 
-  if (!authorization) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  const idToken = authorization.split("Bearer ")[1];
+  // Authorization has been removed as per your request.
+  // const { authorization } = req.headers;
+  // if (!authorization) {
+  //   return res.status(401).json({ error: "Unauthorized" });
+  // }
+  // const idToken = authorization.split("Bearer ")[1];
+  const idToken = ""; // Passing empty string as authorization is removed.
 
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required" });
