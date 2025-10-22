@@ -2,36 +2,45 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import * as admin from "firebase-admin";
 
-/* -------------------------------------------------------------------------- */
-/*                               FIREBASE ADMIN                               */
-/* -------------------------------------------------------------------------- */
-if (!admin.apps.length) {
+const initializeFirebaseAdmin = () => {
+  if (admin.apps.length > 0) {
+    return;
+  }
+
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  // Important: Vercel environment variables escape newlines. We need to replace them back.
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
   if (!projectId || !clientEmail || !privateKey) {
-    throw new Error("Missing Firebase Admin credentials in environment variables.");
+    throw new Error(
+      'Missing Firebase Admin credentials. Please set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY as environment variables in your hosting provider (e.g., Vercel, Netlify).'
+    );
   }
 
   admin.initializeApp({
-    credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
+    credential: admin.credential.cert({
+      projectId,
+      clientEmail,
+      privateKey,
+    }),
   });
-}
+};
 
-const db = admin.firestore();
 
 /* -------------------------------------------------------------------------- */
 /*                                API HANDLER                                 */
 /* -------------------------------------------------------------------------- */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { action } = req.query;
-
   try {
+    initializeFirebaseAdmin();
+    const db = admin.firestore();
+    const { action } = req.query;
+
     switch (action) {
       /* ------------------------------ FILTERS ------------------------------ */
       case "getFilters": {
-        const snapshot = await db.collection("filters").get();
+        const snapshot = await db.collection("filters").orderBy("createdAt", "desc").get();
         const filters = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         return res.status(200).json({ filters });
       }
@@ -54,13 +63,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!filter) return res.status(400).json({ error: "Missing filter data" });
 
         const docRef = db.collection("filters").doc();
+        const timestamp = admin.firestore.FieldValue.serverTimestamp();
+
         await docRef.set({
           ...filter,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: timestamp,
+          updatedAt: timestamp,
           accessCount: 0,
         });
 
-        const newFilter = { id: docRef.id, ...(await docRef.get()).data() };
+        const newFilter = { 
+          id: docRef.id, 
+          ...filter,
+          // Use ISO string for the client-side object to avoid serialization issues
+          createdAt: new Date().toISOString(), 
+          updatedAt: new Date().toISOString(),
+          accessCount: 0 
+        };
         return res.status(200).json({ filter: newFilter });
       }
       case "updateFilter": {
@@ -68,8 +87,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!filterId || !filterData) return res.status(400).json({ error: "Missing filterId or filterData" });
 
         const docRef = db.collection("filters").doc(filterId);
-        await docRef.update(filterData);
-        const updatedFilter = { id: filterId, ...(await docRef.get()).data() };
+        await docRef.update({
+          ...filterData,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        const updatedDoc = await docRef.get();
+        const updatedFilter = { id: filterId, ...updatedDoc.data() };
         return res.status(200).json({ filter: updatedFilter });
       }
       case "deleteFilter": {
@@ -87,22 +110,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       /* ------------------------------ OUTFITS ------------------------------ */
       case "getOutfits": {
-        const snapshot = await db.collection("outfits").get();
+        const snapshot = await db.collection("outfits").orderBy("createdAt", "desc").get();
         const outfits = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         return res.status(200).json({ outfits });
       }
       case "saveOutfit": {
         const { outfit } = req.body;
         if (!outfit) return res.status(400).json({ error: "Missing outfit data" });
-
+        
         const docRef = db.collection("outfits").doc();
+        const timestamp = admin.firestore.FieldValue.serverTimestamp();
+
         await docRef.set({
           ...outfit,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: timestamp,
+          updatedAt: timestamp,
           accessCount: 0,
         });
 
-        const newOutfit = { id: docRef.id, ...(await docRef.get()).data() };
+        const newOutfit = { 
+          id: docRef.id, 
+          ...outfit,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          accessCount: 0
+        };
         return res.status(200).json({ outfit: newOutfit });
       }
       case "incrementOutfitAccessCount": {
@@ -122,8 +154,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ...creation,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-
-        const newCreation = { id: docRef.id, ...await (await docRef.get()).data() };
+        
+        const newCreation = {
+          id: docRef.id,
+          ...creation,
+          createdAt: new Date().toISOString(),
+        }
         return res.status(200).json({ creation: newCreation });
       }
 
