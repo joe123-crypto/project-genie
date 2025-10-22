@@ -1,7 +1,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { generateText } from "ai";
-import { saveFilter } from "../../services/firebaseService";
+import { saveFilterAdmin } from "../../lib/firestoreAdmin"; // Corrected import path
 import { Filter } from "../../types";
 import {
   S3Client,
@@ -92,14 +92,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const { prompt } = req.body;
 
-  // Authorization has been removed as per your request.
-  // const { authorization } = req.headers;
-  // if (!authorization) {
-  //   return res.status(401).json({ error: "Unauthorized" });
-  // }
-  // const idToken = authorization.split("Bearer ")[1];
-  const idToken = ""; // Passing empty string as authorization is removed.
-
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required" });
   }
@@ -182,9 +174,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       category,
     };
     
-    console.log("Attempting to save filter:", JSON.stringify(newFilter, null, 2));
-
-    const savedFilter = await saveFilter(newFilter, idToken);
+    const savedFilter = await saveFilterAdmin(newFilter);
 
     res.status(200).json(savedFilter);
   } catch (error: any) {
