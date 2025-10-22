@@ -450,14 +450,14 @@ export default function Home() {
         />
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 z-10">
+      <div className="fixed bottom-0 left-0 right-0 z-10 pointer-events-none">
         <div className="flex justify-end p-4">
-            <a href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center gap-2">
+            <a href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center gap-2 pointer-events-auto">
               <WhatsAppIcon />
               <span className="hidden sm:inline">Join community for support</span>
             </a>
         </div>
-        <footer className="bg-base-100 dark:bg-dark-base-100 border-t border-base-300 dark:border-dark-base-300 shadow-lg p-4">
+        <footer className="bg-base-100 dark:bg-dark-base-100 border-t border-base-300 dark:border-dark-base-300 shadow-lg p-4 pointer-events-auto">
           <div className="mx-auto flex flex-col items-center">
             <Dashboard user={user} setViewState={setViewState} addFilter={addFilter} />
             <p className="text-xs text-content-200 dark:text-dark-content-200 mt-2">

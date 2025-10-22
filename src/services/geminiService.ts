@@ -190,7 +190,12 @@ export const improvePrompt = async (prompt: string): Promise<string> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ 
-        prompt: `Understand what the user needs and improve this prompt to be more detailed. Do not exaggerate beyond what the user wants, only make it more naunce so that the model understands what the user wants: ${prompt}. Return only the improved prompt, no other text.`
+        prompt: `Understand what the user needs and improve this prompt to be more detailed. Do not exaggerate beyond what the user wants, only make it more naunce so that the model understands what the user wants: ${prompt}. Return only the improved prompt, no other text.
+                 Example
+
+                 -User Prompt: Make the person in the image look young
+                 -Your Response: Change the subject in the image to appear elderly, showing signs of aging such as wrinkles around the eyes and mouth, thinning hair (possibly gray or white), and a more weathered skin texture, while maintaining their original features and expression as much as possible.
+                `
       }),
     });
 

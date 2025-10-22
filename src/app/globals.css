@@ -108,3 +108,7 @@ body {
 /* Ensure brand buttons have readable text in light theme */
 .bg-brand-primary, .bg-brand-secondary { color: #ffffff; }
 .dark .dark\:bg-dark-brand-primary, .dark .dark\:bg-dark-brand-secondary { color: #0b1020; }
+
+textarea::placeholder {
+  opacity: 0.5;
+}

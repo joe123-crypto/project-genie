@@ -64,6 +64,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
   };
 
   const handleImprovePrompt = async () => {
+    if (!user) {
+      setViewState({ view: 'auth' });
+      return;
+    }
     if (!text.trim()) return;
     setIsLoading(true);
     try {
@@ -86,7 +90,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
           onChange={(e) => setText(e.target.value)}
           rows={1}
           placeholder="eg Make the person in the image look old(be specific)"
-          className="w-full bg-transparent focus:outline-none text-content-100 dark:text-dark-content-100 px-4 placeholder-content-400 dark:placeholder-dark-content-400 resize-none overflow-y-hidden"
+          className="w-full bg-transparent focus:outline-none text-content-100 dark:text-dark-content-100 px-4 placeholder-opacity-50 resize-none overflow-y-hidden"
           disabled={isLoading}
         />
         <button className="p-2 text-content-200 hover:text-brand-primary dark:text-dark-content-200 dark:hover:text-dark-brand-primary rounded-full transition-colors" disabled={isLoading}>
