@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { SparklesIcon, UploadIcon, SendIcon } from './icons';
 import { User, ViewState, Filter } from '../types';
 import { getValidIdToken } from '../services/authService';
+import { improvePrompt } from '../services/geminiService';
 
 interface DashboardProps {
   user: User | null;
@@ -62,6 +63,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
     }
   };
 
+  const handleImprovePrompt = async () => {
+    if (!text.trim()) return;
+    setIsLoading(true);
+    try {
+      const improved = await improvePrompt(text);
+      setText(improved);
+    } catch (error) {
+      console.error('Error improving prompt:', error);
+      alert(`Error improving prompt: ${(error as Error).message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-xl px-4">
       <div className="bg-base-100 dark:bg-dark-base-100 rounded-2xl shadow-2xl p-2 flex items-end gap-2 border border-base-300 dark:border-dark-base-300">
@@ -70,14 +85,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={1}
-          placeholder="eg Make the person in the image look old"
-          className="w-full bg-transparent focus:outline-none text-content-100 dark:text-dark-content-100 px-4 placeholder-content-300 dark:placeholder-dark-content-300 resize-none overflow-y-hidden"
+          placeholder="eg Make the person in the image look old(be specific)"
+          className="w-full bg-transparent focus:outline-none text-content-100 dark:text-dark-content-100 px-4 placeholder-content-400 dark:placeholder-dark-content-400 resize-none overflow-y-hidden"
           disabled={isLoading}
         />
         <button className="p-2 text-content-200 hover:text-brand-primary dark:text-dark-content-200 dark:hover:text-dark-brand-primary rounded-full transition-colors" disabled={isLoading}>
           <UploadIcon className="h-5 w-5" />
         </button>
-        <button className="p-2 text-content-200 hover:text-brand-primary dark:text-dark-content-200 dark:hover:text-dark-brand-primary rounded-full transition-colors" disabled={isLoading}>
+        <button onClick={handleImprovePrompt} className="p-2 text-content-200 hover:text-brand-primary dark:text-dark-content-200 dark:hover:text-dark-brand-primary rounded-full transition-colors" disabled={isLoading}>
           <SparklesIcon className="h-4 w-4" />
         </button>
         <button

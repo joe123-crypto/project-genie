@@ -34,7 +34,7 @@ async function uploadPreviewToR2(
   key: string,
   base64: string,
   mimeType: string,
-  folderPrefix = "filtered"
+  folderPrefix = "filters"
 ): Promise<string> {
   const { buffer } = parseBase64ToBuffer(base64, mimeType);
   const finalKey = `${folderPrefix.replace(/\/$/, "")}/${key}`;
@@ -86,8 +86,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const apiKey = process.env.AI_GATEWAY_API_KEY;
     if (!apiKey) return res.status(500).json({ error: "Server misconfiguration" });
 
-    // 1. Generate filter name and description
-    const nameAndDescResponse = await generateText({
+    // 1. Generate filter name, description and category
+    const nameDescAndCategoryResponse = await generateText({
       model: "google/gemini-2.5-flash",
       providerOptions: {
         google: {
@@ -97,19 +97,20 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       messages: [
         {
           role: "user",
-          content: `Generate a short, catchy name and a one-sentence description for a filter based on this prompt: \'${prompt}\'. Return the response as a JSON object with \'name\' and \'description\' keys.`,
+          content: `Generate a short, catchy name, a one-sentence description and a category for a filter based on this prompt: '${prompt}'. The category must be one of the following: "Fun", "Useful", or "Other". Return the response as a JSON object with \'name\', \'description\' and \'category\' keys.`,
         },
       ],
     });
 
-    let name, description;
+    let name, description, category;
     try {
-        const cleanedText = nameAndDescResponse.text.replace(/```json\n/g, '').replace(/\n```/g, '');
+        const cleanedText = nameDescAndCategoryResponse.text.replace(/```json\n/g, '').replace(/\n```/g, '');
         const jsonResponse = JSON.parse(cleanedText);
         name = jsonResponse.name;
         description = jsonResponse.description;
+        category = jsonResponse.category;
     } catch {
-        console.error("Failed to parse name and description from Gemini response", nameAndDescResponse.text);
+        console.error("Failed to parse name, description and category from Gemini response", nameDescAndCategoryResponse.text);
         return res.status(500).json({ error: "Failed to generate filter details" });
     }
 
@@ -125,7 +126,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         messages: [
             {
             role: "user",
-            content: `Generate a thumbnail preview image for a filter with the following description: \'${description}\'`,
+            content: `Generate a thumbnail preview image for a filter with the following description: '${description}'`,
             },
         ],
     });
@@ -159,7 +160,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       updatedAt: new Date().toISOString(),
       creatorId: "", // This will be set on the server
       settings: {},
-      category: "Other",
+      category,
     };
 
     const savedFilter = await saveFilter(newFilter, idToken);
