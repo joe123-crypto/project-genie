@@ -11,15 +11,15 @@ import {
 
 // --- Cloudflare R2 (S3-compatible) setup ---
 const r2BucketName = process.env.R2_BUCKET_NAME || "genie-bucket";
-const r2Client = new S3Client({
-  region: process.env.R2_REGION || "auto",
-  endpoint: process.env.R2_ENDPOINT,
-  forcePathStyle: true,
-  credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID as string,
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY as string,
-    }
-});
+
+const requiredR2EnvVars = [
+  'R2_REGION',
+  'R2_ENDPOINT',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+  'R2_BUCKET_NAME',
+  'R2_PUBLIC_BASE_URL'
+];
 
 // helper: decode base64 into buffer
 function parseBase64ToBuffer(
@@ -36,6 +36,16 @@ async function uploadPreviewToR2(
   mimeType: string,
   folderPrefix = "filters"
 ): Promise<string> {
+  const r2Client = new S3Client({
+    region: process.env.R2_REGION || "auto",
+    endpoint: process.env.R2_ENDPOINT,
+    forcePathStyle: true,
+    credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID as string,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY as string,
+      }
+  });
+
   const { buffer } = parseBase64ToBuffer(base64, mimeType);
   const finalKey = `${folderPrefix.replace(/\/$/, "")}/${key}`;
 
@@ -69,6 +79,17 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  // --- Environment Variable Validation ---
+  const missingR2Vars = requiredR2EnvVars.filter(v => !process.env[v]);
+  if (missingR2Vars.length > 0) {
+      console.error(`Missing R2 environment variables: ${missingR2Vars.join(', ')}`);
+      return res.status(500).json({ error: `Server configuration error: Missing R2 environment variables: ${missingR2Vars.join(', ')}` });
+  }
+  if (!process.env.AI_GATEWAY_API_KEY) {
+      console.error("AI_GATEWAY_API_KEY is not set in the environment variables.");
+      return res.status(500).json({ error: "Server configuration error: AI API key is missing." });
+  }
+
   const { prompt } = req.body;
   const { authorization } = req.headers;
 
@@ -84,16 +105,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   try {
     const apiKey = process.env.AI_GATEWAY_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: "Server misconfiguration" });
-
+    
     // 1. Generate filter name, description and category
     const nameDescAndCategoryResponse = await generateText({
       model: "google/gemini-2.5-flash",
-      providerOptions: {
-        google: {
-          apiKey,
-        },
-      },
       messages: [
         {
           role: "user",
@@ -109,9 +124,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         name = jsonResponse.name;
         description = jsonResponse.description;
         category = jsonResponse.category;
-    } catch {
-        console.error("Failed to parse name, description and category from Gemini response", nameDescAndCategoryResponse.text);
-        return res.status(500).json({ error: "Failed to generate filter details" });
+    } catch (e: any) {
+        console.error("Failed to parse name, description and category from Gemini response", {
+            responseText: nameDescAndCategoryResponse.text,
+            error: e.message,
+        });
+        return res.status(500).json({ error: "Failed to generate filter details from AI response." });
     }
 
     // 2. Generate image preview
@@ -140,7 +158,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(500).json({ error: "No image returned from Gemini" });
     }
 
-    const { base64Data, mediaType = "image/png" } = filePart.file;
+    const { base64Data, mediaType = "image/png" } = generatedFile;
     const filename = generateRandomFilename("png");
 
     const r2Url = await uploadPreviewToR2(
@@ -162,13 +180,22 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       settings: {},
       category,
     };
+    
+    console.log("Attempting to save filter:", JSON.stringify(newFilter, null, 2));
 
     const savedFilter = await saveFilter(newFilter, idToken);
 
     res.status(200).json(savedFilter);
-  } catch (error) {
-    console.error("Error generating filter:", error);
-    res.status(500).json({ error: "Internal server error" });
+  } catch (error: any) {
+    console.error("Detailed error in generate-filter API:", {
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause,
+    });
+    res.status(500).json({ 
+        error: "An internal server error occurred.",
+        details: error.message || "No specific error message available."
+    });
   }
 };
 
