@@ -84,13 +84,20 @@ export const saveFilter = async (filter: Omit<Filter, 'id'>, idToken: string): P
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
             },
-            body: JSON.stringify({ filter, idToken }),
+            body: JSON.stringify({ filter }),
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to save filter');
+            const errorText = await response.text();
+            console.error("Error saving filter, response text:", errorText);
+            try {
+                const errorData = JSON.parse(errorText);
+                throw new Error(errorData.error || 'Failed to save filter');
+            } catch (e) {
+                throw new Error('Failed to save filter, and the response was not valid JSON.');
+            }
         }
 
         const data = await response.json();
@@ -113,8 +120,9 @@ export const deleteFilter = async (filterId: string, idToken: string): Promise<v
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
             },
-            body: JSON.stringify({ filterId, idToken }),
+            body: JSON.stringify({ filterId }),
         });
 
         if (!response.ok) {
@@ -165,8 +173,9 @@ export const updateFilter = async (filterId: string, filterData: Omit<Filter, 'i
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
             },
-            body: JSON.stringify({ filterId, filterData, idToken }),
+            body: JSON.stringify({ filterId, filterData }),
         });
 
         if (!response.ok) {

@@ -1,6 +1,7 @@
 // pages/api/firebase.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import * as admin from "firebase-admin";
+import { DecodedIdToken } from "firebase-admin/auth";
 
 const initializeFirebaseAdmin = () => {
   if (admin.apps.length > 0) {
@@ -9,12 +10,11 @@ const initializeFirebaseAdmin = () => {
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  // Important: Vercel environment variables escape newlines. We need to replace them back.
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
   if (!projectId || !clientEmail || !privateKey) {
     throw new Error(
-      'Missing Firebase Admin credentials. Please set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY as environment variables in your hosting provider (e.g., Vercel, Netlify).'
+      'Missing Firebase Admin credentials. Please set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY as environment variables.'
     );
   }
 
@@ -27,6 +27,19 @@ const initializeFirebaseAdmin = () => {
   });
 };
 
+const verifyToken = async (req: NextApiRequest): Promise<DecodedIdToken | null> => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return null;
+    }
+    const idToken = authHeader.split('Bearer ')[1];
+    try {
+        return await admin.auth().verifyIdToken(idToken);
+    } catch (error) {
+        console.error("Error verifying token:", error);
+        return null;
+    }
+}
 
 /* -------------------------------------------------------------------------- */
 /*                                API HANDLER                                 */
@@ -36,6 +49,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     initializeFirebaseAdmin();
     const db = admin.firestore();
     const { action } = req.query;
+
+    const needsAuth = ['saveFilter', 'updateFilter', 'deleteFilter', 'saveOutfit', 'saveCreation'];
+    let decodedToken: DecodedIdToken | null = null;
+
+    if (needsAuth.includes(action as string)) {
+        decodedToken = await verifyToken(req);
+        if (!decodedToken) {
+            return res.status(401).json({ error: "Unauthorized: Invalid or missing ID token." });
+        }
+    }
 
     switch (action) {
       /* ------------------------------ FILTERS ------------------------------ */
@@ -65,17 +88,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const docRef = db.collection("filters").doc();
         const timestamp = admin.firestore.FieldValue.serverTimestamp();
 
-        await docRef.set({
+        const newFilterData = {
           ...filter,
+          creatorId: decodedToken!.uid, // Set creatorId from verified token
           createdAt: timestamp,
           updatedAt: timestamp,
           accessCount: 0,
-        });
+        };
+
+        await docRef.set(newFilterData);
 
         const newFilter = { 
           id: docRef.id, 
           ...filter,
-          // Use ISO string for the client-side object to avoid serialization issues
+          creatorId: decodedToken!.uid,
           createdAt: new Date().toISOString(), 
           updatedAt: new Date().toISOString(),
           accessCount: 0 
@@ -85,8 +111,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       case "updateFilter": {
         const { filterId, filterData } = req.body;
         if (!filterId || !filterData) return res.status(400).json({ error: "Missing filterId or filterData" });
-
+        
         const docRef = db.collection("filters").doc(filterId);
+        const doc = await docRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: "Filter not found" });
+        }
+
+        if (doc.data()?.creatorId !== decodedToken!.uid) {
+            return res.status(403).json({ error: "Forbidden: You are not the creator of this filter." });
+        }
+
         await docRef.update({
           ...filterData,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -98,7 +134,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       case "deleteFilter": {
         const { filterId } = req.body;
         if (!filterId) return res.status(400).json({ error: "Missing filterId" });
-        await db.collection("filters").doc(filterId).delete();
+
+        const docRef = db.collection("filters").doc(filterId);
+        const doc = await docRef.get();
+        if (!doc.exists) {
+            return res.status(404).json({ error: "Filter not found" });
+        }
+        if (doc.data()?.creatorId !== decodedToken!.uid) {
+            return res.status(403).json({ error: "Forbidden: You are not the creator of this filter." });
+        }
+
+        await docRef.delete();
         return res.status(200).json({ success: true });
       }
       case "incrementFilterAccessCount": {
@@ -123,6 +169,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         await docRef.set({
           ...outfit,
+          creatorId: decodedToken!.uid,
           createdAt: timestamp,
           updatedAt: timestamp,
           accessCount: 0,
@@ -131,6 +178,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const newOutfit = { 
           id: docRef.id, 
           ...outfit,
+          creatorId: decodedToken!.uid,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           accessCount: 0
@@ -152,12 +200,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const docRef = db.collection("saved").doc();
         await docRef.set({
           ...creation,
+          userId: decodedToken!.uid,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         
         const newCreation = {
           id: docRef.id,
           ...creation,
+          userId: decodedToken!.uid,
           createdAt: new Date().toISOString(),
         }
         return res.status(200).json({ creation: newCreation });
