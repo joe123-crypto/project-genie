@@ -193,6 +193,7 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
               <option value="Fun">Fun</option>
               <option value="Useful">Useful</option>
               <option value="Futuristic">Futuristic</option>
+              <option value="Hair Styles">Hair Styles</option>
               <option value="Other">Other</option>
             </select>
           </div>

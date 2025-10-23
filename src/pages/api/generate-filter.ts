@@ -105,7 +105,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       messages: [
         {
           role: "user",
-          content: `Generate a short, catchy name, a one-sentence description and a category for a filter based on this prompt: '${prompt}'. The category must be one of the following: "Fun", "Useful", or "Other". Return the response as a JSON object with \'name\', \'description\' and \'category\' keys.`,
+          content: `Generate a short, catchy name, a one-sentence description and a category for a filter based on this prompt: '${prompt}'. The category must be one of the following: "Fun", "Useful","Futuristic", "Hair Styles" or "Other". Return the response as a JSON object with \'name\', \'description\' and \'category\' keys.`,
         },
       ],
     });

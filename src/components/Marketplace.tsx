@@ -22,7 +22,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ filters, onSelectFilter, user
     const otherFilters = filters.filter(f => !trendingIds.has(f.id));
     
     const categoriesMap = new Map<string, Filter[]>();
-    const validCategories = new Set(['Fun', 'Useful', 'Futuristic', 'Other']);
+    const validCategories = new Set(['Fun', 'Useful', 'Futuristic', 'Hair Styles', 'Other']);
 
     otherFilters.forEach(filter => {
         let category = filter.category;
@@ -36,7 +36,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ filters, onSelectFilter, user
         categoriesMap.get(category)!.push(filter);
     });
     
-    const preferredOrder = ['Fun', 'Useful', 'Futuristic', 'Other'];
+    const preferredOrder = ['Fun', 'Useful', 'Futuristic', 'Hair Styles','Other'];
     const sortedCategoryNames = Array.from(categoriesMap.keys()).sort((a, b) => {
         const indexA = preferredOrder.indexOf(a);
         const indexB = preferredOrder.indexOf(b);
