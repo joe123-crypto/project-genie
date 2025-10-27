@@ -371,7 +371,7 @@ export default function Home() {
           >
             <img src="/lamp.png" alt="Genie Lamp" className="h-8 w-8" />
             <h1 className={`text-2xl sm:text-3xl ${commonClasses.text.heading}`}>
-              Genie
+              GenAIe
             </h1>
           </div>
           <div className="flex items-center gap-4">
