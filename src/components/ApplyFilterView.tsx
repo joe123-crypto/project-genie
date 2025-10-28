@@ -1,5 +1,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { saveAs } from 'file-saver';
 import { applyImageFilter } from '../services/geminiService';
 import { shareImage, ShareResult } from '../services/shareService';
 import { Filter, User, ViewState } from '../types';
@@ -174,23 +175,9 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     if (!generatedImage) return;
 
     try {
-      const response = await fetch(generatedImage);
-      if (!response.ok) throw new Error('Failed to fetch image for download.');
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      
-      const a = document.createElement('a');
-      a.href = url;
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 8);
-      a.download = `filtered-${timestamp}-${randomId}.png`;
-      document.body.appendChild(a);
-      a.click();
-      
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
+      saveAs(generatedImage, `filtered-${timestamp}-${randomId}.png`);
     } catch (err) {
         setError(err instanceof Error ? `Download failed: ${err.message}` : 'Download failed');
     }
