@@ -175,9 +175,12 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     if (!generatedImage) return;
 
     try {
+      const response = await fetch(generatedImage);
+      if (!response.ok) throw new Error('Failed to fetch image for download.');
+      const blob = await response.blob();
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 8);
-      saveAs(generatedImage, `filtered-${timestamp}-${randomId}.png`);
+      saveAs(blob, `filtered-${timestamp}-${randomId}.png`);
     } catch (err) {
         setError(err instanceof Error ? `Download failed: ${err.message}` : 'Download failed');
     }
