@@ -182,7 +182,9 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
       
       const a = document.createElement('a');
       a.href = url;
-      a.download = generatedImageFilename || 'creation.png';
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 8);
+      a.download = `filtered-${timestamp}-${randomId}.png`;
       document.body.appendChild(a);
       a.click();
       
@@ -192,7 +194,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     } catch (err) {
         setError(err instanceof Error ? `Download failed: ${err.message}` : 'Download failed');
     }
-  }, [generatedImage, generatedImageFilename]);
+  }, [generatedImage]);
 
   const isApplyDisabled = isLoading || !uploadedImage1 || (filterType === 'merge' && !uploadedImage2);
 

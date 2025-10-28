@@ -97,7 +97,6 @@ export default async function handler(
   if (!textPrompt) {
     return res.status(400).json({ error: "textPrompt required" });
   }
-  console.log(destination);
   try {
     const result = await generateText({
       model: "google/gemini-2.5-flash-image-preview",

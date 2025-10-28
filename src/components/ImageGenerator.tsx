@@ -53,6 +53,7 @@
         });
 
         const data = await res.json();
+
         if (data.imageBase64) {
           setTransformedImage(`data:image/png;base64,${data.imageBase64}`);
         } else if (data.transformedImage) {
@@ -67,6 +68,21 @@
       } finally {
         setLoading(false);
       }
+    };
+
+    const handleDownload = () => {
+      if (!transformedImage) return;
+  
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 8);
+      const filename = `transformed-${timestamp}-${randomId}.png`;
+  
+      const a = document.createElement('a');
+      a.href = transformedImage;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     };
 
     return (
@@ -101,6 +117,9 @@
               alt="Transformed"
               style={{ width: "300px", marginTop: "10px" }}
             />
+            <button onClick={handleDownload} style={{ marginTop: '10px' }}>
+              Download Image
+            </button>
           </div>
         )}
       </div>
