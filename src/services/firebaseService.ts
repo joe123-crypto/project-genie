@@ -94,7 +94,7 @@ export const saveFilter = async (filter: Omit<Filter, 'id'>, idToken: string): P
             try {
                 const errorData = JSON.parse(errorText);
                 throw new Error(errorData.error || 'Failed to save filter');
-            } catch (e) {
+            } catch {
                 throw new Error('Failed to save filter, and the response was not valid JSON.');
             }
         }

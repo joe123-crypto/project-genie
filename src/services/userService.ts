@@ -1,5 +1,5 @@
 
-import { User } from '../types';
+import { User, Share, Outfit, Filter } from '../types';
 
 /**
  * Updates a user's profile information.
@@ -84,3 +84,87 @@ export const deleteUser = async (idToken: string): Promise<void> => {
     throw error;
   }
 };
+
+/**
+ * Fetches a user's images.
+ * @param email The user's email.
+ * @param idToken The user's ID token.
+ * @returns A promise that resolves to an array of Share objects.
+ */
+export const fetchUserImages = async (email: string, idToken: string): Promise<Share[]> => {
+  try {
+    const response = await fetch(`/api/user/images?email=${email}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to fetch user images');
+    }
+
+    const images = await response.json();
+    return images;
+  } catch (error) {
+    console.error('Error fetching user images:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetches a user's created outfits.
+ * @param uid The user's ID.
+ * @param idToken The user's ID token.
+ * @returns A promise that resolves to an array of Outfit objects.
+ */
+export const fetchUserOutfits = async (uid: string, idToken: string): Promise<Outfit[]> => {
+    try {
+      const response = await fetch(`/api/user/outfits?uid=${uid}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch user outfits');
+      }
+  
+      const outfits = await response.json();
+      return outfits;
+    } catch (error) {
+      console.error('Error fetching user outfits:', error);
+      throw error;
+    }
+  };
+  
+  /**
+   * Fetches a user's created filters.
+   * @param uid The user's ID.
+   * @param idToken The user's ID token.
+   * @returns A promise that resolves to an array of Filter objects.
+   */
+  export const fetchUserFilters = async (uid: string, idToken: string): Promise<Filter[]> => {
+    try {
+      const response = await fetch(`/api/user/filters?uid=${uid}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch user filters');
+      }
+  
+      const filters = await response.json();
+      return filters;
+    } catch (error) {
+      console.error('Error fetching user filters:', error);
+      throw error;
+    }
+  };

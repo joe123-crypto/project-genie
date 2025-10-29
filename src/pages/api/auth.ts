@@ -9,7 +9,7 @@ const handleAuthResponse = async (response: Response): Promise<User> => {
     let data;
     try {
         data = JSON.parse(responseText);
-    } catch (error) {
+    } catch {
         console.error("Failed to parse auth response as JSON:", responseText);
         throw new Error("Received an invalid response from authentication server.");
     }
@@ -113,7 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
                 try {
                     refreshData = JSON.parse(responseText);
-                } catch (error) {
+                } catch {
                     console.error("Failed to parse refresh token response as JSON:", responseText);
                     return res.status(500).json({ error: "Received an invalid response from authentication server when refreshing token." });
                 }

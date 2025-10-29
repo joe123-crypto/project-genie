@@ -1,7 +1,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { generateText } from "ai";
-import { saveFilterAdmin } from "../../lib/firestoreAdmin"; // Corrected import path
+import { firestoreAdmin } from "../../lib/firestoreAdmin";
 import { Filter } from "../../types";
 import {
   S3Client,
@@ -174,7 +174,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       category,
     };
     
-    const savedFilter = await saveFilterAdmin(newFilter);
+    const docRef = await firestoreAdmin.collection('filters').add(newFilter);
+    const savedFilter = { id: docRef.id, ...newFilter };
 
     res.status(200).json(savedFilter);
   } catch (error: any) {

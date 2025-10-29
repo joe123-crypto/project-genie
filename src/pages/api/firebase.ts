@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     initializeFirebaseAdmin();
     const db = admin.firestore();
     const { action, id } = req.query;
-    const { filter, filterId, filterData, outfit, creation, idToken } = req.body;
+    const { filter, filterId, filterData, outfit, creation } = req.body;
 
     // The token verification logic has been removed as per your request.
 
