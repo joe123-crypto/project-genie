@@ -1,51 +1,85 @@
-
 import { NextApiRequest, NextApiResponse } from 'next';
-import { firestoreAdmin } from '../../../lib/firestoreAdmin';
-import { verifyIdToken } from '../../../lib/firebaseAdmin';
+import { initializeFirebaseAdmin, verifyIdToken } from '../../../lib/firebaseAdmin';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
+
+const firestoreAdmin = getFirestore(initializeFirebaseAdmin());
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).end();
-  }
-
   const { authorization } = req.headers;
   if (!authorization || !authorization.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized: No token provided' });
   }
   const idToken = authorization.split('Bearer ')[1];
 
-  const { email } = req.query;
-
-  if (typeof email !== 'string') {
-    return res.status(400).json({ error: 'email must be a string' });
-  }
-
   try {
     const decodedToken = await verifyIdToken(idToken);
-    const tokenEmail = decodedToken.email;
+    const tokenUid = decodedToken.email;
+    //console.log("tokenUid :",tokenUid);
 
-    if (tokenEmail !== email) {
-      return res.status(403).json({ error: 'Forbidden: You can only fetch your own images' });
-    }
+    //to be attended to later on. To use uid instead of email
+    if (req.method === 'GET') {
+      const { uid } = req.query;
 
-    const sharesSnapshot = await firestoreAdmin
-      .collection('shares')
-      .where('email', '==', email)
-      .limit(20)
-      .get();
+      if (typeof uid !== 'string' || !uid) {
+        return res.status(400).json({ error: 'uid must be a string' });
+      }
 
-    const images = sharesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const sharesSnapshot = await firestoreAdmin
+        .collection('sharedImages')
+        .where('username', '==', tokenUid)
+        .limit(20)
+        .get();
 
-    res.setHeader('Cache-Control', 'no-store');
-    res.status(200).json(images);
-  } catch (error: any) {
-    console.error('Error fetching user images:', error);
-    if (error.code === 'auth/id-token-expired') {
-        res.status(401).json({ error: 'Token expired' });
-    } else if (error.code === 'auth/argument-error') {
-        res.status(401).json({ error: 'Invalid token' });
+      const images = sharesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      res.setHeader('Cache-Control', 'no-store');
+      res.status(200).json(images);
+
+    } else if (req.method === 'DELETE') {
+      const { imageId } = req.query;
+
+      if (typeof imageId !== 'string' || !imageId) {
+        return res.status(400).json({ error: 'imageId must be a string' });
+      }
+
+      const imageRef = firestoreAdmin.collection('sharedImages').doc(imageId);
+      const imageDoc = await imageRef.get();
+
+      if (!imageDoc.exists) {
+        return res.status(404).json({ error: 'Image not found' });
+      }
+
+      const imageData = imageDoc.data();
+      if (imageData?.creatorUid !== tokenUid) {
+        return res.status(403).json({ error: 'Forbidden: You are not the owner of this image' });
+      }
+
+      // Delete the image from Cloud Storage
+      const bucket = getStorage(initializeFirebaseAdmin()).bucket();
+      const originalImageFile = bucket.file(`shared/${imageData.creatorUid}/${imageId}_original.png`);
+      const filteredImageFile = bucket.file(`shared/${imageData.creatorUid}/${imageId}_filtered.png`);
+
+      await Promise.all([
+        originalImageFile.delete().catch(err => console.error("Error deleting original image:", err)),
+        filteredImageFile.delete().catch(err => console.error("Error deleting filtered image:", err)),
+        imageRef.delete()
+      ]);
+
+      res.status(200).json({ message: 'Image deleted successfully' });
+
     } else {
-        res.status(500).json({ error: 'Failed to fetch user images' });
+      res.setHeader('Allow', ['GET', 'DELETE']);
+      res.status(405).end(`Method ${req.method} Not Allowed`);
+    }
+  } catch (error: any) {
+    console.error('Error in /api/user/images:', error);
+    if (error.code === 'auth/id-token-expired') {
+      res.status(401).json({ error: 'Token expired' });
+    } else if (error.code === 'auth/argument-error') {
+      res.status(401).json({ error: 'Invalid token' });
+    } else {
+      res.status(500).json({ error: 'Internal Server Error' });
     }
   }
 }

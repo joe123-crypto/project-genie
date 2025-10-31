@@ -41,17 +41,21 @@ const generateHtml = (imageUrl: string, filterName: string, pageUrl: string) => 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
-      const { imageUrl, filterName, username, filterId } = req.body;
+      const { imageUrl, filterName, username, filterId, userId } = req.body;
 
       if (!imageUrl || !filterName) {
         return res.status(400).json({ error: 'Missing imageUrl or filterName' });
       }
 
+      // Determine the username to store. Prioritize the provided username, fallback to userId.
+      const usernameToStore = username || userId || null;
+
       const docRef = await db.collection('sharedImages').add({
         imageUrl,
         filterName,
         filterId: filterId || null,
-        username: username || null,
+        username: usernameToStore, // Use the determined username
+        userId: userId || null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 

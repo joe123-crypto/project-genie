@@ -1,4 +1,3 @@
-
 import { User, Share, Outfit, Filter } from '../types';
 
 /**
@@ -87,13 +86,18 @@ export const deleteUser = async (idToken: string): Promise<void> => {
 
 /**
  * Fetches a user's images.
- * @param email The user's email.
+ * @param uid The user's ID.
  * @param idToken The user's ID token.
  * @returns A promise that resolves to an array of Share objects.
  */
-export const fetchUserImages = async (email: string, idToken: string): Promise<Share[]> => {
+export const fetchUserImages = async (uid: string, idToken: string): Promise<Share[]> => {
+  // Guard clause to ensure uid is a valid string
+  if (typeof uid !== 'string' || !uid) {
+    throw new Error('uid must be a non-empty string');
+  }
+
   try {
-    const response = await fetch(`/api/user/images?email=${email}`, {
+    const response = await fetch(`/api/user/images?uid=${encodeURIComponent(uid)}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${idToken}`,
@@ -109,6 +113,30 @@ export const fetchUserImages = async (email: string, idToken: string): Promise<S
     return images;
   } catch (error) {
     console.error('Error fetching user images:', error);
+    throw error;
+  }
+};
+
+/**
+ * Deletes a user's image.
+ * @param imageId The ID of the image to delete.
+ * @param idToken The user's ID token.
+ */
+export const deleteUserImage = async (imageId: string, idToken: string): Promise<void> => {
+  try {
+    const response = await fetch(`/api/user/images?imageId=${imageId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to delete image');
+    }
+  } catch (error) {
+    console.error('Error deleting image:', error);
     throw error;
   }
 };

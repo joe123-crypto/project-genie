@@ -1,12 +1,12 @@
-
 import React, { useState, useCallback, ChangeEvent, useEffect } from 'react';
 import { User, Share, Outfit, Filter } from '../types';
-import { updateUserProfile, uploadProfilePicture, fetchUserImages, fetchUserOutfits, fetchUserFilters } from '../services/userService';
+import { updateUserProfile, uploadProfilePicture, fetchUserImages, fetchUserOutfits, fetchUserFilters, deleteUserImage } from '../services/userService';
 import { getValidIdToken } from '../services/authService';
 import Spinner from './Spinner';
-import { DefaultUserIcon } from './icons';
+import { DefaultUserIcon, TrashIcon } from './icons';
 import OutfitCard from './OutfitCard';
 import FilterCard from './FilterCard';
+import ConfirmationDialog from './ConfirmationDialog';
 
 interface ProfileViewProps {
   user: User;
@@ -27,36 +27,40 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
   const [isLoadingOutfits, setIsLoadingOutfits] = useState(true);
   const [isLoadingFilters, setIsLoadingFilters] = useState(true);
 
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const idToken = await getValidIdToken();
-        if (!idToken) throw new Error('Session expired');
-        if (!user.email) throw new Error('User email is not available');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-        // Parallel fetching
-        const [userImages, userOutfits, userFilters] = await Promise.all([
-          fetchUserImages(user.email, idToken),
-          fetchUserOutfits(user.uid, idToken),
-          fetchUserFilters(user.uid, idToken)
-        ]);
-
-        setImages(userImages);
-        setOutfits(userOutfits);
-        setFilters(userFilters);
-
-      } catch (err) {
-        console.error(err);
-        setError('Failed to load your data.');
-      } finally {
-        setIsLoadingImages(false);
-        setIsLoadingOutfits(false);
-        setIsLoadingFilters(false);
+  const loadUserData = useCallback(async () => {
+    try {
+      const idToken = await getValidIdToken();
+      if (!idToken) throw new Error('Session expired');
+      
+      if (typeof user.uid !== 'string' || !user.uid) {
+        throw new Error('User UID is not available or is invalid');
       }
-    };
 
+      const [userImages, userOutfits, userFilters] = await Promise.all([
+        fetchUserImages(user.uid, idToken),
+        fetchUserOutfits(user.uid, idToken),
+        fetchUserFilters(user.uid, idToken)
+      ]);
+
+      setImages(userImages);
+      setOutfits(userOutfits);
+      setFilters(userFilters);
+
+    } catch (err: any) {
+      console.error(err);
+      setError(prevError => prevError ? `${prevError}\n${err.message}` : `Failed to load your data: ${err.message}`);
+    } finally {
+      setIsLoadingImages(false);
+      setIsLoadingOutfits(false);
+      setIsLoadingFilters(false);
+    }
+  }, [user.uid]);
+
+  useEffect(() => {
     loadUserData();
-  }, [user.email, user.uid]);
+  }, [loadUserData]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -87,18 +91,39 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
     }
   }, [user, displayName, newProfilePic, setViewState]);
 
+  const handleDeleteImage = async (imageId: string) => {
+    try {
+      const idToken = await getValidIdToken();
+      if (!idToken) throw new Error('Session expired');
+      await deleteUserImage(imageId, idToken);
+      setImages(images.filter(image => image.id !== imageId));
+    } catch (err: any) {
+      setError(`Failed to delete image: ${err.message}`);
+    }
+    setShowDeleteConfirm(null);
+  };
+
   const isSaveDisabled = 
     (displayName === (user.displayName || '') && !newProfilePic) || isSaving;
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 bg-base-200 dark:bg-dark-base-200 rounded-lg shadow-lg">
+      {showDeleteConfirm && (
+        <ConfirmationDialog
+          title="Delete Image"
+          message="Are you sure you want to permanently delete this image? This action cannot be undone."
+          onConfirm={() => handleDeleteImage(showDeleteConfirm)}
+          onCancel={() => setShowDeleteConfirm(null)}
+        />
+      )}
+
       <h2 className="text-2xl sm:text-3xl font-bold font-heading mb-6 text-center text-content-100 dark:text-dark-content-100">
         Your Profile
       </h2>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-          <span className="block sm:inline">{error}</span>
+          <span className="block sm:inline whitespace-pre-line">{error}</span>
         </div>
       )}
 
@@ -147,7 +172,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
                             <OutfitCard key={outfit.id} outfit={outfit} onSelect={() => setViewState({view: 'applyOutfit', outfit: outfit})} />
                         ))}
                     </div>
-                ) : <p className="text-content-200 dark:text-dark-content-200">You haven&apos;t created any outfits yet.</p>}
+                ) : <p className="text-content-200 dark:text-dark-content-200">You haven't created any outfits yet.</p>}
             </div>
 
             {/* Filters Section */}
@@ -159,7 +184,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
                             <FilterCard key={filter.id} filter={filter} onSelect={() => setViewState({view: 'apply', filter: filter})} onEdit={() => setViewState({ view: 'edit', filter: filter })} user={user} onDelete={async () => {}} />
                         ))}
                     </div>
-                ) : <p className="text-content-200 dark:text-dark-content-200">You haven&apos;t created any filters yet.</p>}
+                ) : <p className="text-content-200 dark:text-dark-content-200">You haven't created any filters yet.</p>}
             </div>
 
             {/* Images Section */}
@@ -168,12 +193,17 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
                 {isLoadingImages ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : images.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {images.map((image) => (
-                            <div key={image.id} className="rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow">
+                            <div key={image.id} className="relative group rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow">
                                 <img src={image.imageUrl} alt="User generated content" className="w-full h-auto object-cover"/>
+                                <div className="absolute top-2 right-2">
+                                    <button onClick={() => setShowDeleteConfirm(image.id)} className="p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
+                                        <TrashIcon className="h-5 w-5" />
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
-                ) : <p className="text-content-200 dark:text-dark-content-200">You haven&apos;t created any images yet.</p>}
+                ) : <p className="text-content-200 dark:text-dark-content-200">You haven't created any images yet.</p>}
             </div>
         </div>
       </div>

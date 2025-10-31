@@ -43,6 +43,8 @@ export interface User {
 export interface Share {
     id: string;
     imageUrl: string;
+    originalImageUrl?: string;
+    filteredImageUrl?: string;
     userId?: string;
     username?: string;
     filterId: string;
