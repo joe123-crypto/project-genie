@@ -26,8 +26,22 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
   const [isLoadingImages, setIsLoadingImages] = useState(true);
   const [isLoadingOutfits, setIsLoadingOutfits] = useState(true);
   const [isLoadingFilters, setIsLoadingFilters] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<Share | null>(null);
+
+  const handleImageClick = (image: Share) => {
+    setSelectedImage(image);
+    setDownloadError(null); // Reset error when opening a new image
+  };
+
+  const closeModal = () => {
+      setSelectedImage(null);
+      setDownloadError(null);
+  }
 
   const loadUserData = useCallback(async () => {
     try {
@@ -103,6 +117,43 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
     setShowDeleteConfirm(null);
   };
 
+  const handleDownload = async () => {
+    if (!selectedImage) return;
+  
+    setIsDownloading(true);
+    setDownloadError(null);
+    try {
+      // Use fetch to get the image data
+      const response = await fetch(selectedImage.imageUrl);
+      if (!response.ok) {
+        // This will be triggered by network errors or non-2xx responses (like 404)
+        throw new Error(`Network response was not ok: ${response.statusText}`);
+      }
+      const blob = await response.blob();
+      
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 8);
+      // Use the blob's type to be more accurate, or default to png
+      const extension = blob.type.split('/')[1] || 'png';
+      const filename = `image-${timestamp}-${randomId}.${extension}`;
+  
+      // Create a temporary link to trigger the download
+      const a = document.createElement('a');
+      a.href = window.URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(a.href); // Clean up the object URL
+    } catch (err) {
+        console.error("Download failed:", err);
+        // This is the crucial part: if fetch fails due to CORS, the error will be caught here.
+        setDownloadError("Automatic download failed. This is likely due to a server security policy (CORS). Please use the 'Open in New Tab' button to save the image manually.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const isSaveDisabled = 
     (displayName === (user.displayName || '') && !newProfilePic) || isSaving;
 
@@ -112,9 +163,41 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
         <ConfirmationDialog
           title="Delete Image"
           message="Are you sure you want to permanently delete this image? This action cannot be undone."
-          onConfirm={() => handleDeleteImage(showDeleteConfirm)}
+          onConfirm={() => {
+              handleDeleteImage(showDeleteConfirm);
+              closeModal();
+          }}
           onCancel={() => setShowDeleteConfirm(null)}
         />
+      )}
+
+      {selectedImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50" onClick={closeModal}>
+          <div className="relative bg-base-100 dark:bg-dark-base-100 p-4 rounded-lg shadow-xl max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <img src={selectedImage.imageUrl} alt="Full view" className="w-full h-auto object-contain max-h-[75vh] rounded"/>
+            <div className="mt-4 flex flex-col items-center gap-2">
+                <div className="flex justify-center gap-4">
+                    <button onClick={handleDownload} disabled={isDownloading} className="px-6 py-2 bg-brand-primary text-white font-bold rounded-lg hover:bg-brand-secondary transition-colors flex items-center justify-center w-36">
+                        {isDownloading ? <Spinner className="h-5 w-5" /> : 'Download'}
+                    </button>
+                    <a href={selectedImage.imageUrl} target="_blank" rel="noopener noreferrer" className="px-6 py-2 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-700 transition-colors inline-block text-center w-36">
+                        Open in New Tab
+                    </a>
+                    <button onClick={() => {
+                        setShowDeleteConfirm(selectedImage.id);
+                    }} className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors w-36">
+                        Delete
+                    </button>
+                </div>
+                {downloadError && (
+                    <p className="text-red-500 text-sm mt-2 text-center">{downloadError}</p>
+                )}
+            </div>
+            <button onClick={closeModal} className="absolute top-2 right-2 text-white bg-gray-800 rounded-full p-2 hover:bg-gray-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
       )}
 
       <h2 className="text-2xl sm:text-3xl font-bold font-heading mb-6 text-center text-content-100 dark:text-dark-content-100">
@@ -193,10 +276,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
                 {isLoadingImages ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : images.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {images.map((image) => (
-                            <div key={image.id} className="relative group rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow">
+                            <div key={image.id} className="relative group rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow cursor-pointer" onClick={() => handleImageClick(image)}>
                                 <img src={image.imageUrl} alt="User generated content" className="w-full h-auto object-cover"/>
                                 <div className="absolute top-2 right-2">
-                                    <button onClick={() => setShowDeleteConfirm(image.id)} className="p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
+                                    <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(image.id); }} className="p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
                                         <TrashIcon className="h-5 w-5" />
                                     </button>
                                 </div>
