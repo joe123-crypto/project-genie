@@ -172,7 +172,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
                             <OutfitCard key={outfit.id} outfit={outfit} onSelect={() => setViewState({view: 'applyOutfit', outfit: outfit})} />
                         ))}
                     </div>
-                ) : <p className="text-content-200 dark:text-dark-content-200">You haven't created any outfits yet.</p>}
+                ) : <p className="text-content-200 dark:text-dark-content-200">You haven&apos;t created any outfits yet.</p>}
             </div>
 
             {/* Filters Section */}
@@ -184,7 +184,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
                             <FilterCard key={filter.id} filter={filter} onSelect={() => setViewState({view: 'apply', filter: filter})} onEdit={() => setViewState({ view: 'edit', filter: filter })} user={user} onDelete={async () => {}} />
                         ))}
                     </div>
-                ) : <p className="text-content-200 dark:text-dark-content-200">You haven't created any filters yet.</p>}
+                ) : <p className="text-content-200 dark:text-dark-content-200">You haven&apos;t created any filters yet.</p>}
             </div>
 
             {/* Images Section */}
@@ -203,7 +203,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
                             </div>
                         ))}
                     </div>
-                ) : <p className="text-content-200 dark:text-dark-content-200">You haven't created any images yet.</p>}
+                ) : <p className="text-content-200 dark:text-dark-content-200">You haven&apos;t created any images yet.</p>}
             </div>
         </div>
       </div>

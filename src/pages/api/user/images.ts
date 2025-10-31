@@ -14,20 +14,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const decodedToken = await verifyIdToken(idToken);
-    const tokenUid = decodedToken.email;
-    //console.log("tokenUid :",tokenUid);
+    const email = decodedToken.email; // Use UID instead of email
 
-    //to be attended to later on. To use uid instead of email
     if (req.method === 'GET') {
-      const { uid } = req.query;
-
-      if (typeof uid !== 'string' || !uid) {
-        return res.status(400).json({ error: 'uid must be a string' });
-      }
-
+      // The uid from query is removed, we use the authenticated user's uid
       const sharesSnapshot = await firestoreAdmin
         .collection('sharedImages')
-        .where('username', '==', tokenUid)
+        .where('username', '==', email) // Query by creatorUid
+        .orderBy('createdAt', 'desc')
         .limit(20)
         .get();
 
@@ -51,18 +45,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const imageData = imageDoc.data();
-      if (imageData?.creatorUid !== tokenUid) {
-        return res.status(403).json({ error: 'Forbidden: You are not the owner of this image' });
+      
+      // Add a check for imageData
+      if (!imageData) {
+        return res.status(404).json({ error: 'Image data not found' });
       }
 
       // Delete the image from Cloud Storage
       const bucket = getStorage(initializeFirebaseAdmin()).bucket();
-      const originalImageFile = bucket.file(`shared/${imageData.creatorUid}/${imageId}_original.png`);
-      const filteredImageFile = bucket.file(`shared/${imageData.creatorUid}/${imageId}_filtered.png`);
+      //const originalImageFile = bucket.file(`shared/${imageData.creatorUid}/${imageId}_original.png`);
+      const filteredImageFile = bucket.file(imageData.imageUrl);
 
       await Promise.all([
-        originalImageFile.delete().catch(err => console.error("Error deleting original image:", err)),
-        filteredImageFile.delete().catch(err => console.error("Error deleting filtered image:", err)),
+        //originalImageFile.delete().catch(err => console.error("Error deleting original image:", err)),
+        filteredImageFile.delete().catch(err => console.error("Error deleting image:", err)),
         imageRef.delete()
       ]);
 

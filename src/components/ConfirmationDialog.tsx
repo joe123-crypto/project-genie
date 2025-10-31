@@ -2,15 +2,17 @@
 import React from 'react';
 
 interface ConfirmationDialogProps {
+  title?: string;
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({ message, onConfirm, onCancel }) => {
+const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({ title, message, onConfirm, onCancel }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-base-100 dark:bg-dark-base-100 p-6 rounded-lg shadow-lg max-w-sm w-full mx-4">
+        {title && <h3 className="text-lg font-bold mb-4 text-content-100 dark:text-dark-content-100">{title}</h3>}
         <p className="text-content-100 dark:text-dark-content-100 mb-4">{message}</p>
         <div className="flex justify-end gap-4">
           <button 
