@@ -1,7 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { initializeFirebaseAdmin, verifyIdToken } from '../../../lib/firebaseAdmin';
 import { getFirestore } from 'firebase-admin/firestore';
-import { getStorage } from 'firebase-admin/storage';
+import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
+
+// Configure R2 client
+const r2 = new S3Client({
+  region: "auto",
+  endpoint: process.env.R2_ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
+  },
+});
 
 const firestoreAdmin = getFirestore(initializeFirebaseAdmin());
 
@@ -17,10 +27,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const email = decodedToken.email; // Use UID instead of email
 
     if (req.method === 'GET') {
-      // The uid from query is removed, we use the authenticated user's uid
       const sharesSnapshot = await firestoreAdmin
         .collection('sharedImages')
-        .where('username', '==', email) // Query by creatorUid
+        .where('username', '==', email)
         .orderBy('createdAt', 'desc')
         .limit(20)
         .get();
@@ -46,19 +55,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const imageData = imageDoc.data();
       
-      // Add a check for imageData
-      if (!imageData) {
-        return res.status(404).json({ error: 'Image data not found' });
+      if (!imageData || !imageData.imageUrl) {
+        // If there's no image URL, we can only delete the Firestore record.
+        await imageRef.delete();
+        return res.status(200).json({ message: 'Image record deleted. No image URL found to delete from storage.' });
       }
 
-      // Delete the image from Cloud Storage
-      const bucket = getStorage(initializeFirebaseAdmin()).bucket();
-      //const originalImageFile = bucket.file(`shared/${imageData.creatorUid}/${imageId}_original.png`);
-      const filteredImageFile = bucket.file(imageData.imageUrl);
+      // --- Delete from R2 ---
+      // Extract the object key from the full image URL
+      const imageKey = new URL(imageData.imageUrl).pathname.substring(1);
 
+      const deleteCommand = new DeleteObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME!,
+        Key: imageKey,
+      });
+
+      // Delete from R2 and Firestore concurrently
       await Promise.all([
-        //originalImageFile.delete().catch(err => console.error("Error deleting original image:", err)),
-        filteredImageFile.delete().catch(err => console.error("Error deleting image:", err)),
+        r2.send(deleteCommand).catch(err => console.error(`Error deleting image from R2: ${err}`)),
         imageRef.delete()
       ]);
 

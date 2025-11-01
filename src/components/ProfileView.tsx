@@ -117,42 +117,64 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
     setShowDeleteConfirm(null);
   };
 
-  const handleDownload = async () => {
+  // FINAL ATTEMPT: Bypass file-saver and use native browser download APIs.
+  const handleDownload = useCallback(async () => {
     if (!selectedImage) return;
-  
+
     setIsDownloading(true);
     setDownloadError(null);
+    
+    let objectUrl: string | null = null; // Keep track of the URL to revoke it later
+
     try {
-      // Use fetch to get the image data
-      const response = await fetch(selectedImage.imageUrl);
+      const response = await fetch('/api/v2/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imageUrl: selectedImage.imageUrl }),
+      });
+
       if (!response.ok) {
-        // This will be triggered by network errors or non-2xx responses (like 404)
-        throw new Error(`Network response was not ok: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
+        throw new Error(errorData.error);
       }
+
       const blob = await response.blob();
+
+      // Get filename from the Content-Disposition header.
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = 'download.png'; // Default filename
+      if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+          if (filenameMatch && filenameMatch[1]) {
+              filename = filenameMatch[1];
+          }
+      }
+
+      // Create a temporary link element to trigger the download.
+      const link = document.createElement('a');
+      objectUrl = URL.createObjectURL(blob);
       
-      const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substring(2, 8);
-      // Use the blob's type to be more accurate, or default to png
-      const extension = blob.type.split('/')[1] || 'png';
-      const filename = `image-${timestamp}-${randomId}.${extension}`;
-  
-      // Create a temporary link to trigger the download
-      const a = document.createElement('a');
-      a.href = window.URL.createObjectURL(blob);
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(a.href); // Clean up the object URL
+      link.href = objectUrl;
+      link.download = filename;
+      
+      // Append to the document, click, and then remove.
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
     } catch (err) {
-        console.error("Download failed:", err);
-        // This is the crucial part: if fetch fails due to CORS, the error will be caught here.
-        setDownloadError("Automatic download failed. This is likely due to a server security policy (CORS). Please use the 'Open in New Tab' button to save the image manually.");
+      console.error("Download failed:", err);
+      setDownloadError(err instanceof Error ? err.message : "An unknown error occurred during download.");
     } finally {
+      // Clean up the object URL to avoid memory leaks.
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
       setIsDownloading(false);
     }
-  };
+  }, [selectedImage]);
 
   const isSaveDisabled = 
     (displayName === (user.displayName || '') && !newProfilePic) || isSaving;
@@ -180,9 +202,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
                     <button onClick={handleDownload} disabled={isDownloading} className="px-6 py-2 bg-brand-primary text-white font-bold rounded-lg hover:bg-brand-secondary transition-colors flex items-center justify-center w-36">
                         {isDownloading ? <Spinner className="h-5 w-5" /> : 'Download'}
                     </button>
-                    <a href={selectedImage.imageUrl} target="_blank" rel="noopener noreferrer" className="px-6 py-2 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-700 transition-colors inline-block text-center w-36">
-                        Open in New Tab
-                    </a>
                     <button onClick={() => {
                         setShowDeleteConfirm(selectedImage.id);
                     }} className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors w-36">
