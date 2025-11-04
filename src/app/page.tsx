@@ -22,6 +22,7 @@ import UserIcon from '../components/UserIcon';
 import ConfirmationDialog from '../components/ConfirmationDialog';
 import ProfileView from '../components/ProfileView';
 import Dashboard from '../components/Dashboard';
+import FeedView from '../components/FeedView'; // Import FeedView
 
 const CreateOutfitView = dynamic(() => import('../components/CreateOutfitView'), { ssr: false });
 
@@ -335,7 +336,7 @@ export default function Home() {
       case "shared":
         return <SharedImageView shareId={viewState.shareId} setViewState={setViewState} />;
       case "profile":
-        return <ProfileView user={user!} setViewState={setViewState} />;
+        return <ProfileView user={viewState.user || user!} currentUser={user} setViewState={setViewState} />;
       case "outfits":
         return (
           <div className="max-w-7xl mx-auto">
@@ -351,13 +352,15 @@ export default function Home() {
             </div>
           </div>
         );
-        case "applyOutfit":
-          return (
-            <ApplyOutfitView
-              outfit={viewState.outfit}
-              user={user}
-            />
-          );
+      case "applyOutfit":
+        return (
+          <ApplyOutfitView
+            outfit={viewState.outfit}
+            user={user}
+          />
+        );
+      case "feed":
+        return <FeedView user={user} setViewState={setViewState} />;
     }
   };
 
@@ -386,7 +389,7 @@ export default function Home() {
                 <UserIcon 
                   user={user} 
                   onSignOut={handleSignOut} 
-                  onGoToProfile={() => setViewState({ view: "profile" })}
+                  onGoToProfile={() => setViewState({ view: "profile", user: user })}
                   onRemoveAccount={handleRemoveAccount} 
                 />
               </>
@@ -429,6 +432,16 @@ export default function Home() {
               }`}
             >
               Outfits
+            </button>
+            <button
+              onClick={() => setViewState({ view: "feed" })}
+              className={`py-3 font-semibold transition-colors ${
+                viewState.view === "feed"
+                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+              }`}
+            >
+              Public Feed
             </button>
           </div>
         </div>

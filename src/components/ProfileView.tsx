@@ -10,10 +10,11 @@ import ConfirmationDialog from './ConfirmationDialog';
 
 interface ProfileViewProps {
   user: User;
+  currentUser: User | null;
   setViewState: (view: any) => void;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewState }) => {
   const [displayName, setDisplayName] = useState(user.displayName || '');
   const [newProfilePic, setNewProfilePic] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -33,6 +34,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<Share | null>(null);
 
+  const isOwner = currentUser?.uid === user.uid;
+
   const handleImageClick = (image: Share) => {
     setSelectedImage(image);
     setDownloadError(null); // Reset error when opening a new image
@@ -45,8 +48,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
 
   const loadUserData = useCallback(async () => {
     try {
-      const idToken = await getValidIdToken();
-      if (!idToken) throw new Error('Session expired');
+      let idToken: string | undefined;
+      if (isOwner) {
+        idToken = await getValidIdToken() || undefined;
+        if (!idToken) {
+          setError('Your session has expired or is invalid. Please sign in again.');
+          return;
+        }
+      }
       
       if (typeof user.uid !== 'string' || !user.uid) {
         throw new Error('User UID is not available or is invalid');
@@ -64,13 +73,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
 
     } catch (err: any) {
       console.error(err);
-      setError(prevError => prevError ? `${prevError}\n${err.message}` : `Failed to load your data: ${err.message}`);
+      setError(prevError => prevError ? `${prevError}
+${err.message}` : `Failed to load your data: ${err.message}`);
     } finally {
       setIsLoadingImages(false);
       setIsLoadingOutfits(false);
       setIsLoadingFilters(false);
     }
-  }, [user.uid]);
+  }, [user.uid, isOwner]);
 
   useEffect(() => {
     loadUserData();
@@ -202,11 +212,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
                     <button onClick={handleDownload} disabled={isDownloading} className="px-6 py-2 bg-brand-primary text-white font-bold rounded-lg hover:bg-brand-secondary transition-colors flex items-center justify-center w-36">
                         {isDownloading ? <Spinner className="h-5 w-5" /> : 'Download'}
                     </button>
-                    <button onClick={() => {
-                        setShowDeleteConfirm(selectedImage.id);
-                    }} className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors w-36">
-                        Delete
-                    </button>
+                    {isOwner && (
+                      <button onClick={() => {
+                          setShowDeleteConfirm(selectedImage.id);
+                      }} className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors w-36">
+                          Delete
+                      </button>
+                    )}
                 </div>
                 {downloadError && (
                     <p className="text-red-500 text-sm mt-2 text-center">{downloadError}</p>
@@ -220,7 +232,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
       )}
 
       <h2 className="text-2xl sm:text-3xl font-bold font-heading mb-6 text-center text-content-100 dark:text-dark-content-100">
-        Your Profile
+        {isOwner ? 'Your Profile' : `${user.displayName || 'Anonymous'}'s Profile`}
       </h2>
 
       {error && (
@@ -242,70 +254,76 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setViewState }) => {
                 <DefaultUserIcon className="h-24 w-24 text-content-100 dark:text-dark-content-100" />
               </div>
             )}
-            <label htmlFor="profile-pic-upload" className="absolute bottom-0 right-0 bg-brand-primary text-white p-2 rounded-full cursor-pointer hover:bg-brand-secondary transition-colors shadow-lg">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-              <input id="profile-pic-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-            </label>
+            {isOwner && (
+              <label htmlFor="profile-pic-upload" className="absolute bottom-0 right-0 bg-brand-primary text-white p-2 rounded-full cursor-pointer hover:bg-brand-secondary transition-colors shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <input id="profile-pic-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+              </label>
+            )}
           </div>
           <div className="w-full">
             <label htmlFor="displayName" className="block text-sm font-medium text-content-200 dark:text-dark-content-200 mb-1">Username</label>
-            <input id="displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-border-color dark:border-dark-border-color rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow" placeholder="Enter your username" />
+            <input id="displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-border-color dark:border-dark-border-color rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow" placeholder="Enter your username" disabled={!isOwner} />
           </div>
           <div className="w-full">
             <label htmlFor="email" className="block text-sm font-medium text-content-200 dark:text-dark-content-200 mb-1">Email</label>
             <input id="email" type="email" value={user.email || ''} disabled className="w-full px-4 py-2 bg-base-300 dark:bg-dark-base-300 border border-border-color dark:border-dark-border-color rounded-lg cursor-not-allowed" />
           </div>
-          <div className="w-full mt-4 flex justify-end gap-4">
-            <button onClick={() => setViewState({ view: 'marketplace' })} className="px-6 py-2 bg-neutral-200 dark:bg-dark-neutral-200 text-content-100 dark:text-dark-content-100 font-bold rounded-lg hover:bg-neutral-300 dark:hover:bg-dark-neutral-300 transition-colors" disabled={isSaving}>Cancel</button>
-            <button onClick={handleSave} className={`px-6 py-2 font-bold rounded-lg transition-all flex items-center justify-center ${isSaveDisabled ? 'bg-neutral-300 dark:bg-dark-neutral-300 text-content-200 dark:text-dark-content-200 cursor-not-allowed' : 'bg-brand-primary hover:bg-brand-secondary text-white'}`} disabled={isSaveDisabled}>
-              {isSaving ? <Spinner className="h-5 w-5" /> : 'Save'}
-            </button>
-          </div>
+          {isOwner && (
+            <div className="w-full mt-4 flex justify-end gap-4">
+              <button onClick={() => setViewState({ view: 'marketplace' })} className="px-6 py-2 bg-neutral-200 dark:bg-dark-neutral-200 text-content-100 dark:text-dark-content-100 font-bold rounded-lg hover:bg-neutral-300 dark:hover:bg-dark-neutral-300 transition-colors" disabled={isSaving}>Cancel</button>
+              <button onClick={handleSave} className={`px-6 py-2 font-bold rounded-lg transition-all flex items-center justify-center ${isSaveDisabled ? 'bg-neutral-300 dark:bg-dark-neutral-300 text-content-200 dark:text-dark-content-200 cursor-not-allowed' : 'bg-brand-primary hover:bg-brand-secondary text-white'}`} disabled={isSaveDisabled}>
+                {isSaving ? <Spinner className="h-5 w-5" /> : 'Save'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* User Content Section */}
         <div className="md:col-span-3">
             {/* Outfits Section */}
             <div className="mb-8">
-                <h3 className="text-xl font-bold font-heading mb-4 text-content-100 dark:text-dark-content-100">My Outfits</h3>
-                {isLoadingOutfits ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : outfits.length > 0 ? (
+                <h3 className="text-xl font-bold font-heading mb-4 text-content-100 dark:text-dark-content-100">Outfits</h3>
+                {(isLoadingImages || isLoadingOutfits) ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : outfits.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {outfits.map((outfit) => (
                             <OutfitCard key={outfit.id} outfit={outfit} onSelect={() => setViewState({view: 'applyOutfit', outfit: outfit})} />
                         ))}
                     </div>
-                ) : <p className="text-content-200 dark:text-dark-content-200">You haven&apos;t created any outfits yet.</p>}
+                ) : <p className="text-content-200 dark:text-dark-content-200">This user hasn&apos;t created any outfits yet.</p>}
             </div>
 
             {/* Filters Section */}
             <div className="mb-8">
-                <h3 className="text-xl font-bold font-heading mb-4 text-content-100 dark:text-dark-content-100">My Filters</h3>
+                <h3 className="text-xl font-bold font-heading mb-4 text-content-100 dark:text-dark-content-100">Filters</h3>
                 {isLoadingFilters ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : filters.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {filters.map((filter) => (
-                            <FilterCard key={filter.id} filter={filter} onSelect={() => setViewState({view: 'apply', filter: filter})} onEdit={() => setViewState({ view: 'edit', filter: filter })} user={user} onDelete={async () => {}} />
+                            <FilterCard key={filter.id} filter={filter} onSelect={() => setViewState({view: 'apply', filter: filter})} onEdit={() => setViewState({ view: 'edit', filter: filter })} user={currentUser} onDelete={async () => {}} />
                         ))}
                     </div>
-                ) : <p className="text-content-200 dark:text-dark-content-200">You haven&apos;t created any filters yet.</p>}
+                ) : <p className="text-content-200 dark:text-dark-content-200">This user hasn&apos;t created any filters yet.</p>}
             </div>
 
             {/* Images Section */}
             <div>
-                <h3 className="text-xl font-bold font-heading mb-4 text-content-100 dark:text-dark-content-100">My Images</h3>
+                <h3 className="text-xl font-bold font-heading mb-4 text-content-100 dark:text-dark-content-100">Images</h3>
                 {isLoadingImages ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : images.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {images.map((image) => (
                             <div key={image.id} className="relative group rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow cursor-pointer" onClick={() => handleImageClick(image)}>
                                 <img src={image.imageUrl} alt="User generated content" className="w-full h-auto object-cover"/>
-                                <div className="absolute top-2 right-2">
-                                    <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(image.id); }} className="p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
-                                        <TrashIcon className="h-5 w-5" />
-                                    </button>
-                                </div>
+                                {isOwner && (
+                                  <div className="absolute top-2 right-2">
+                                      <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(image.id); }} className="p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
+                                          <TrashIcon className="h-5 w-5" />
+                                      </button>
+                                  </div>
+                                )}
                             </div>
                         ))}
                     </div>
-                ) : <p className="text-content-200 dark:text-dark-content-200">You haven&apos;t created any images yet.</p>}
+                ) : <p className="text-content-200 dark:text-dark-content-200">This user hasn&apos;t created any images yet.</p>}
             </div>
         </div>
       </div>

@@ -9,21 +9,38 @@ export function initializeFirebaseAdmin() {
   if (!admin.apps.length) {
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    // 🔥 Replace literal "\n" sequences with real line breaks
     const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-    if (!projectId || !clientEmail || !privateKey) {
-      console.error('❌ Missing Firebase Admin environment variables.');
-      throw new Error('Firebase Admin credentials are incomplete');
+    // Add detailed checks for each environment variable
+    if (!projectId) {
+      const errorMessage = 'Firebase Admin initialization failed: Missing environment variable FIREBASE_PROJECT_ID.';
+      console.error(`❌ ${errorMessage}`);
+      throw new Error(errorMessage);
+    }
+    if (!clientEmail) {
+      const errorMessage = 'Firebase Admin initialization failed: Missing environment variable FIREBASE_CLIENT_EMAIL.';
+      console.error(`❌ ${errorMessage}`);
+      throw new Error(errorMessage);
+    }
+    if (!privateKey) {
+      const errorMessage = 'Firebase Admin initialization failed: Missing environment variable FIREBASE_PRIVATE_KEY.';
+      console.error(`❌ ${errorMessage}`);
+      throw new Error(errorMessage);
     }
 
-    app = admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId,
-        clientEmail,
-        privateKey,
-      }),
-    });
+    try {
+      app = admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId,
+          clientEmail,
+          privateKey,
+        }),
+      });
+    } catch (error: any) {
+      console.error('🔥 Firebase Admin initialization error:', error.message);
+      throw new Error(`Firebase Admin initialization failed: ${error.message}`);
+    }
+
   } else {
     app = admin.app();
   }

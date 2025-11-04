@@ -87,21 +87,23 @@ export const deleteUser = async (idToken: string): Promise<void> => {
 /**
  * Fetches a user's images.
  * @param uid The user's ID.
- * @param idToken The user's ID token.
+ * @param idToken The user's ID token. (Optional, if not provided, fetches public images)
  * @returns A promise that resolves to an array of Share objects.
  */
-export const fetchUserImages = async (uid: string, idToken: string): Promise<Share[]> => {
-  // Guard clause to ensure uid is a valid string
+export const fetchUserImages = async (uid: string, idToken?: string): Promise<Share[]> => {
   if (typeof uid !== 'string' || !uid) {
     throw new Error('uid must be a non-empty string');
+  }
+
+  const headers: HeadersInit = {};
+  if (idToken) {
+    headers['Authorization'] = `Bearer ${idToken}`;
   }
 
   try {
     const response = await fetch(`/api/user/images?uid=${encodeURIComponent(uid)}`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${idToken}`,
-      },
+      headers: headers,
     });
 
     if (!response.ok) {
@@ -144,16 +146,19 @@ export const deleteUserImage = async (imageId: string, idToken: string): Promise
 /**
  * Fetches a user's created outfits.
  * @param uid The user's ID.
- * @param idToken The user's ID token.
+ * @param idToken The user's ID token. (Optional, if not provided, fetches public outfits)
  * @returns A promise that resolves to an array of Outfit objects.
  */
-export const fetchUserOutfits = async (uid: string, idToken: string): Promise<Outfit[]> => {
+export const fetchUserOutfits = async (uid: string, idToken?: string): Promise<Outfit[]> => {
+    const headers: HeadersInit = {};
+    if (idToken) {
+      headers['Authorization'] = `Bearer ${idToken}`;
+    }
+
     try {
       const response = await fetch(`/api/user/outfits?uid=${uid}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-        },
+        headers: headers,
       });
   
       if (!response.ok) {
@@ -172,16 +177,19 @@ export const fetchUserOutfits = async (uid: string, idToken: string): Promise<Ou
   /**
    * Fetches a user's created filters.
    * @param uid The user's ID.
-   * @param idToken The user's ID token.
+   * @param idToken The user's ID token. (Optional, if not provided, fetches public filters)
    * @returns A promise that resolves to an array of Filter objects.
    */
-  export const fetchUserFilters = async (uid: string, idToken: string): Promise<Filter[]> => {
+  export const fetchUserFilters = async (uid: string, idToken?: string): Promise<Filter[]> => {
+    const headers: HeadersInit = {};
+    if (idToken) {
+      headers['Authorization'] = `Bearer ${idToken}`;
+    }
+
     try {
       const response = await fetch(`/api/user/filters?uid=${uid}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-        },
+        headers: headers,
       });
   
       if (!response.ok) {

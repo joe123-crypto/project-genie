@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     initializeFirebaseAdmin();
     const db = admin.firestore();
     const { action, id } = req.query;
-    const { filter, filterId, filterData, outfit, creation } = req.body;
+    const { filter, filterId, filterData, outfit, creation, postId, userId } = req.body;
 
     // The token verification logic has been removed as per your request.
 
@@ -143,6 +143,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { id: outfitIdFromBody } = req.body;
         if (!outfitIdFromBody) return res.status(400).json({ error: "Missing id" });
         await db.collection("outfits").doc(outfitIdFromBody).update({ accessCount: admin.firestore.FieldValue.increment(1) });
+        return res.status(200).json({ success: true });
+      }
+
+      /* ------------------------------ POSTS ------------------------------ */
+      case "getPosts": {
+        const snapshot = await db.collection("posts").orderBy("createdAt", "desc").get();
+        const postsWithAuthors = await Promise.all(snapshot.docs.map(async (doc) => {
+            const postData = doc.data();
+            let author = null;
+            if (postData.userId) {
+                try {
+                    const userRecord = await admin.auth().getUser(postData.userId);
+                    author = {
+                        uid: userRecord.uid,
+                        displayName: userRecord.displayName || 'Anonymous',
+                        photoURL: userRecord.photoURL,
+                    };
+                } catch (e) {
+                    console.error("Error fetching user data:", e);
+                    author = {
+                        uid: postData.userId,
+                        displayName: 'Anonymous',
+                        photoURL: undefined
+                    }
+                }
+            }
+            return { id: doc.id, ...postData, author };
+        }));
+        return res.status(200).json({ posts: postsWithAuthors });
+    }
+      case "likePost": {
+        if (!postId || !userId) return res.status(400).json({ error: "Missing postId or userId" });
+        const postRef = db.collection("posts").doc(postId);
+        const likeRef = db.collection("likes").doc(`${postId}_${userId}`);
+
+        await db.runTransaction(async (transaction) => {
+            const likeDoc = await transaction.get(likeRef);
+            if (likeDoc.exists) return; // User already liked the post
+
+            transaction.set(likeRef, { postId, userId });
+            transaction.update(postRef, { likeCount: admin.firestore.FieldValue.increment(1) });
+        });
+
+        return res.status(200).json({ success: true });
+      }
+
+      case "unlikePost": {
+        if (!postId || !userId) return res.status(400).json({ error: "Missing postId or userId" });
+        const postRef = db.collection("posts").doc(postId);
+        const likeRef = db.collection("likes").doc(`${postId}_${userId}`);
+
+        await db.runTransaction(async (transaction) => {
+            const likeDoc = await transaction.get(likeRef);
+            if (!likeDoc.exists) return; // User hasn't liked the post
+
+            transaction.delete(likeRef);
+            transaction.update(postRef, { likeCount: admin.firestore.FieldValue.increment(-1) });
+        });
+
         return res.status(200).json({ success: true });
       }
 

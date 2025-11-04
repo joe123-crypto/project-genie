@@ -1,4 +1,5 @@
-﻿import { Filter, User } from '../types';
+
+import { Filter, User, Share } from '../types';
 
 interface SharedImage {
   imageUrl: string;
@@ -13,12 +14,26 @@ interface ShareApiResponse {
   shareId?: string;
   share?: SharedImage;
   error?: string;
+  details?: string;
 }
 
 export interface ShareResult {
   status: 'shared' | 'modal';
   shareUrl: string;
 }
+
+// Specific type for the response from the toggleLike API
+interface ToggleLikeApiResponse {
+    message: string;
+    share: Share;
+}
+
+// Specific type for the error response from the toggleLike API
+interface ToggleLikeApiError {
+    error: string;
+    details?: string;
+}
+
 
 function isWindows(): boolean {
   return typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent);
@@ -30,13 +45,13 @@ export const getSharedImage = async (shareId: string): Promise<SharedImage> => {
       method: 'GET',
     });
 
-    const data = await response.json();
+    const data: ShareApiResponse = await response.json();
 
     if (!response.ok) {
       throw new Error(data.error ?? 'Failed to get shared image');
     }
 
-    return data as SharedImage;
+    return data.share as SharedImage;
   } catch (error: unknown) {
     console.error('❌ Error getting shared image:', error);
     throw error;
@@ -51,8 +66,7 @@ export const shareImage = async (
   const appUrl = window.location.origin;
   const shareText = `Check out this image I created with the '${filter?.name ?? ""}' filter on Genie! Create your own here: ${appUrl}`;
   const filename = `filtered-${Date.now()}.png`;
-  console.log(base64ImageDataUrl);
-  // ✅ On mobile (not Windows), try Web Share API
+
   if (!isWindows() && navigator.share && navigator.canShare) {
     try {
       const response = await fetch(base64ImageDataUrl);
@@ -70,17 +84,15 @@ export const shareImage = async (
       }
     } catch (error: unknown) {
       console.log('⚠️ Web Share API failed, falling back to backend:', error);
-      // continue to backend fallback
     }
   }
 
-  // ✅ Backend fallback
   try {
     const payload = {
       imageUrl: base64ImageDataUrl,
       filterName: filter.name,
-      filterId: filter.id,           // ✅ pass filterId so shared page can link back
-      username: user?.email ?? null, // keeping email as before
+      filterId: filter.id,
+      username: user?.email ?? null,
     };
 
     const response = await fetch('/api/share', {
@@ -100,4 +112,63 @@ export const shareImage = async (
     console.error('❌ Error sharing image:', error);
     throw error;
   }
+};
+
+
+export const fetchPublicFeed = async (): Promise<Share[]> => {
+    try {
+        const response = await fetch('/api/shares/public');
+        if (!response.ok) {
+            // Try to parse the error details from the API response
+            const data: ShareApiResponse = await response.json().catch(() => ({ error: 'Failed to fetch public feed. The API response was not valid JSON.' }));
+            // Construct a more informative error message
+            const errorMessage = `${data.error}${data.details ? `: ${data.details}` : ''}`;
+            throw new Error(errorMessage);
+        }
+        const result = await response.json();
+        return result.shares || [];
+    } catch (error) {
+        console.error('Error fetching public feed:', error);
+        throw error;
+    }
+};
+
+export const fetchUser = async (userId: string): Promise<User> => {
+    try {
+        const response = await fetch(`/api/user/profile?userId=${userId}`);
+        if (!response.ok) {
+            const data: ShareApiResponse = await response.json().catch(() => ({ error: `Failed to fetch user ${userId}` }));
+            const errorMessage = `${data.error}${data.details ? `: ${data.details}` : ''}`;
+            throw new Error(errorMessage);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`Error fetching user ${userId}:`, error);
+        throw error;
+    }
+};
+
+
+export const toggleLike = async (postId: string, idToken: string): Promise<Share> => {
+    const response = await fetch(`/api/shares/like`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ postId }),
+    });
+
+    if (!response.ok) {
+        const errorData: ToggleLikeApiError = await response.json();
+        const errorMessage = `${errorData.error}${errorData.details ? `: ${errorData.details}` : ''}`;
+        throw new Error(errorMessage || 'Failed to toggle like');
+    }
+
+    const data: ToggleLikeApiResponse = await response.json();
+    if (!data.share) {
+        throw new Error("API did not return a share object after toggling like.");
+    }
+
+    return data.share;
 };

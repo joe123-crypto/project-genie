@@ -278,6 +278,84 @@ export const getOutfits = async (): Promise<Outfit[]> => {
 };
 
 /**
+ * Fetches all posts from the backend API
+ * @returns A promise that resolves to an array of Post objects
+ */
+export const getPosts = async (): Promise<any[]> => {
+    try {
+        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=getPosts`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch posts');
+        }
+
+        const data = await response.json();
+        return data.posts || [];
+    } catch (error) {
+        console.error('Error fetching posts:', error);
+        throw error;
+    }
+};
+
+/**
+ * Likes a post
+ * @param postId - The ID of the post to like
+ * @param userId - The ID of the user liking the post
+ * @returns A promise that resolves when the post is liked
+ */
+export const likePost = async (postId: string, userId: string): Promise<void> => {
+    try {
+        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=likePost`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ postId, userId }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to like post');
+        }
+    } catch (error) {
+        console.error('Error liking post:', error);
+        throw error;
+    }
+};
+
+/**
+ * Unlikes a post
+ * @param postId - The ID of the post to unlike
+ * @param userId - The ID of the user unliking the post
+ * @returns A promise that resolves when the post is unliked
+ */
+export const unlikePost = async (postId: string, userId: string): Promise<void> => {
+    try {
+        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=unlikePost`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ postId, userId }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to unlike post');
+        }
+    } catch (error) {
+        console.error('Error unliking post:', error);
+        throw error;
+    }
+};
+
+/**
  * Increments the access count for an outfit
  * @param outfitId - The ID of the outfit
  * @returns A promise that resolves when the count is incremented
