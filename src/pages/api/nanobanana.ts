@@ -99,7 +99,7 @@ export default async function handler(
   }
   try {
     const result = await generateText({
-      model: "google/gemini-2.5-flash-image-preview",
+      model: "google/gemini-2.5-flash-image",
       providerOptions: {
         google: {
           responseModalities: ["IMAGE"],

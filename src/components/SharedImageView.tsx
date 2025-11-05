@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSharedImage } from '../services/shareService';
+import { getSharedImage, postToFeed } from '../services/shareService';
 import Spinner from './Spinner';
 import { ViewState } from '../types';
 import { getFilterById } from '../services/firebaseService';
@@ -21,6 +21,7 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFetchingFilter, setIsFetchingFilter] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
 
   useEffect(() => {
     const fetchShare = async () => {
@@ -59,6 +60,19 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
       setError("Could not load the filter. Please try again later.");
     } finally {
       setIsFetchingFilter(false);
+    }
+  };
+
+  const handlePost = async () => {
+    setIsPosting(true);
+    try {
+      await postToFeed(shareId);
+      setViewState({ view: 'feed' });
+    } catch (error) {
+      console.error("Failed to post to feed", error);
+      setError("Could not post to feed. Please try again later.");
+    } finally {
+      setIsPosting(false);
     }
   };
 
@@ -124,6 +138,17 @@ const SharedImageView: React.FC<SharedImageViewProps> = ({ shareId, setViewState
               )}
             </button>
           )}
+          <button
+            onClick={handlePost}
+            disabled={isPosting}
+            className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isPosting ? (
+              <Spinner className="h-5 w-5 mx-auto" />
+            ) : (
+              'Post to Feed'
+            )}
+          </button>
           <button
             onClick={() => setViewState({ view: 'marketplace' })}
             className="w-full sm:w-auto bg-neutral-200 hover:bg-neutral-300 dark:bg-dark-neutral-200 dark:hover:bg-dark-neutral-300 text-content-100 dark:text-dark-content-100 font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg"

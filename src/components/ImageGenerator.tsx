@@ -8,10 +8,6 @@
     const [transformedImage, setTransformedImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
-     
-    
-    // Removed R2 upload flow. Images are now converted to PNG base64 and sent directly to backend.
-
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0] || null;
       setImageFile(file);

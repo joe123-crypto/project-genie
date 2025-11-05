@@ -28,6 +28,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
   const [personalPrompt, setPersonalPrompt] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [isPosting, setIsPosting] = useState(false);
 
   const filterType = filter?.type ?? 'single';
   const filterPrompt = filter?.prompt ?? '';
@@ -98,11 +99,21 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     }
   }, [uploadedImage1, uploadedImage2, filterPrompt, filterType, personalPrompt]);
 
+  const fetchImageAsBase64 = async (url: string): Promise<string> => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const handleSave = useCallback(async () => {
-    if (!generatedImageFilename || generatedImageFilename.startsWith('saved/')) {
-      if (generatedImageFilename?.startsWith('saved/')) {
-        setSaveStatus('saved');
-      }
+    if (!generatedImage) return null;
+    if (generatedImageFilename?.startsWith('saved/')) {
+      setSaveStatus('saved');
       return generatedImage;
     }
 
@@ -111,10 +122,11 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     setError(null);
 
     try {
+      const imageBase64 = await fetchImageAsBase64(generatedImage);
       const response = await fetch('/api/save-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: generatedImageFilename, destination: 'saved' }),
+        body: JSON.stringify({ image: imageBase64, destination: 'saved' }),
       });
 
       const data = await response.json();
@@ -129,16 +141,59 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
       }
       
       setSaveStatus('error');
-      return generatedImage;
+      return null;
 
     } catch (err: unknown) {
       setError(err instanceof Error ? `Save failed: ${err.message}` : 'An unknown error occurred while saving.');
       setSaveStatus('error');
-      return generatedImage;
+      return null;
     } finally {
       setIsSaving(false);
     }
   }, [generatedImage, generatedImageFilename]);
+    
+  const handlePost = async () => {
+    if (!user) {
+        setError("You must be logged in to post.");
+        return;
+    }
+  
+    setIsPosting(true);
+    setError(null);
+  
+    try {
+      const imageUrlToPost = await handleSave();
+  
+      if (!imageUrlToPost) {
+        throw new Error("Failed to save image before posting.");
+      }
+  
+      const combinedPrompt = personalPrompt ? `${filterPrompt}\n${personalPrompt}` : filterPrompt;
+  
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: imageUrlToPost,
+          prompt: combinedPrompt,
+          userId: user.uid, 
+        }),
+      });
+  
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to create post.");
+      }
+  
+      const postData = await res.json();
+      alert(`Post created successfully! Post ID: ${postData.id}`);
+  
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unknown error occurred while posting.");
+    } finally {
+      setIsPosting(false);
+    }
+  };
 
   const handleShare = useCallback(async () => {
     if (!generatedImage) return;
@@ -329,6 +384,13 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
                 className="flex items-center gap-2 bg-green-200 hover:bg-green-300 dark:bg-green-800 dark:hover:bg-green-700 text-green-900 dark:text-green-100 font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
               >
                 {isSaving ? 'Saving...' : (saveStatus === 'saved' ? 'Saved!' : 'Save')}
+              </button>
+              <button
+                onClick={handlePost}
+                disabled={isPosting || isLoading}
+                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isPosting ? 'Posting...' : 'Post'}
               </button>
             </div>
           )}

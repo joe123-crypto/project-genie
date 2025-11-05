@@ -172,3 +172,21 @@ export const toggleLike = async (postId: string, idToken: string): Promise<Share
 
     return data.share;
 };
+
+export const postToFeed = async (shareId: string): Promise<void> => {
+  try {
+    const response = await fetch(`/api/shares/post`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shareId }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error ?? 'Failed to post to feed');
+    }
+  } catch (error: unknown) {
+    console.error('❌ Error posting to feed:', error);
+    throw error;
+  }
+};

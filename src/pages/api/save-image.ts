@@ -1,8 +1,7 @@
+
 import type { NextApiRequest, NextApiResponse } from "next";
 import {
   S3Client,
-  CopyObjectCommand,
-  DeleteObjectCommand,
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import { NodeHttpHandler } from "@aws-sdk/node-http-handler";
@@ -24,6 +23,14 @@ const r2 = new S3Client({
     }),
 });
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "15mb",
+    },
+  },
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -32,43 +39,20 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { filename, image, destination } = req.body as {
-    filename?: string;
+  const { image, destination } = req.body as {
     image?: string;
     destination?: 'saved' | 'filters' | 'outfits';
   };
 
   const bucket = process.env.R2_BUCKET_NAME!;
-  console.log("Received destination:", destination);
 
   try {
-    if (destination === 'saved') {
-      if (!filename || !filename.startsWith("filtered/")) {
-        return res.status(400).json({ error: "Invalid request for saving an image." });
-      }
-
-      const newKey = filename.replace(/^filtered\//, "saved/");
-      console.log("Saving to saved. New key:", newKey);
-
-      await r2.send(
-        new CopyObjectCommand({
-          Bucket: bucket,
-          CopySource: `${bucket}/${filename}`,
-          Key: newKey,
-        })
-      );
-      await r2.send(new DeleteObjectCommand({ Bucket: bucket, Key: filename }));
-
-      const publicUrl = `${process.env.R2_PUBLIC_BASE_URL}/${newKey}`;
-      return res.status(200).json({ url: publicUrl });
-
-    } else if (destination === 'filters' || destination === 'outfits') {
+    if (destination === 'saved' || destination === 'filters' || destination === 'outfits') {
       if (!image || !image.startsWith('data:image')) {
-        return res.status(400).json({ error: "Invalid request for creating a filter or outfit image." });
+        return res.status(400).json({ error: "Invalid request for creating an image." });
       }
       
       const newKey = `${destination}/${uuidv4()}.png`;
-      console.log("Saving to filters or outfits. New key:", newKey);
       const buffer = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ""), 'base64');
 
       await r2.send(
