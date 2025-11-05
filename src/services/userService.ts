@@ -1,4 +1,39 @@
+
 import { User, Share, Outfit, Filter } from '../types';
+
+export const saveImage = async (idToken: string, image: string, destination: string, generationId?: string, prompt?: string, negativePrompt?: string, numInferenceSteps?: number, guidanceScale?: number, strength?: number, lora?: string): Promise<string> => {
+  try {
+    const response = await fetch('/api/save-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ 
+        image, 
+        destination, 
+        generationId, 
+        prompt, 
+        negativePrompt, 
+        numInferenceSteps, 
+        guidanceScale, 
+        strength, 
+        lora 
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to save image');
+    }
+
+    const data = await response.json();
+    return data.url;
+  } catch (error) {
+    console.error('Error saving image:', error);
+    throw error;
+  }
+};
 
 /**
  * Updates a user's profile information.

@@ -48,7 +48,7 @@ export function initializeFirebaseAdmin() {
   return app;
 }
 
-export function verifyIdToken(idToken: string) {
+export async function verifyIdToken(idToken: string) {
     initializeFirebaseAdmin();
     return admin.auth().verifyIdToken(idToken);
 }

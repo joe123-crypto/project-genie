@@ -190,3 +190,20 @@ export const postToFeed = async (shareId: string): Promise<void> => {
     throw error;
   }
 };
+
+export const fetchFilter = async (filterId: string, idToken: string): Promise<Filter> => {
+    const response = await fetch(`/api/filters/${filterId}`, {
+        headers: {
+            'Authorization': `Bearer ${idToken}`,
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = `${errorData.error}${errorData.details ? `: ${errorData.details}` : ''}`;
+        throw new Error(errorMessage || 'Failed to fetch filter');
+    }
+
+    const data = await response.json();
+    return data.filter;
+};

@@ -10,21 +10,35 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { imageUrl, prompt, userId } = req.body;
+  const { imageUrl, filterId, userId } = req.body;
 
-  if (!imageUrl || !prompt || !userId) {
-    return res.status(400).json({ error: "Missing required fields" });
+  if (!imageUrl || !filterId || !userId) {
+    const missing = [];
+    if (!imageUrl) missing.push('imageUrl');
+    if (!filterId) missing.push('filterId');
+    if (!userId) missing.push('userId');
+    return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
   }
 
   try {
     const app = initializeFirebaseAdmin();
     const firestore = app.firestore();
 
+    // Fetch the filter name from the 'filters' collection
+    const filterDoc = await firestore.collection('filters').doc(filterId).get();
+    if (!filterDoc.exists) {
+        return res.status(404).json({ error: "Filter not found" });
+    }
+    const filterName = filterDoc.data()?.name || '';
+
     const post = {
       imageUrl,
-      prompt,
+      filterId,
       userId,
+      filterName, // Add filterName to the post object
       createdAt: new Date(),
+      likes: [],
+      likeCount: 0
     };
 
     const docRef = await firestore.collection("posts").add(post);

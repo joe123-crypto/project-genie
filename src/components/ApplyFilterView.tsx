@@ -3,6 +3,8 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { saveAs } from 'file-saver';
 import { applyImageFilter } from '../services/geminiService';
 import { shareImage, ShareResult } from '../services/shareService';
+import { saveImage } from '../services/userService';
+import { getValidIdToken } from '../services/authService';
 import { Filter, User, ViewState } from '../types';
 import { UploadIcon, ShareIcon, DownloadIcon } from './icons';
 import ShareModal from './ShareModal';
@@ -42,12 +44,20 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
       if (filterId && !filter) {
         setLoadingFilter(true);
         try {
-          const res = await fetch(`/api/filters?id=${filterId}`);
+          const idToken = await getValidIdToken();
+          if (!idToken) throw new Error("Not authenticated");
+
+          const res = await fetch(`/api/filters/${filterId}`, {
+             headers: {
+                'Authorization': `Bearer ${idToken}`
+             }
+          });
           if (!res.ok) throw new Error("Failed to fetch filter");
           const data = await res.json();
-          setFilter(data);
+          setFilter(data.filter);
         } catch (err) {
           console.error("❌ Error fetching filter:", err);
+          setError(err instanceof Error ? err.message : "Could not fetch filter");
         } finally {
           setLoadingFilter(false);
         }
@@ -122,26 +132,18 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     setError(null);
 
     try {
-      const imageBase64 = await fetchImageAsBase64(generatedImage);
-      const response = await fetch('/api/save-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageBase64, destination: 'saved' }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Save failed');
-
-      if (data.url) {
-        setGeneratedImage(data.url);
-        const newFilename = data.url.substring(data.url.indexOf("saved/"));
-        setGeneratedImageFilename(newFilename);
-        setSaveStatus('saved');
-        return data.url;
+      const idToken = await getValidIdToken();
+      if (!idToken) {
+        throw new Error("Not authenticated");
       }
+      const imageBase64 = await fetchImageAsBase64(generatedImage);
+      const savedImageUrl = await saveImage(idToken, imageBase64, 'saved');
       
-      setSaveStatus('error');
-      return null;
+      setGeneratedImage(savedImageUrl);
+      const newFilename = savedImageUrl.substring(savedImageUrl.indexOf("saved/"));
+      setGeneratedImageFilename(newFilename);
+      setSaveStatus('saved');
+      return savedImageUrl;
 
     } catch (err: unknown) {
       setError(err instanceof Error ? `Save failed: ${err.message}` : 'An unknown error occurred while saving.');
@@ -152,48 +154,71 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     }
   }, [generatedImage, generatedImageFilename]);
     
-  const handlePost = async () => {
+  const handlePost = useCallback(async () => {
     if (!user) {
-        setError("You must be logged in to post.");
-        return;
+      setError("You must be logged in to post.");
+      return;
     }
-  
+
     setIsPosting(true);
     setError(null);
-  
+
     try {
       const imageUrlToPost = await handleSave();
-  
+
       if (!imageUrlToPost) {
         throw new Error("Failed to save image before posting.");
       }
-  
-      const combinedPrompt = personalPrompt ? `${filterPrompt}\n${personalPrompt}` : filterPrompt;
-  
-      const res = await fetch("/api/posts", {
+
+      let filterIdToPost = filter?.id;
+
+      if (personalPrompt && filter) {
+        const combinedPrompt = `${filter.prompt}\n${personalPrompt}`;
+
+        const res = await fetch('/api/generate-filter', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ prompt: combinedPrompt }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to generate custom filter.');
+        }
+        const newFilter = await res.json();
+        filterIdToPost = newFilter.id;
+      }
+
+      if (!filterIdToPost) {
+        throw new Error("Could not determine a filter ID for the post.");
+      }
+
+      const postRes = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           imageUrl: imageUrlToPost,
-          prompt: combinedPrompt,
-          userId: user.uid, 
+          filterId: filterIdToPost,
+          userId: user.uid,
         }),
       });
-  
-      if (!res.ok) {
-        const errorData = await res.json();
+
+      if (!postRes.ok) {
+        const errorData = await postRes.json();
         throw new Error(errorData.error || "Failed to create post.");
       }
-  
-      const postData = await res.json();
+
+      const postData = await postRes.json();
       alert(`Post created successfully! Post ID: ${postData.id}`);
-  
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred while posting.");
     } finally {
       setIsPosting(false);
     }
-  };
+  }, [user, handleSave, filter, personalPrompt]);
 
   const handleShare = useCallback(async () => {
     if (!generatedImage) return;
@@ -423,7 +448,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
         </button>
       </div>
 
-      {generatedImage && shareUrl && (
+      {generatedImage && shareUrl && filter && (
         <ShareModal
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}

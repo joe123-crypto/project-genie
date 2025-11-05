@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const shareRef = firestoreAdmin.collection('shares').doc(shareId as string);
+    const shareRef = firestoreAdmin.collection('sharedImages').doc(shareId as string);
     await shareRef.update({ isPublic: true });
 
     res.status(200).json({ message: 'Post created successfully' });

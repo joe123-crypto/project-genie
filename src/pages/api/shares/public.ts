@@ -8,35 +8,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
-  console.log('Starting API request to fetch all posts for debugging...');
-
   try {
     const app = initializeFirebaseAdmin();
     const db = app.firestore();
 
-    // 🚨 RADICAL DEBUGGING STEP: Fetch all documents from 'posts' with no constraints.
-    const postsSnapshot = await db.collection('posts').get();
+    const sharesSnapshot = await db.collection('sharedImages').where('isPublic', '==', true).get();
 
-    const count = postsSnapshot.size;
-    console.log(`Query completed. Found ${count} document(s) in 'posts' collection.`);
+    const count = sharesSnapshot.size;
 
-    if (postsSnapshot.empty) {
+    if (sharesSnapshot.empty) {
       return res.status(200).json({ 
-        message: "Query executed successfully, but the 'posts' collection is empty or rules are preventing access.",
+        message: "Query executed successfully, but the 'sharedImages' collection is empty or no images are public.",
         docCount: 0,
         shares: [] 
       });
     }
 
-    // Return the raw, unprocessed data for debugging.
-    const rawData = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    console.log('Returning raw data:', JSON.stringify(rawData, null, 2));
+    const shares = sharesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    // The frontend expects a 'shares' property.
     return res.status(200).json({ 
       message: `Successfully fetched ${count} documents.`,
       docCount: count,
-      shares: rawData // Sending raw data for the frontend to display.
+      shares: shares
     });
 
   } catch (error: any) {

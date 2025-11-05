@@ -360,7 +360,7 @@ export default function Home() {
           />
         );
       case "feed":
-        return <FeedView user={user} setViewState={setViewState} />;
+        return <FeedView user={user} />;
     }
   };
 
