@@ -154,6 +154,35 @@ export const fetchUserImages = async (uid: string, idToken?: string): Promise<Sh
   }
 };
 
+export const fetchUserSavedImages = async (uid: string, idToken?: string): Promise<Share[]> => {
+    if (typeof uid !== 'string' || !uid) {
+      throw new Error('uid must be a non-empty string');
+    }
+  
+    const headers: HeadersInit = {};
+    if (idToken) {
+      headers['Authorization'] = `Bearer ${idToken}`;
+    }
+  
+    try {
+      const response = await fetch(`/api/user/saved-images?uid=${encodeURIComponent(uid)}`, {
+        method: 'GET',
+        headers: headers,
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch user saved images');
+      }
+  
+      const images = await response.json();
+      return images;
+    } catch (error) {
+      console.error('Error fetching user saved images:', error);
+      throw error;
+    }
+  };
+
 /**
  * Deletes a user's image.
  * @param imageId The ID of the image to delete.
@@ -177,6 +206,25 @@ export const deleteUserImage = async (imageId: string, idToken: string): Promise
     throw error;
   }
 };
+
+export const deleteUserSavedImage = async (imageId: string, idToken: string): Promise<void> => {
+    try {
+      const response = await fetch(`/api/user/saved-images?imageId=${imageId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete saved image');
+      }
+    } catch (error) {
+      console.error('Error deleting saved image:', error);
+      throw error;
+    }
+  };
 
 /**
  * Fetches a user's created outfits.

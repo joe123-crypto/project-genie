@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { firestoreAdmin } from '../../../lib/firestoreAdmin';
 import { Filter } from '../../../types';
 
-export default async (req: NextApiRequest, res: NextApiResponse) => {
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
     const { filterId } = req.query;
 
@@ -29,3 +29,5 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
+export default handler;

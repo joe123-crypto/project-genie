@@ -1,6 +1,6 @@
 import React, { useState, useCallback, ChangeEvent, useEffect } from 'react';
 import { User, Share, Outfit, Filter } from '../types';
-import { updateUserProfile, uploadProfilePicture, fetchUserImages, fetchUserOutfits, fetchUserFilters, deleteUserImage } from '../services/userService';
+import { updateUserProfile, uploadProfilePicture, fetchUserOutfits, fetchUserFilters, fetchUserSavedImages, deleteUserSavedImage } from '../services/userService';
 import { getValidIdToken } from '../services/authService';
 import Spinner from './Spinner';
 import { DefaultUserIcon, TrashIcon } from './icons';
@@ -32,6 +32,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<Share | null>(null);
+  const [activeTab, setActiveTab] = useState('outfits');
 
   const isOwner = currentUser?.uid === user.uid;
 
@@ -59,7 +60,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
       }
 
       const [userImages, userOutfits, userFilters] = await Promise.all([
-        fetchUserImages(user.uid, idToken),
+        fetchUserSavedImages(user.uid, idToken),
         fetchUserOutfits(user.uid, idToken),
         fetchUserFilters(user.uid, idToken)
       ]);
@@ -70,8 +71,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
 
     } catch (err: any) {
       console.error(err);
-      setError(prevError => prevError ? `${prevError}
-${err.message}` : `Failed to load your data: ${err.message}`);
+      setError(prevError => prevError ? `${prevError}\n${err.message}` : `Failed to load your data: ${err.message}`);
     } finally {
       setIsLoadingImages(false);
       setIsLoadingOutfits(false);
@@ -116,7 +116,7 @@ ${err.message}` : `Failed to load your data: ${err.message}`);
     try {
       const idToken = await getValidIdToken();
       if (!idToken) throw new Error('Session expired');
-      await deleteUserImage(imageId, idToken);
+      await deleteUserSavedImage(imageId, idToken);
       setImages(images.filter(image => image.id !== imageId));
     } catch (err: any) {
       setError(`Failed to delete image: ${err.message}`);
@@ -130,6 +130,83 @@ ${err.message}` : `Failed to load your data: ${err.message}`);
 
   const isSaveDisabled = 
     (displayName === (user.displayName || '') && !newProfilePic) || isSaving;
+
+  const getSafeImageUrl = (url: string | undefined): string | undefined => {
+    if (!url) {
+      return undefined;
+    }
+    if (url.startsWith('http') || url.startsWith('data:')) {
+      return url;
+    }
+    return `data:image/png;base64,${url}`;
+  };
+
+  const renderTabs = () => (
+    <div className="mb-8 border-b border-border-color dark:border-dark-border-color">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            <button onClick={() => setActiveTab('outfits')} className={`${activeTab === 'outfits' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Outfits</button>
+            <button onClick={() => setActiveTab('filters')} className={`${activeTab === 'filters' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Filters</button>
+            <button onClick={() => setActiveTab('images')} className={`${activeTab === 'images' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Images</button>
+        </nav>
+    </div>
+  );
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'outfits':
+        return (
+          <div>
+            {(isLoadingImages || isLoadingOutfits) ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : outfits.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {outfits.map((outfit) => (
+                        <OutfitCard key={outfit.id} outfit={outfit} onSelect={() => setViewState({view: 'applyOutfit', outfit: outfit})} />
+                    ))}
+                </div>
+            ) : <p className="text-content-200 dark:text-dark-content-200 text-center py-10">This user hasn&apos;t created any outfits yet.</p>}
+          </div>
+        );
+      case 'filters':
+        return (
+          <div>
+            {isLoadingFilters ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : filters.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {filters.map((filter) => (
+                        <FilterCard key={filter.id} filter={filter} onSelect={() => setViewState({view: 'apply', filter: filter})} onEdit={() => setViewState({ view: 'edit', filter: filter })} user={currentUser} onDelete={async () => {}} />
+                    ))}
+                </div>
+            ) : <p className="text-content-200 dark:text-dark-content-200 text-center py-10">This user hasn&apos;t created any filters yet.</p>}
+          </div>
+        );
+      case 'images':
+        return (
+          <div>
+            {isLoadingImages ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : images.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {images.map((image) => {
+                      const imageUrl = getSafeImageUrl(image.imageUrl || image.image || image.url);
+                      if (!imageUrl) return null;
+
+                      return (
+                        <div key={image.id} className="relative group rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow cursor-pointer" onClick={() => handleImageClick(image)}>
+                            <img src={imageUrl} alt="User generated content" className="w-full h-auto object-cover"/>
+                            {isOwner && (
+                              <div className="absolute top-2 right-2">
+                                  <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(image.id); }} className="p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
+                                      <TrashIcon className="h-5 w-5" />
+                                  </button>
+                              </div>
+                            )}
+                        </div>
+                      )
+                    })}
+                </div>
+            ) : <p className="text-content-200 dark:text-dark-content-200 text-center py-10">This user hasn&apos;t saved any images yet.</p>}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 bg-base-200 dark:bg-dark-base-200 rounded-lg shadow-lg">
@@ -205,50 +282,8 @@ ${err.message}` : `Failed to load your data: ${err.message}`);
 
         {/* User Content Section */}
         <div className="md:col-span-3">
-            {/* Outfits Section */}
-            <div className="mb-8">
-                <h3 className="text-xl font-bold font-heading mb-4 text-content-100 dark:text-dark-content-100">Outfits</h3>
-                {(isLoadingImages || isLoadingOutfits) ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : outfits.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                        {outfits.map((outfit) => (
-                            <OutfitCard key={outfit.id} outfit={outfit} onSelect={() => setViewState({view: 'applyOutfit', outfit: outfit})} />
-                        ))}
-                    </div>
-                ) : <p className="text-content-200 dark:text-dark-content-200">This user hasn&apos;t created any outfits yet.</p>}
-            </div>
-
-            {/* Filters Section */}
-            <div className="mb-8">
-                <h3 className="text-xl font-bold font-heading mb-4 text-content-100 dark:text-dark-content-100">Filters</h3>
-                {isLoadingFilters ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : filters.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                        {filters.map((filter) => (
-                            <FilterCard key={filter.id} filter={filter} onSelect={() => setViewState({view: 'apply', filter: filter})} onEdit={() => setViewState({ view: 'edit', filter: filter })} user={currentUser} onDelete={async () => {}} />
-                        ))}
-                    </div>
-                ) : <p className="text-content-200 dark:text-dark-content-200">This user hasn&apos;t created any filters yet.</p>}
-            </div>
-
-            {/* Images Section */}
-            <div>
-                <h3 className="text-xl font-bold font-heading mb-4 text-content-100 dark:text-dark-content-100">Images</h3>
-                {isLoadingImages ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : images.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                        {images.map((image) => (
-                            <div key={image.id} className="relative group rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow cursor-pointer" onClick={() => handleImageClick(image)}>
-                                <img src={image.imageUrl} alt="User generated content" className="w-full h-auto object-cover"/>
-                                {isOwner && (
-                                  <div className="absolute top-2 right-2">
-                                      <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(image.id); }} className="p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
-                                          <TrashIcon className="h-5 w-5" />
-                                      </button>
-                                  </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                ) : <p className="text-content-200 dark:text-dark-content-200">This user hasn&apos;t created any images yet.</p>}
-            </div>
+          {renderTabs()}
+          {renderContent()}
         </div>
       </div>
     </div>

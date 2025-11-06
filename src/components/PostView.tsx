@@ -2,7 +2,6 @@ import React, { useState, useCallback } from 'react';
 import { Share } from '../types';
 import Spinner from './Spinner';
 import ConfirmationDialog from './ConfirmationDialog';
-import { TrashIcon } from './icons';
 import { getValidIdToken } from '../services/authService';
 import { deleteUserImage } from '../services/userService';
 
@@ -33,6 +32,16 @@ const PostView: React.FC<PostViewProps> = ({ selectedImage, onClose, isOwner, on
     setShowDeleteConfirm(null);
   };
 
+  const getSafeImageUrl = (url: string | undefined): string | undefined => {
+    if (!url) {
+      return undefined;
+    }
+    if (url.startsWith('http') || url.startsWith('data:')) {
+      return url;
+    }
+    return `data:image/png;base64,${url}`;
+  };
+
   const handleDownload = useCallback(async () => {
     if (!selectedImage) return;
 
@@ -42,12 +51,17 @@ const PostView: React.FC<PostViewProps> = ({ selectedImage, onClose, isOwner, on
     let objectUrl: string | null = null;
 
     try {
+      const imageUrl = getSafeImageUrl(selectedImage.imageUrl || selectedImage.image || selectedImage.url);
+      if (!imageUrl) {
+        throw new Error('No image source found');
+      }
+
       const response = await fetch('/api/v2/download', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ imageUrl: selectedImage.imageUrl }),
+        body: JSON.stringify({ imageUrl }),
       });
 
       if (!response.ok) {
@@ -86,6 +100,8 @@ const PostView: React.FC<PostViewProps> = ({ selectedImage, onClose, isOwner, on
     }
   }, [selectedImage]);
 
+  const imageUrl = getSafeImageUrl(selectedImage.imageUrl || selectedImage.image || selectedImage.url);
+
   return (
     <>
       {showDeleteConfirm && (
@@ -103,7 +119,7 @@ const PostView: React.FC<PostViewProps> = ({ selectedImage, onClose, isOwner, on
       )}
       <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50" onClick={onClose}>
         <div className="relative bg-base-100 dark:bg-dark-base-100 p-4 rounded-lg shadow-xl max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
-          <img src={selectedImage.imageUrl} alt="Full view" className="w-full h-auto object-contain max-h-[75vh] rounded"/>
+          {imageUrl && <img src={imageUrl} alt="Full view" className="w-full h-auto object-contain max-h-[75vh] rounded"/>}
           <div className="mt-4 flex flex-col items-center gap-2">
               <div className="flex justify-center gap-4">
                   <button onClick={handleDownload} disabled={isDownloading} className="px-6 py-2 bg-brand-primary text-white font-bold rounded-lg hover:bg-brand-secondary transition-colors flex items-center justify-center w-36">

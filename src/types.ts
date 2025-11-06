@@ -55,6 +55,8 @@ export interface Outfit {
       likes?: string[];
       likeCount?: number;
       author?: User;
+      image?: string;
+      url?: string;
   }
   
   export type ViewState =
