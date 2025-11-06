@@ -1,3 +1,4 @@
+
 // Updated firebaseService.ts to only call our API routes
 import { Filter, Outfit } from '../types';
 
@@ -191,7 +192,7 @@ export const updateFilter = async (filterId: string, filterData: Omit<Filter, 'i
 /**
  * Saves an outfit to the backend
  * @param outfitData - The outfit object to save
- * @param idToken - The user's ID token for authentication (currently unused)
+ * @param idToken - The user's ID token for authentication
  * @returns A promise that resolves to the saved Outfit object
  */
 
@@ -201,13 +202,13 @@ export const saveOutfit = async (outfitData: Omit<Outfit, 'id'>, idToken: string
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
             },
             body: JSON.stringify({
                 outfit: {
                     ...outfitData,
                     createdAt: new Date().toISOString(),
-                },
-                idToken,
+                }
             }),
         });
 

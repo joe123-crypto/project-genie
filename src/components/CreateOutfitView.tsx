@@ -50,12 +50,19 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
     if (!formData.previewImageUrl) return alert("Please upload a preview image.");
 
     try {
+      const idToken = await getValidIdToken();
+      if (!idToken) {
+        throw new Error("No authorization token provided.");
+      }
       let finalImageUrl = formData.previewImageUrl;
 
       if (formData.previewImageUrl && formData.previewImageUrl.startsWith('data:image')) {
         const response = await fetch('/api/save-image', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+            },
             body: JSON.stringify({ image: formData.previewImageUrl, destination: 'outfits' }),
         });
 
@@ -64,7 +71,6 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
         finalImageUrl = data.url;
       }
 
-      const idToken = await getValidIdToken();
       const payload: Omit<Outfit, "id"> = {
         name: formData.name,
         description: formData.description,
