@@ -6,15 +6,18 @@ import { getValidIdToken } from '../services/authService';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { HeartIcon as HeartIconOutline } from '@heroicons/react/24/outline';
 import Spinner from './Spinner';
+import PostView from './PostView';
 
 interface FeedViewProps {
   user: User | null;
+  onCreateYourOwn: (filterId: string) => void;
 }
 
-const FeedView: React.FC<FeedViewProps> = ({ user }) => {
+const FeedView: React.FC<FeedViewProps> = ({ user, onCreateYourOwn }) => {
   const [posts, setPosts] = useState<Share[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPost, setSelectedPost] = useState<Share | null>(null);
 
   const loadFeed = useCallback(async () => {
     try {
@@ -33,7 +36,8 @@ const FeedView: React.FC<FeedViewProps> = ({ user }) => {
     loadFeed();
   }, [loadFeed]);
 
-  const handleLikeToggle = async (postToToggle: Share) => {
+  const handleLikeToggle = async (e: React.MouseEvent, postToToggle: Share) => {
+    e.stopPropagation();
     if (!user) {
       alert('Please sign in to like posts.');
       return;
@@ -54,6 +58,19 @@ const FeedView: React.FC<FeedViewProps> = ({ user }) => {
       alert("There was an issue liking the post. Please try again.");
     }
   };
+  
+  const handleDeletePost = (postId: string) => {
+    setPosts(posts.filter(p => p.id !== postId));
+    setSelectedPost(null);
+  };
+
+  const handlePostClick = (post: Share) => {
+    setSelectedPost(post);
+  };
+
+  const handleClosePostView = () => {
+    setSelectedPost(null);
+  };
 
   if (loading) {
     return (
@@ -68,41 +85,52 @@ const FeedView: React.FC<FeedViewProps> = ({ user }) => {
   }
 
   return (
-    <div className="max-w-xl mx-auto space-y-8 animate-fade-in">
-      {posts.length === 0 ? (
-        <p className="text-content-200 dark:text-dark-content-200 text-center">No posts to show yet.</p>
-      ) : (
-        posts.map((post) => (
-          <div key={post.id} className="bg-base-100 dark:bg-dark-base-100 shadow-lg rounded-lg overflow-hidden">
-            <div className="p-4 flex items-center gap-3">
-              <img 
-                src={post.author?.photoURL || '/default-avatar.png'} 
-                alt={post.author?.displayName || 'Unknown user'}
-                className="w-10 h-10 rounded-full"
-              />
-              <span className="font-semibold text-content-100 dark:text-dark-content-100">{post.author?.displayName || 'Anonymous'}</span>
-            </div>
-            <img src={post.imageUrl} alt="Shared content" className="w-full" />
-            <div className="p-4">
-              <div className="flex items-center gap-4">
-                <button onClick={() => handleLikeToggle(post)} className="flex items-center gap-1.5 group">
-                  {user && post.likes?.includes(user.uid) ? (
-                    <HeartIconSolid className="w-6 h-6 text-red-500 transition-transform group-hover:scale-110" />
-                  ) : (
-                    <HeartIconOutline className="w-6 h-6 text-content-200 dark:text-dark-content-200 group-hover:text-red-500 transition-colors" />
-                  )}
-                </button>
-                <span className="text-content-200 dark:text-dark-content-200 font-medium">{post.likeCount ?? 0}</span>
-              </div>
-              <p className="text-content-200 dark:text-dark-content-200 mt-2">
+    <>
+        {selectedPost && (
+            <PostView
+            selectedImage={selectedPost}
+            onClose={handleClosePostView}
+            isOwner={user?.uid === selectedPost.author?.uid}
+            onDelete={handleDeletePost}
+            onCreateYourOwn={onCreateYourOwn}
+            />
+        )}
+        <div className="max-w-xl mx-auto space-y-8 animate-fade-in">
+        {posts.length === 0 ? (
+            <p className="text-content-200 dark:text-dark-content-200 text-center">No posts to show yet.</p>
+        ) : (
+            posts.map((post) => (
+            <div key={post.id} onClick={() => handlePostClick(post)} className="bg-base-100 dark:bg-dark-base-100 shadow-lg rounded-lg overflow-hidden cursor-pointer">
+                <div className="p-4 flex items-center gap-3">
+                <img 
+                    src={post.author?.photoURL || '/default-avatar.png'} 
+                    alt={post.author?.displayName || 'Unknown user'}
+                    className="w-10 h-10 rounded-full"
+                />
                 <span className="font-semibold text-content-100 dark:text-dark-content-100">{post.author?.displayName || 'Anonymous'}</span>
-                <span className="ml-2">{post.filterName}</span>
-              </p>
+                </div>
+                <img src={post.imageUrl} alt="Shared content" className="w-full" />
+                <div className="p-4">
+                <div className="flex items-center gap-4">
+                    <button onClick={(e) => handleLikeToggle(e, post)} className="flex items-center gap-1.5 group">
+                    {user && post.likes?.includes(user.uid) ? (
+                        <HeartIconSolid className="w-6 h-6 text-red-500 transition-transform group-hover:scale-110" />
+                    ) : (
+                        <HeartIconOutline className="w-6 h-6 text-content-200 dark:text-dark-content-200 group-hover:text-red-500 transition-colors" />
+                    )}
+                    </button>
+                    <span className="text-content-200 dark:text-dark-content-200 font-medium">{post.likeCount ?? 0}</span>
+                </div>
+                <p className="text-content-200 dark:text-dark-content-200 mt-2">
+                    <span className="font-semibold text-content-100 dark:text-dark-content-100">{post.author?.displayName || 'Anonymous'}</span>
+                    <span className="ml-2">{post.filterName}</span>
+                </p>
+                </div>
             </div>
-          </div>
-        ))
-      )}
-    </div>
+            ))
+        )}
+        </div>
+    </>
   );
 };
 

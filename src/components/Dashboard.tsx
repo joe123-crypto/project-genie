@@ -3,6 +3,7 @@ import { SparklesIcon, UploadIcon, SendIcon } from './icons';
 import { User, ViewState, Filter } from '../types';
 import { getValidIdToken } from '../services/authService';
 import { improvePrompt } from '../services/geminiService';
+import { fetchFilterById } from '../services/filterService';
 
 interface DashboardProps {
   user: User | null;
@@ -78,6 +79,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
       alert(`Error improving prompt: ${(error as Error).message}`);
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  const handleCreateYourOwn = async (filterId: string) => {
+    try {
+      const filter = await fetchFilterById(filterId);
+      setViewState({ view: 'apply', filter });
+    } catch (error) {
+      console.error('Error fetching filter:', error);
+      alert('Error fetching filter. Please try again.');
     }
   };
 

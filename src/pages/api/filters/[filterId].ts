@@ -1,48 +1,31 @@
+import { NextApiRequest, NextApiResponse } from 'next';
+import { firestoreAdmin } from '../../../lib/firestoreAdmin';
+import { Filter } from '../../../types';
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { initializeFirebaseAdmin, verifyIdToken } from "../../../lib/firebaseAdmin";
-import { getFirestore } from "firebase-admin/firestore";
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
+export default async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    await verifyIdToken(token);
-
     const { filterId } = req.query;
 
-    if (typeof filterId !== 'string') {
-        return res.status(400).json({ error: "Invalid filter ID." });
+    if (req.method === 'GET') {
+      if (typeof filterId !== 'string') {
+        return res.status(400).json({ error: 'Invalid filter ID' });
+      }
+      
+      const filterDoc = await firestoreAdmin.collection('filters').doc(filterId).get();
+
+      if (!filterDoc.exists) {
+        return res.status(404).json({ error: 'Filter not found' });
+      }
+
+      const filterData = filterDoc.data() as Filter;
+      res.status(200).json({ ...filterData, id: filterDoc.id });
+
+    } else {
+      res.setHeader('Allow', ['GET']);
+      res.status(405).end(`Method ${req.method} Not Allowed`);
     }
-
-    initializeFirebaseAdmin();
-    const db = getFirestore();
-    const filterRef = db.collection('filters').doc(filterId);
-    const filterDoc = await filterRef.get();
-
-    if (!filterDoc.exists) {
-      return res.status(404).json({ error: "Filter not found" });
-    }
-
-    const filterData = filterDoc.data();
-    const filter = { id: filterDoc.id, ...filterData };
-
-    res.status(200).json({ filter });
-
-  } catch (err: any) {
-    console.error("Error fetching filter:", err);
-    if (err.code === 'auth/id-token-expired') {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
-    return res.status(500).json({ error: err.message || "Internal Server Error" });
+  } catch (error: any) {
+    console.error('Error fetching filter:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
-}
+};

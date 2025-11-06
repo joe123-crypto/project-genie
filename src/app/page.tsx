@@ -23,6 +23,7 @@ import ConfirmationDialog from '../components/ConfirmationDialog';
 import ProfileView from '../components/ProfileView';
 import Dashboard from '../components/Dashboard';
 import FeedView from '../components/FeedView'; // Import FeedView
+import { fetchFilterById } from "../services/filterService";
 
 const CreateOutfitView = dynamic(() => import('../components/CreateOutfitView'), { ssr: false });
 
@@ -264,6 +265,16 @@ export default function Home() {
     },
     [outfits]
   );
+  
+  const handleCreateYourOwn = async (filterId: string) => {
+    try {
+      const filter = await fetchFilterById(filterId);
+      setViewState({ view: 'apply', filter });
+    } catch (error) {
+      console.error('Error fetching filter:', error);
+      alert('Error fetching filter. Please try again.');
+    }
+  };
 
   const handleSignInSuccess = (signedInUser: User) => {
     setUser(signedInUser);
@@ -336,7 +347,7 @@ export default function Home() {
       case "shared":
         return <SharedImageView shareId={viewState.shareId} setViewState={setViewState} />;
       case "profile":
-        return <ProfileView user={viewState.user || user!} currentUser={user} setViewState={setViewState} />;
+        return <ProfileView user={viewState.user || user!} currentUser={user} setViewState={setViewState} onCreateYourOwn={handleCreateYourOwn} />;
       case "outfits":
         return (
           <div className="max-w-7xl mx-auto">
@@ -360,7 +371,7 @@ export default function Home() {
           />
         );
       case "feed":
-        return <FeedView user={user} />;
+        return <FeedView user={user} onCreateYourOwn={handleCreateYourOwn} />;
     }
   };
 
