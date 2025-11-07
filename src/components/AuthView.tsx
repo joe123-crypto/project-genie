@@ -14,19 +14,26 @@ interface AuthViewProps {
 const AuthView: React.FC<AuthViewProps> = ({ onSignInSuccess, setViewState }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [isSigningUp, setIsSigningUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleAuthAction = async (action: 'signIn' | 'signUp') => {
+  const handleAuthAction = async () => {
     if (!email || !password) {
       setError('Please enter both email and password.');
       return;
     }
+    if (isSigningUp && !username) {
+        setError('Please enter a username.');
+        return;
+    }
     setIsLoading(true);
     setError('');
     try {
-      const authFunction = action === 'signIn' ? signIn : signUp;
-      const user = await authFunction(email, password);
+      const user = isSigningUp
+        ? await signUp(email, password, username)
+        : await signIn(email, password);
       onSignInSuccess(user);
     } catch (err) {
       if (err instanceof Error) {
@@ -50,8 +57,25 @@ const AuthView: React.FC<AuthViewProps> = ({ onSignInSuccess, setViewState }) =>
         </button>
 
       <div className={`${commonClasses.container.card} p-8 rounded-lg shadow-xl`}>
-        <h2 className={`${commonClasses.text.heading} text-3xl font-bold text-center mb-6`}>Join or Sign In</h2>
+        <h2 className={`${commonClasses.text.heading} text-3xl font-bold text-center mb-6`}>{isSigningUp ? 'Create Account' : 'Sign In'}</h2>
         <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+        {isSigningUp && (
+            <div>
+                <label htmlFor="username" className={`block text-sm font-medium ${commonClasses.text.heading} mb-1`}>
+                Username
+                </label>
+                <input
+                type="text"
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className={`w-full ${themeColors.base.light[100]} ${themeColors.base.dark[300]} border ${themeColors.border.light} ${themeColors.border.dark} rounded-lg px-3 py-2 ${commonClasses.text.heading} focus:ring-2 focus:ring-brand-primary dark:focus:ring-dark-brand-primary focus:outline-none`}
+                placeholder="your_username"
+                disabled={isLoading}
+                autoComplete="username"
+                />
+            </div>
+        )}
           <div>
             <label htmlFor="email" className={`block text-sm font-medium ${commonClasses.text.heading} mb-1`}>
               Email Address
@@ -82,28 +106,28 @@ const AuthView: React.FC<AuthViewProps> = ({ onSignInSuccess, setViewState }) =>
               className={`w-full ${themeColors.base.light[100]} ${themeColors.base.dark[300]} border ${themeColors.border.light} ${themeColors.border.dark} rounded-lg px-3 py-2 ${commonClasses.text.heading} focus:ring-2 focus:ring-brand-primary dark:focus:ring-dark-brand-primary focus:outline-none`}
               placeholder="••••••••"
               disabled={isLoading}
-              autoComplete="current-password"
+              autoComplete={isSigningUp ? "new-password" : "current-password"}
             />
           </div>
 
           {error && <p className="text-red-500 dark:text-red-400 text-center text-sm">{error}</p>}
 
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col gap-4">
             <button
               type="button"
-              onClick={() => handleAuthAction('signIn')}
+              onClick={handleAuthAction}
               disabled={isLoading}
-              className={`flex-1 flex justify-center items-center ${commonClasses.button.primary} py-3 px-4 rounded-lg transition-colors disabled:opacity-50`}
+              className={`flex justify-center items-center ${commonClasses.button.primary} py-3 px-4 rounded-lg transition-colors disabled:opacity-50`}
             >
-              {isLoading ? <Spinner className="w-5 h-5 text-white" /> : 'Sign In'}
+              {isLoading ? <Spinner className="w-5 h-5 text-white" /> : (isSigningUp ? 'Create Account' : 'Sign In')}
             </button>
             <button
               type="button"
-              onClick={() => handleAuthAction('signUp')}
+              onClick={() => setIsSigningUp(!isSigningUp)}
               disabled={isLoading}
-              className={`flex-1 flex justify-center items-center ${commonClasses.button.secondary} py-3 px-4 rounded-lg transition-colors disabled:opacity-50`}
+              className={`text-center text-sm ${commonClasses.text.body} hover:underline`}
             >
-              {isLoading ? <Spinner className="w-5 h-5" /> : 'Create Account'}
+              {isSigningUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
             </button>
           </div>
         </form>

@@ -11,6 +11,7 @@ interface InitialAuthViewProps {
 export const InitialAuthView: React.FC<InitialAuthViewProps> = ({ onSignInSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,11 +38,16 @@ export const InitialAuthView: React.FC<InitialAuthViewProps> = ({ onSignInSucces
       setError('Please enter both email and password.');
       return;
     }
+    if (isSigningUp && !username) {
+      setError('Please enter a username.');
+      return;
+    }
     setIsLoading(true);
     setError('');
     try {
-      const authFunction = action === 'signIn' ? signIn : signUp;
-      const user = await authFunction(email, password);
+      const user = isSigningUp
+        ? await signUp(email, password, username)
+        : await signIn(email, password);
       onSignInSuccess(user);
     } catch (err) {
       if (err instanceof Error) {
@@ -90,19 +96,28 @@ export const InitialAuthView: React.FC<InitialAuthViewProps> = ({ onSignInSucces
       </h2>
       {error && <p className="text-red-500 text-center mb-4">{error}</p>}
       <div className="space-y-4">
+        {isSigningUp && (
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className={`w-full px-4 py-2 border ${themeColors.border.light} ${themeColors.border.dark} rounded-md focus:outline-none focus:ring-2`}
+          />
+        )}
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className={`w-full px-4 py-2 border ${themeColors.border.light} ${themeColors.border.dark} rounded-md focus:outline-none focus:ring-2 ${themeColors.brand.light.primary} ${themeColors.brand.dark.primary} ${themeColors.base.light[100]} ${themeColors.base.dark[100]} ${themeColors.content.light[100]} ${themeColors.content.dark[100]}`}
+          className={`w-full px-4 py-2 border ${themeColors.border.light} ${themeColors.border.dark} rounded-md focus:outline-none focus:ring-2`}
         />
         <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className={`w-full px-4 py-2 border ${themeColors.border.light} ${themeColors.border.dark} rounded-md focus:outline-none focus:ring-2 ${themeColors.brand.light.primary} ${themeColors.brand.dark.primary} ${themeColors.base.light[100]} ${themeColors.base.dark[100]} ${themeColors.content.light[100]} ${themeColors.content.dark[100]}`}
+          className={`w-full px-4 py-2 border ${themeColors.border.light} ${themeColors.border.dark} rounded-md focus:outline-none focus:ring-2`}
         />
         <button
           onClick={() => handleAuthAction(isSigningUp ? 'signUp' : 'signIn')}

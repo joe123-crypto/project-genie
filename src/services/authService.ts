@@ -7,16 +7,17 @@ const USER_SESSION_KEY = "genieUser";
  * Signs up a new user
  * @param email - User's email
  * @param password - User's password
+ * @param username - User's username
  * @returns A promise that resolves to the User object
  */
-export const signUp = async (email: string, password: string): Promise<User> => {
+export const signUp = async (email: string, password: string, username: string): Promise<User> => {
     try {
         const response = await fetch('/api/auth?action=signUp', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ email, password, username }),
         });
 
         if (!response.ok) {
@@ -119,6 +120,7 @@ export const loadUserSession = (): User | null => {
         const uid = urlParams.get('uid');
         const email = urlParams.get('email');
         const expiresAt = urlParams.get('expiresAt');
+        const username = urlParams.get('username');
 
         if (idToken && refreshToken && uid && email && expiresAt) {
             const user: User = {
@@ -126,7 +128,8 @@ export const loadUserSession = (): User | null => {
                 refreshToken,
                 uid,
                 email,
-                expiresAt: parseInt(expiresAt)
+                expiresAt: parseInt(expiresAt),
+                username: username || undefined
             };
 
             // Save to localStorage

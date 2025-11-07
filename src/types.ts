@@ -38,6 +38,7 @@ export interface Outfit {
       expiresAt: number;
       displayName?: string;
       photoURL?: string;
+      username?: string;
   }
   
   export interface Share {

@@ -37,7 +37,8 @@ const handleAuthResponse = async (response: Response): Promise<User> => {
         email: data.email,
         idToken: data.idToken,
         refreshToken: data.refreshToken,
-        expiresAt: Date.now() + (parseInt(data.expiresIn) * 1000)
+        expiresAt: Date.now() + (parseInt(data.expiresIn) * 1000),
+        username: data.displayName
     };
 
     return user;
@@ -131,9 +132,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         switch (action) {
             case 'signUp':
-                const { email: signUpEmail, password: signUpPassword } = body;
-                if (!signUpEmail || !signUpPassword) {
-                    return res.status(400).json({ error: 'Email and password are required' });
+                const { email: signUpEmail, password: signUpPassword, username: signUpUsername } = body;
+                if (!signUpEmail || !signUpPassword || !signUpUsername) {
+                    return res.status(400).json({ error: 'Email, password, and username are required' });
                 }
 
                 const signUpResponse = await fetch(`${AUTH_BASE_URL}:signUp?key=${API_KEY}`, {
@@ -142,6 +143,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     body: JSON.stringify({
                         email: signUpEmail,
                         password: signUpPassword,
+                        displayName: signUpUsername,
                         returnSecureToken: true
                     })
                 });
