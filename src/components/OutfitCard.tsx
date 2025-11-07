@@ -18,9 +18,15 @@ const OutfitCard: React.FC<OutfitCardProps> = ({ outfit, onSelect }) => {
           alt={outfit.name} 
           className="w-full h-48 object-cover rounded transition-transform duration-300 group-hover:scale-105" 
         />
+        {outfit.type && (
+            <div className="absolute bottom-2 right-2 bg-gray-800 bg-opacity-70 text-white text-xs font-semibold px-2 py-1 rounded-md">
+                {outfit.type}
+            </div>
+        )}
       </div>
       <h3 className="text-xl font-semibold text-content-100 dark:text-dark-content-100 mb-2 group-hover:text-brand-primary dark:group-hover:text-dark-brand-primary transition-colors">
         {outfit.name}
+        {outfit.type && <span className="text-lg font-light">-{outfit.type}</span>}
       </h3>
       <p className="text-content-200 dark:text-dark-content-200 text-sm leading-relaxed">
         {outfit.description}

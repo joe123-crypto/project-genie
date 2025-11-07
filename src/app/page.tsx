@@ -8,6 +8,7 @@ import CreateMenu from "../components/CreateMenu";
 import Marketplace from "../components/Marketplace";
 import ApplyFilterView from "../components/ApplyFilterView";
 import ApplyOutfitView from "../components/ApplyOutfitView";
+import OutfitsView from "../components/OutfitsView";
 import StudioView from "../components/CreateFilterView";
 import AuthView from "../components/AuthView"; // Keep existing AuthView for later access if needed
 import SharedImageView from "../components/SharedImageView";
@@ -295,20 +296,7 @@ export default function Home() {
       case "profile":
         return <ProfileView user={viewState.user || user!} currentUser={user} setViewState={setViewState} onCreateYourOwn={handleCreateYourOwn} />;
       case "outfits":
-        return (
-          <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold text-content-100 dark:text-dark-content-100 mb-8">Outfits</h1>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {outfits.map(outfit => (
-                <div key={outfit.id} className="bg-base-200 dark:bg-dark-base-200 rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleSelectOutfit(outfit)}>
-                  <img src={outfit.previewImageUrl} alt={outfit.name} className="w-full h-48 object-cover rounded mb-4" />
-                  <h3 className="text-xl font-semibold text-content-100 dark:text-dark-content-100 mb-2">{outfit.name}</h3>
-                  <p className="text-content-200 dark:text-dark-content-200">{outfit.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
+        return <OutfitsView outfits={outfits} onSelectOutfit={handleSelectOutfit} />;
       case "applyOutfit":
         return (
           <ApplyOutfitView

@@ -101,8 +101,11 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
 
       {/* Main content card */}
       <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg shadow-xl">
-        <h1 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100 mb-2">{outfit.name}</h1>
-        <p className="text-content-200 dark:text-dark-content-200 mb-4">{outfit.description}</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100 mb-2">
+          {outfit.name}
+          {outfit.type && <span className="text-lg font-light">-{outfit.type}</span>}
+        </h1>
+        {outfit.description && <p className="text-content-200 dark:text-dark-content-200 mb-4">{outfit.description}</p>}
         
         <div className="aspect-video w-full bg-base-300 dark:bg-dark-base-300 rounded-lg flex items-center justify-center overflow-hidden mb-4">
             <img src={outfit.previewImageUrl} alt="Filter Preview" className="object-contain max-h-full max-w-full"/>

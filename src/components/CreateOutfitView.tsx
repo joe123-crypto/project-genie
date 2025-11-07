@@ -26,6 +26,7 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
     description: filterToEdit?.description || "",
     additionalStyle: filterToEdit?.prompt || "",
     previewImageUrl: filterToEdit?.previewImageUrl || "",
+    type: filterToEdit?.type || "",
   });
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,7 +47,7 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim()) return alert("Please provide a name.");
+    if (!formData.name.trim()) return alert("Please provide a brand name.");
     if (!formData.previewImageUrl) return alert("Please upload a preview image.");
 
     try {
@@ -78,7 +79,7 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
         previewImageUrl: finalImageUrl,
         userId: user?.uid,
         username: user?.email?.split("@")[0] || user?.email || "anonymous",
-        type: "single",
+        type: formData.type === "" ? undefined : (formData.type as "single" | "merge"),
         category: "",
       };
       const saved = await saveOutfit(payload, idToken || "");
@@ -112,7 +113,7 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
-              Outfit Name
+              Brand Name
             </label>
             <input
               type="text"
@@ -127,7 +128,7 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
-              Description
+              Description (optional)
             </label>
             <textarea
               value={formData.description}
@@ -136,6 +137,22 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
               placeholder="Describe the mood or vibe of your outfit..."
               rows={3}
             />
+          </div>
+
+          {/* Type */}
+          <div>
+            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+              Type
+            </label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              className="w-full p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+            >
+              <option value="">None</option>
+              <option value="single">Single</option>
+              <option value="merge">Merge</option>
+            </select>
           </div>
 
           {/* Additional Style */}
