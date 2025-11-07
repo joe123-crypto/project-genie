@@ -57,9 +57,6 @@ const Marketplace: React.FC<MarketplaceProps> = ({ filters, onSelectFilter, user
 
   return (
     <div className="animate-fade-in">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-        <h2 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100 text-center sm:text-left">Filter Marketplace</h2>
-      </div>
 
       {filters.length === 0 && (
          <div className="text-center bg-base-200 dark:bg-dark-base-200 p-8 rounded-lg">

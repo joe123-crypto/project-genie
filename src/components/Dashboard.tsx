@@ -23,18 +23,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
   }, [text]);
 
   const handleSend = async () => {
-    if (!user) {
-      setViewState({ view: 'auth' });
-      return;
-    }
     if (!text.trim()) return;
 
     setIsLoading(true);
     try {
       const idToken = await getValidIdToken(); 
       if (!idToken) {
-        setViewState({ view: 'auth' });
-        return; 
+        throw new Error("Session expired. Please sign in again.");
       }
 
       const response = await fetch('/api/generate-filter', {
@@ -64,10 +59,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
   };
 
   const handleImprovePrompt = async () => {
-    if (!user) {
-      setViewState({ view: 'auth' });
-      return;
-    }
     if (!text.trim()) return;
     setIsLoading(true);
     try {
