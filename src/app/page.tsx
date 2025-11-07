@@ -28,27 +28,11 @@ import { InitialAuthView } from "../components/InitialAuthView"; // Import the n
 
 const CreateOutfitView = dynamic(() => import('../components/CreateOutfitView'), { ssr: false });
 
-// Only cache minimal filter info
-interface CachedFilter {
-  id: string;
-  name: string;
-  accessCount?: number;
-  previewImageUrl?: string;
-}
-
-// Only cache minimal outfit info
-interface CachedOutfit {
-  id: string;
-  name: string;
-  accessCount?: number;
-  previewImageUrl?: string;
-}
-
 export default function Home() {
   const [filters, setFilters] = useState<Filter[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [viewState, setViewState] = useState<ViewState>({ view: "initialAuth" });
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Set to true to indicate initial data loading
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Combined loading state
   const [user, setUser] = useState<User | null>(null);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(false);
   const [isDark, setIsDark] = useState(false);
@@ -77,39 +61,27 @@ export default function Home() {
     document.documentElement.classList.toggle("dark", newIsDark);
   };
 
-  // Initial app data fetch and user session load
+  // Pre-fetch data and handle initial state
   useEffect(() => {
     const initialLoad = async () => {
+      setIsLoading(true);
       try {
-        // Load user session in parallel
-        const currentUser = loadUserSession();
-        if (currentUser) setUser(currentUser);
+        // Concurrently fetch data and check user session
+        const dataPromise = Promise.all([getFilters(), getOutfits()]);
+        const userPromise = Promise.resolve(loadUserSession());
 
-        // Fetch filters and outfits in parallel
-        const [fetchedFilters, fetchedOutfits] = await Promise.all([
-          getFilters(),
-          getOutfits()
-        ]);
+        const [data, currentUser] = await Promise.all([dataPromise, userPromise]);
+        const [fetchedFilters, fetchedOutfits] = data;
+
         setFilters(fetchedFilters);
         setOutfits(fetchedOutfits);
 
-        // Cache filters
-        const minimalFilterCache: CachedFilter[] = fetchedFilters.map(f => ({
-          id: f.id,
-          name: f.name,
-          accessCount: f.accessCount,
-          previewImageUrl: f.previewImageUrl,
-        }));
-        localStorage.setItem("filters", JSON.stringify(minimalFilterCache));
-
-        // Cache outfits
-        const minimalOutfitCache: CachedOutfit[] = fetchedOutfits.map(o => ({
-          id: o.id,
-          name: o.name,
-          accessCount: o.accessCount,
-          previewImageUrl: o.previewImageUrl,
-        }));
-        localStorage.setItem("outfits", JSON.stringify(minimalOutfitCache));
+        if (currentUser) {
+            setUser(currentUser);
+            setViewState({ view: "marketplace" });
+        } else {
+            setViewState({ view: "initialAuth" });
+        }
 
         // Handle initial URL parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -124,26 +96,23 @@ export default function Home() {
           const selectedFilter = fetchedFilters.find(f => f.id === filterId) || await getFilterById(filterId);
           if (selectedFilter) {
             setViewState({ view: "apply", filter: selectedFilter });
+          } else if (!currentUser) {
+            setViewState({ view: "initialAuth" });
           } else {
             setViewState({ view: "marketplace" });
           }
           window.history.replaceState({}, document.title, window.location.pathname);
-        } else if (currentUser) {
-          setViewState({ view: "marketplace" });
-        } else {
-          setViewState({ view: "initialAuth" });
         }
 
       } catch (err) {
         console.error("Error during initial app load:", err);
-        // If initial load fails, default to initialAuth view
         setViewState({ view: "initialAuth" });
       } finally {
         setIsLoading(false);
       }
     };
     initialLoad();
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
   // Handle successful sign-in from InitialAuthView
   const handleInitialSignInSuccess = useCallback((signedInUser: User) => {
@@ -152,48 +121,14 @@ export default function Home() {
     setIsWelcomeModalOpen(true);
   }, []);
 
-  // Update local cache whenever filters change
-  const updateLocalCache = (updatedFilters: Filter[]) => {
-    setFilters(updatedFilters);
-    const minimalCache: CachedFilter[] = updatedFilters.map(f => ({
-      id: f.id,
-      name: f.name,
-      accessCount: f.accessCount,
-      previewImageUrl: f.previewImageUrl,
-    }));
-    try {
-      localStorage.setItem("filters", JSON.stringify(minimalCache));
-    }
-     catch {
-      console.warn("Failed to update localStorage cache: size exceeded");
-    }
-  };
-
-  // Update local cache whenever outfits change
-  const updateLocalOutfitCache = (updatedOutfits: Outfit[]) => {
-    setOutfits(updatedOutfits);
-    const minimalCache: CachedOutfit[] = updatedOutfits.map(o => ({
-      id: o.id,
-      name: o.name,
-      accessCount: o.accessCount,
-      previewImageUrl: o.previewImageUrl,
-    }));
-    try {
-      localStorage.setItem("outfits", JSON.stringify(minimalCache));
-    }
-     catch {
-      console.warn("Failed to update localStorage cache: size exceeded");
-    }
-  };
-
   const addFilter = useCallback(
-    (newFilter: Filter) => updateLocalCache([newFilter, ...filters]),
-    [filters]
+    (newFilter: Filter) => setFilters(prev => [newFilter, ...prev]),
+    []
   );
 
   const addOutfit = useCallback(
-    (newOutfit: Outfit) => updateLocalOutfitCache([newOutfit, ...outfits]),
-    [outfits]
+    (newOutfit: Outfit) => setOutfits(prev => [newOutfit, ...prev]),
+    []
   );
 
   const handleDeleteFilter = useCallback(
@@ -204,14 +139,14 @@ export default function Home() {
         const idToken = await getValidIdToken();
         if (!idToken) throw new Error("Session expired");
         await deleteFilter(filterId, idToken);
-        updateLocalCache(filters.filter(f => f.id !== filterId));
+        setFilters(prev => prev.filter(f => f.id !== filterId));
       }
        catch (err) {
         console.error(err);
         throw err;
       }
     },
-    [filters, user]
+    [user]
   );
 
   const handleUpdateFilter = useCallback(
@@ -223,44 +158,44 @@ export default function Home() {
         if (!idToken) throw new Error("Session expired");
         const { id, ...dataToUpdate } = filterToUpdate;
         const updatedFilter = await updateFilter(id, dataToUpdate, idToken);
-        updateLocalCache(filters.map(f => (f.id === id ? updatedFilter : f)));
+        setFilters(prev => prev.map(f => (f.id === id ? updatedFilter : f)));
       }
        catch (err) {
         console.error(err);
         throw err;
       }
     },
-    [filters, user]
+    [user]
   );
 
   const handleSelectFilter = useCallback(
     (filter: Filter) => {
       setViewState({ view: "apply", filter });
       incrementFilterAccessCount(filter.id);
-      updateLocalCache(
-        filters.map(f =>
+      setFilters(prevFilters =>
+        prevFilters.map(f =>
           f.id === filter.id
             ? { ...f, accessCount: (f.accessCount || 0) + 1 }
             : f
         )
       );
     },
-    [filters]
+    []
   );
 
   const handleSelectOutfit = useCallback(
     (outfit: Outfit) => {
       setViewState({ view: "applyOutfit", outfit });
       incrementOutfitAccessCount(outfit.id);
-      updateLocalOutfitCache(
-        outfits.map(o =>
+      setOutfits(prevOutfits =>
+        prevOutfits.map(o =>
           o.id === outfit.id
             ? { ...o, accessCount: (o.accessCount || 0) + 1 }
             : o
         )
       );
     },
-    [outfits]
+    []
   );
   
   const handleCreateYourOwn = async (filterId: string) => {
@@ -306,23 +241,25 @@ export default function Home() {
   };
 
   const renderView = () => {
-    if (isLoading) {
-      return (
-        <div className="flex flex-col items-center justify-center pt-20">
-          <Spinner className="h-10 w-10 text-brand-primary dark:text-dark-brand-primary"/>
-          <p className="mt-4 text-lg text-content-200 dark:text-dark-content-200">
-            Loading Filters and Outfits...
-          </p>
-        </div>
-      );
+    // If loading, and we either have a user or are not on the auth screen, show a spinner.
+    if (isLoading && (user || viewState.view !== 'initialAuth')) {
+        return (
+            <div className="flex flex-col items-center justify-center pt-20">
+                <Spinner className="h-10 w-10 text-brand-primary dark:text-dark-brand-primary"/>
+                <p className="mt-4 text-lg text-content-200 dark:text-dark-content-200">
+                    Loading...
+                </p>
+            </div>
+        );
     }
-
-    if (viewState.view === "initialAuth" && !user) {
-      return (
-        <div className="flex justify-center items-center h-screen">
-          <InitialAuthView onSignInSuccess={handleInitialSignInSuccess} />
-        </div>
-      );
+    
+    // If not loading and the view is initialAuth, or if there's no user, show the auth view.
+    if ((!isLoading && viewState.view === "initialAuth") || !user) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <InitialAuthView onSignInSuccess={handleInitialSignInSuccess} />
+            </div>
+        );
     }
 
     switch (viewState.view) {
@@ -389,7 +326,7 @@ export default function Home() {
   return (
     <div className={`${commonClasses.container.base} min-h-screen flex flex-col ${commonClasses.transitions.default}`}>
       <div className="flex-grow p-4 sm:p-6 md:p-8 pb-56 sm:pb-24">
-        {user && viewState.view !== "initialAuth" && ( // Only show header if user is logged in and not on initial auth screen
+        {user && (
           <header className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
             <div 
               className="flex items-center gap-3 cursor-pointer" 
@@ -401,7 +338,6 @@ export default function Home() {
               </h1>
             </div>
             <div className="flex items-center gap-4">
-              {user ? (
                 <>
                   <button
                     onClick={() => setViewState({ view: "create" })}
@@ -416,14 +352,6 @@ export default function Home() {
                     onRemoveAccount={handleRemoveAccount} 
                   />
                 </>
-              ) : (
-                <button
-                  onClick={() => setViewState({ view: "auth" })}
-                  className={commonClasses.button.primary}
-                >
-                  Sign In
-                </button>
-              )}
               <button
                 className={commonClasses.button.icon}
                 onClick={toggleTheme}
@@ -435,7 +363,7 @@ export default function Home() {
           </header>
         )}
         
-        {user && viewState.view !== "initialAuth" && ( // Only show navigation if user is logged in and not on initial auth screen
+        {user && (
           <div className="max-w-7xl mx-auto mb-8">
             <div className="flex gap-8 border-b border-gray-200 dark:border-gray-700">
               <button
@@ -487,8 +415,9 @@ export default function Home() {
           onConfirm={confirmRemoveAccount}
           onCancel={() => setShowConfirmDialog(false)}
         />
-      )}\n
-      {user && viewState.view !== "initialAuth" && ( // Only show footer if user is logged in and not on initial auth screen
+      )}
+
+      {user && (
         <div className="fixed bottom-0 left-0 right-0 z-10 pointer-events-none">
           <div className="flex justify-end p-4">
               <a href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center gap-2 pointer-events-auto">
