@@ -365,7 +365,7 @@ export default function Home() {
         
         {user && (
           <div className="max-w-7xl mx-auto mb-8">
-            <div className="flex gap-8 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex justify-center gap-8 border-b border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => setViewState({ view: "marketplace" })}
                 className={`py-3 font-semibold transition-colors ${
