@@ -46,7 +46,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onSignInSuccess, setViewState }) =>
     }
   };
 
-  const inputClasses = `w-full ${themeColors.base.light[100]} ${themeColors.base.dark[300]} border ${themeColors.border.light} ${themeColors.border.dark} rounded-lg px-3 py-2 ${commonClasses.text.body} placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-brand-primary dark:focus:ring-dark-brand-primary focus:outline-none`;
+  const inputClasses = `w-full ${themeColors.base.light[100]} dark:bg-dark-base-100 border ${themeColors.border.light} ${themeColors.border.dark} rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-primary dark:focus:ring-dark-brand-primary focus:outline-none`;
 
   return (
     <div className="max-w-md mx-auto animate-fade-in">
@@ -74,7 +74,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onSignInSuccess, setViewState }) =>
                 className={inputClasses}
                 placeholder="your_username"
                 disabled={isLoading}
-                autoComplete="username"
+                autoComplete="off"
                 />
             </div>
         )}
@@ -90,7 +90,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onSignInSuccess, setViewState }) =>
               className={inputClasses}
               placeholder="you@example.com"
               disabled={isLoading}
-              autoComplete="email"
+              autoComplete="off"
             />
           </div>
           <div>
@@ -108,7 +108,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onSignInSuccess, setViewState }) =>
               className={inputClasses}
               placeholder="••••••••"
               disabled={isLoading}
-              autoComplete={isSigningUp ? "new-password" : "current-password"}
+              autoComplete="off"
             />
           </div>
 

@@ -108,3 +108,18 @@ body {
 /* Ensure brand buttons have readable text in light theme */
 .bg-brand-primary, .bg-brand-secondary { color: #ffffff; }
 .dark .dark\:bg-dark-brand-primary, .dark .dark\:bg-dark-brand-secondary { color: #0b1020; }
+
+/* Force placeholder color to be visible */
+::-webkit-input-placeholder { color: #a1a1aa !important; } /* zinc-400 */
+:-moz-placeholder { color: #a1a1aa !important; opacity: 1; }
+::-moz-placeholder { color: #a1a1aa !important; opacity: 1; }
+:-ms-input-placeholder { color: #a1a1aa !important; }
+::-ms-input-placeholder { color: #a1a1aa !important; }
+::placeholder { color: #a1a1aa !important; }
+
+.dark ::-webkit-input-placeholder { color: #71717a !important; } /* zinc-500 */
+.dark :-moz-placeholder { color: #71717a !important; opacity: 1; }
+.dark ::-moz-placeholder { color: #71717a !important; opacity: 1; }
+.dark :-ms-input-placeholder { color: #71717a !important; }
+.dark ::-ms-input-placeholder { color: #71717a !important; }
+.dark ::placeholder { color: #71717a !important; }

@@ -1,75 +1,24 @@
-import type { Metadata, Viewport } from "next";
-import { Analytics } from "@vercel/analytics/react";
-import { Inter, Poppins } from 'next/font/google';
-import "./globals.css";
+import { Analytics } from "@vercel/analytics/react"
+import type { Metadata } from "next"
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-});
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-poppins',
-});
+import "./globals.css?v=2"
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://project-genie-sigma.vercel.app"),
-  title: "Genie — AI Filters That Work Like Magic",
-  description:
-    "Create, remix, and share AI-powered photo filters that look amazing on any picture.",
-  openGraph: {
-    title: "Genie — AI Filters That Work Like Magic",
-    description:
-      "Create, remix, and share AI-powered photo filters that look amazing on any picture.",
-    url: "https://project-genie-sigma.vercel.app",
-    siteName: "Genie",
-    images: [
-      {
-        url: "https://project-genie-sigma.vercel.app/lamp.png",
-        width: 1200,
-        height: 630,
-        alt: "Genie AI Filter Preview",
-      },
-    ],
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Genie — AI Filters That Work Like Magic",
-    description:
-      "Create, remix, and share AI-powered photo filters that look amazing on any picture.",
-    images: [
-      "https://project-genie-sigma.vercel.app/lamp.png",
-    ],
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  icons: {
-    icon: "/lamp.png",
-  },
-};
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-};
+  title: "Vana Demo",
+  description: "Vana Demo",
+}
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: Readonly<{
+  children: React.ReactNode
+}>) {
   return (
-    <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
-      <body className="antialiased bg-base-100 text-content-100 dark:bg-dark-base-100 dark:text-dark-content-100 font-sans">
+    <html lang="en">
+      <body>
         {children}
         <Analytics />
       </body>
     </html>
-  );
+  )
 }
