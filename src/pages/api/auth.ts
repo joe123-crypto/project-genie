@@ -3,6 +3,10 @@ import { User } from '../../types';
 
 const API_KEY = process.env.FIREBASE_API_KEY;
 const AUTH_BASE_URL = "https://identitytoolkit.googleapis.com/v1/accounts";
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+// Ensure this matches the "Authorized redirect URIs" in your Google Cloud Console
+const GOOGLE_REDIRECT_URI = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/auth?action=googleCallback';
 
 const handleAuthResponse = async (response: Response): Promise<User> => {
     const responseText = await response.text();
@@ -41,12 +45,85 @@ const handleAuthResponse = async (response: Response): Promise<User> => {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { method, body } = req;
-    const { action } = req.query;
+    const { action, code } = req.query; // Added 'code' for Google callback
 
     if (!API_KEY) {
         return res.status(500).json({ error: 'Firebase API key is not configured.' });
     }
 
+    if (method === 'GET' && action === 'googleSignIn') {
+        if (!GOOGLE_CLIENT_ID || !GOOGLE_REDIRECT_URI) {
+            return res.status(500).json({ error: 'Google OAuth environment variables are not configured.' });
+        }
+        const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+            `client_id=${GOOGLE_CLIENT_ID}` +
+            `&redirect_uri=${GOOGLE_REDIRECT_URI}` +
+            `&response_type=code` +
+            `&scope=email profile openid` +
+            `&access_type=offline`;
+        return res.redirect(googleAuthUrl);
+    }
+
+    if (method === 'GET' && action === 'googleCallback') {
+        if (!code || typeof code !== 'string') {
+            return res.status(400).json({ error: 'Authorization code not found.' });
+        }
+        if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+            return res.status(500).json({ error: 'Google OAuth environment variables are not configured.' });
+        }
+
+        try {
+            // Exchange authorization code for tokens
+            const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    code,
+                    client_id: GOOGLE_CLIENT_ID,
+                    client_secret: GOOGLE_CLIENT_SECRET,
+                    redirect_uri: GOOGLE_REDIRECT_URI,
+                    grant_type: 'authorization_code',
+                }).toString(),
+            });
+
+            if (!tokenResponse.ok) {
+                const errorData = await tokenResponse.json();
+                throw new Error(errorData.error_description || 'Failed to exchange code for tokens');
+            }
+
+            const { id_token, access_token, refresh_token, expires_in } = await tokenResponse.json();
+
+            // Use the ID token to sign in to Firebase
+            const firebaseSignInResponse = await fetch(`${AUTH_BASE_URL}:signInWithIdp?key=${API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    postBody: `id_token=${id_token}&providerId=google.com`,
+                    requestUri: GOOGLE_REDIRECT_URI,
+                    returnIdpCredential: true,
+                    returnSecureToken: true
+                })
+            });
+
+            const firebaseUser = await handleAuthResponse(firebaseSignInResponse);
+
+            // Redirect back to the main application with user session info (e.g., in a cookie or query params)
+            // For simplicity, we'll redirect to the homepage. In a real app, you might set cookies here.
+            const redirectUrl = `/?idToken=${firebaseUser.idToken}&refreshToken=${firebaseUser.refreshToken}&uid=${firebaseUser.uid}&email=${firebaseUser.email}&expiresAt=${firebaseUser.expiresAt}`;
+            // You might also want to include displayName and photoURL if available from Google.
+            return res.redirect(redirectUrl);
+
+        } catch (error) {
+            console.error('Google OAuth callback error:', error);
+            return res.status(500).json({ 
+                error: error instanceof Error ? error.message : 'Google sign-in failed' 
+            });
+        }
+    }
+
+    // Existing POST requests handling
     if (method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }

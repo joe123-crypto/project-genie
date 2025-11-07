@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Share } from '../types';
-import Spinner from './Spinner';
+import { Spinner } from './Spinner'; // Changed to named import
 import ConfirmationDialog from './ConfirmationDialog';
 import { getValidIdToken } from '../services/authService';
 import { deleteUserImage } from '../services/userService';

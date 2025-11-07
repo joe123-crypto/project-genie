@@ -71,5 +71,6 @@ export interface Outfit {
     | { view: "outfits" }
     | { view: "applyOutfit"; outfit: Outfit }
     | { view: "profile"; user?: User }
-    | { view: "feed" };
+    | { view: "feed" }
+    | { view: "initialAuth" }; // Added initialAuth to ViewState
   

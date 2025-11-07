@@ -5,7 +5,7 @@ import { fetchPublicFeed, toggleLike } from '../services/feedService';
 import { getValidIdToken } from '../services/authService';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { HeartIcon as HeartIconOutline } from '@heroicons/react/24/outline';
-import Spinner from './Spinner';
+import { Spinner } from './Spinner'; // Changed to named import
 import PostView from './PostView';
 
 interface FeedViewProps {
@@ -103,7 +103,7 @@ const FeedView: React.FC<FeedViewProps> = ({ user, onCreateYourOwn }) => {
             <div key={post.id} onClick={() => handlePostClick(post)} className="bg-base-100 dark:bg-dark-base-100 shadow-lg rounded-lg overflow-hidden cursor-pointer">
                 <div className="p-4 flex items-center gap-3">
                 <img 
-                    src={post.author?.photoURL || '/default-avatar.png'} 
+                    src={post.author?.photoURL || '/default-avatar.256x256.png'} 
                     alt={post.author?.displayName || 'Unknown user'}
                     className="w-10 h-10 rounded-full"
                 />

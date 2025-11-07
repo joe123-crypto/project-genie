@@ -2,7 +2,7 @@ import React, { useState, useCallback, ChangeEvent, useEffect } from 'react';
 import { User, Share, Outfit, Filter } from '../types';
 import { updateUserProfile, uploadProfilePicture, fetchUserOutfits, fetchUserFilters, fetchUserSavedImages, deleteUserSavedImage } from '../services/userService';
 import { getValidIdToken } from '../services/authService';
-import Spinner from './Spinner';
+import { Spinner } from './Spinner'; // Changed to named import
 import { DefaultUserIcon, TrashIcon } from './icons';
 import OutfitCard from './OutfitCard';
 import FilterCard from './FilterCard';

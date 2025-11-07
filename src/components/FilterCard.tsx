@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Filter, User } from '../types';
-import Spinner from './Spinner';
+import { Spinner } from './Spinner'; // Changed to named import
 import { TrashIcon, EditIcon } from './icons';
 import Image from 'next/image';
 

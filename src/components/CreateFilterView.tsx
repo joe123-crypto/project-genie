@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Filter, ViewState, User } from '../types';
 import { BackArrowIcon, SparklesIcon } from './icons';
-import Spinner from './Spinner';
+import { Spinner } from './Spinner'; // Changed to named import
 import { improvePrompt, generateImageFromPrompt } from '../services/geminiService';
 import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from '../utils/fileUtils';
 import { saveFilter } from '../services/firebaseService';

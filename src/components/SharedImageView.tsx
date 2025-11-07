@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getSharedImage, postToFeed } from '../services/shareService';
-import Spinner from './Spinner';
+import { Spinner } from './Spinner'; // Changed to named import
 import { ViewState } from '../types';
 import { getFilterById } from '../services/firebaseService';
 

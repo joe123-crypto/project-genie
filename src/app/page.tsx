@@ -9,14 +9,14 @@ import Marketplace from "../components/Marketplace";
 import ApplyFilterView from "../components/ApplyFilterView";
 import ApplyOutfitView from "../components/ApplyOutfitView";
 import StudioView from "../components/CreateFilterView";
-import AuthView from "../components/AuthView";
+import AuthView from "../components/AuthView"; // Keep existing AuthView for later access if needed
 import SharedImageView from "../components/SharedImageView";
 import WelcomeModal from "../components/WelcomeModal";
 import { SunIcon, MoonIcon, WhatsAppIcon } from "../components/icons";
 import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById } from "../services/firebaseService";
 import { deleteUser } from "../services/userService";
 import { loadUserSession, signOut, getValidIdToken } from "../services/authService";
-import Spinner from "../components/Spinner";
+import { Spinner } from "../components/Spinner"; // Corrected import for Spinner
 import { commonClasses } from "../utils/theme";
 import UserIcon from '../components/UserIcon';
 import ConfirmationDialog from '../components/ConfirmationDialog';
@@ -24,6 +24,7 @@ import ProfileView from '../components/ProfileView';
 import Dashboard from '../components/Dashboard';
 import FeedView from '../components/FeedView'; // Import FeedView
 import { fetchFilterById } from "../services/filterService";
+import { InitialAuthView } from "../components/InitialAuthView"; // Import the new InitialAuthView
 
 const CreateOutfitView = dynamic(() => import('../components/CreateOutfitView'), { ssr: false });
 
@@ -46,8 +47,8 @@ interface CachedOutfit {
 export default function Home() {
   const [filters, setFilters] = useState<Filter[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
-  const [viewState, setViewState] = useState<ViewState>({ view: "marketplace" });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [viewState, setViewState] = useState<ViewState>({ view: "initialAuth" });
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Set to true to indicate initial data loading
   const [user, setUser] = useState<User | null>(null);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(false);
   const [isDark, setIsDark] = useState(false);
@@ -76,40 +77,41 @@ export default function Home() {
     document.documentElement.classList.toggle("dark", newIsDark);
   };
 
-  // Load cached filters first
+  // Initial app data fetch and user session load
   useEffect(() => {
-    const cached = localStorage.getItem("filters");
-    if (cached) {
+    const initialLoad = async () => {
       try {
-        const parsed: CachedFilter[] = JSON.parse(cached);
-        setFilters(parsed.map(f => ({ ...f } as Filter)));
-      } catch {
-        localStorage.removeItem("filters");
-      }
-    }
-  }, []);
+        // Load user session in parallel
+        const currentUser = loadUserSession();
+        if (currentUser) setUser(currentUser);
 
-  // Load cached outfits first
-  useEffect(() => {
-    const cached = localStorage.getItem("outfits");
-    if (cached) {
-      try {
-        const parsed: CachedOutfit[] = JSON.parse(cached);
-        setOutfits(parsed.map(o => ({ ...o } as Outfit)));
-      } catch {
-        localStorage.removeItem("outfits");
-      }
-    }
-  }, []);
+        // Fetch filters and outfits in parallel
+        const [fetchedFilters, fetchedOutfits] = await Promise.all([
+          getFilters(),
+          getOutfits()
+        ]);
+        setFilters(fetchedFilters);
+        setOutfits(fetchedOutfits);
 
-  // Initialize app: fetch full filters and outfits from backend
-  useEffect(() => {
-    const currentUser = loadUserSession();
-    if (currentUser) setUser(currentUser);
+        // Cache filters
+        const minimalFilterCache: CachedFilter[] = fetchedFilters.map(f => ({
+          id: f.id,
+          name: f.name,
+          accessCount: f.accessCount,
+          previewImageUrl: f.previewImageUrl,
+        }));
+        localStorage.setItem("filters", JSON.stringify(minimalFilterCache));
 
-    const initializeApp = async () => {
-      try {
-        setIsLoading(true);
+        // Cache outfits
+        const minimalOutfitCache: CachedOutfit[] = fetchedOutfits.map(o => ({
+          id: o.id,
+          name: o.name,
+          accessCount: o.accessCount,
+          previewImageUrl: o.previewImageUrl,
+        }));
+        localStorage.setItem("outfits", JSON.stringify(minimalOutfitCache));
+
+        // Handle initial URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const view = urlParams.get("view");
         const filterId = urlParams.get("filterId");
@@ -119,44 +121,35 @@ export default function Home() {
           setViewState({ view: "shared", shareId });
           window.history.replaceState({}, document.title, window.location.pathname);
         } else if (view === "apply" && filterId) {
-          const selectedFilter = await getFilterById(filterId);
+          const selectedFilter = fetchedFilters.find(f => f.id === filterId) || await getFilterById(filterId);
           if (selectedFilter) {
             setViewState({ view: "apply", filter: selectedFilter });
           } else {
             setViewState({ view: "marketplace" });
           }
           window.history.replaceState({}, document.title, window.location.pathname);
-        } else {
+        } else if (currentUser) {
           setViewState({ view: "marketplace" });
+        } else {
+          setViewState({ view: "initialAuth" });
         }
 
-        const fetchedFilters = await getFilters();
-        setFilters(fetchedFilters);
-
-        const minimalCache: CachedFilter[] = fetchedFilters.map(f => ({
-          id: f.id,
-          name: f.name,
-          accessCount: f.accessCount,
-          previewImageUrl: f.previewImageUrl,
-        }));
-        localStorage.setItem("filters", JSON.stringify(minimalCache));
-
-        const fetchedOutfits = await getOutfits();
-        setOutfits(fetchedOutfits);
-        const minimalOutfitCache: CachedOutfit[] = fetchedOutfits.map(o => ({
-          id: o.id,
-          name: o.name,
-          accessCount: o.accessCount,
-          previewImageUrl: o.previewImageUrl,
-        }));
-        localStorage.setItem("outfits", JSON.stringify(minimalOutfitCache));
       } catch (err) {
-        console.error(err);
+        console.error("Error during initial app load:", err);
+        // If initial load fails, default to initialAuth view
+        setViewState({ view: "initialAuth" });
       } finally {
         setIsLoading(false);
       }
     };
-    initializeApp();
+    initialLoad();
+  }, []); // Empty dependency array means this runs once on mount
+
+  // Handle successful sign-in from InitialAuthView
+  const handleInitialSignInSuccess = useCallback((signedInUser: User) => {
+    setUser(signedInUser);
+    setViewState({ view: "marketplace" });
+    setIsWelcomeModalOpen(true);
   }, []);
 
   // Update local cache whenever filters change
@@ -170,7 +163,8 @@ export default function Home() {
     }));
     try {
       localStorage.setItem("filters", JSON.stringify(minimalCache));
-    } catch {
+    }
+     catch {
       console.warn("Failed to update localStorage cache: size exceeded");
     }
   };
@@ -186,7 +180,8 @@ export default function Home() {
     }));
     try {
       localStorage.setItem("outfits", JSON.stringify(minimalCache));
-    } catch {
+    }
+     catch {
       console.warn("Failed to update localStorage cache: size exceeded");
     }
   };
@@ -210,7 +205,8 @@ export default function Home() {
         if (!idToken) throw new Error("Session expired");
         await deleteFilter(filterId, idToken);
         updateLocalCache(filters.filter(f => f.id !== filterId));
-      } catch (err) {
+      }
+       catch (err) {
         console.error(err);
         throw err;
       }
@@ -228,7 +224,8 @@ export default function Home() {
         const { id, ...dataToUpdate } = filterToUpdate;
         const updatedFilter = await updateFilter(id, dataToUpdate, idToken);
         updateLocalCache(filters.map(f => (f.id === id ? updatedFilter : f)));
-      } catch (err) {
+      }
+       catch (err) {
         console.error(err);
         throw err;
       }
@@ -270,7 +267,8 @@ export default function Home() {
     try {
       const filter = await fetchFilterById(filterId);
       setViewState({ view: 'apply', filter });
-    } catch (error) {
+    }
+     catch (error) {
       console.error('Error fetching filter:', error);
       alert('Error fetching filter. Please try again.');
     }
@@ -285,7 +283,7 @@ export default function Home() {
   const handleSignOut = () => {
     signOut();
     setUser(null);
-    setViewState({ view: "marketplace" });
+    setViewState({ view: "initialAuth" }); // Go back to InitialAuthView on sign out
   };
   
   const handleRemoveAccount = async () => {
@@ -298,24 +296,35 @@ export default function Home() {
       if (!idToken) throw new Error("Session expired");
       await deleteUser(idToken);
       handleSignOut();
-    } catch (err) {
+    }
+     catch (err) {
       console.error(err);
-    } finally {
+    }
+     finally {
       setShowConfirmDialog(false);
     }
   };
 
   const renderView = () => {
-    if (isLoading && viewState.view !== "shared") {
+    if (isLoading) {
       return (
         <div className="flex flex-col items-center justify-center pt-20">
           <Spinner className="h-10 w-10 text-brand-primary dark:text-dark-brand-primary"/>
           <p className="mt-4 text-lg text-content-200 dark:text-dark-content-200">
-            Loading Filters...
+            Loading Filters and Outfits...
           </p>
         </div>
       );
     }
+
+    if (viewState.view === "initialAuth" && !user) {
+      return (
+        <div className="flex justify-center items-center h-screen">
+          <InitialAuthView onSignInSuccess={handleInitialSignInSuccess} />
+        </div>
+      );
+    }
+
     switch (viewState.view) {
       case "marketplace":
         return (
@@ -328,7 +337,7 @@ export default function Home() {
           />
         );
       case "apply":
-        return <ApplyFilterView filter={viewState.filter} setViewState={setViewState} user={user} />;
+        return <ApplyFilterView filter={viewState.filter!} setViewState={setViewState} user={user} />;
       case "create":
         return (
           <CreateMenu
@@ -345,7 +354,7 @@ export default function Home() {
       case "auth":
         return <AuthView setViewState={setViewState} onSignInSuccess={handleSignInSuccess} />;
       case "shared":
-        return <SharedImageView shareId={viewState.shareId} setViewState={setViewState} />;
+        return <SharedImageView shareId={viewState.shareId!} setViewState={setViewState} />;
       case "profile":
         return <ProfileView user={viewState.user || user!} currentUser={user} setViewState={setViewState} onCreateYourOwn={handleCreateYourOwn} />;
       case "outfits":
@@ -366,96 +375,102 @@ export default function Home() {
       case "applyOutfit":
         return (
           <ApplyOutfitView
-            outfit={viewState.outfit}
+            outfit={viewState.outfit!}
             user={user}
           />
         );
       case "feed":
         return <FeedView user={user} onCreateYourOwn={handleCreateYourOwn} />;
+      default:
+        return null; // Should not happen if viewState is managed correctly
     }
   };
 
   return (
     <div className={`${commonClasses.container.base} min-h-screen flex flex-col ${commonClasses.transitions.default}`}>
       <div className="flex-grow p-4 sm:p-6 md:p-8 pb-56 sm:pb-24">
-        <header className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
-          <div 
-            className="flex items-center gap-3 cursor-pointer" 
-            onClick={() => setViewState({ view: "marketplace" })}
-          >
-            <img src="/lamp.png" alt="Genie Lamp" className="h-8 w-8" />
-            <h1 className={`text-2xl sm:text-3xl ${commonClasses.text.heading}`}>
-              GenAIe
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-            {user ? (
-              <>
+        {user && viewState.view !== "initialAuth" && ( // Only show header if user is logged in and not on initial auth screen
+          <header className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
+            <div 
+              className="flex items-center gap-3 cursor-pointer" 
+              onClick={() => setViewState({ view: "marketplace" })}
+            >
+              <img src="/lamp.png" alt="Genie Lamp" className="h-8 w-8" />
+              <h1 className={`text-2xl sm:text-3xl ${commonClasses.text.heading}`}>
+                GenAIe
+              </h1>
+            </div>
+            <div className="flex items-center gap-4">
+              {user ? (
+                <>
+                  <button
+                    onClick={() => setViewState({ view: "create" })}
+                    className={commonClasses.button.primary}
+                  >
+                    Create
+                  </button>
+                  <UserIcon 
+                    user={user} 
+                    onSignOut={handleSignOut} 
+                    onGoToProfile={() => setViewState({ view: "profile", user: user })}
+                    onRemoveAccount={handleRemoveAccount} 
+                  />
+                </>
+              ) : (
                 <button
-                  onClick={() => setViewState({ view: "create" })}
+                  onClick={() => setViewState({ view: "auth" })}
                   className={commonClasses.button.primary}
                 >
-                  Create
+                  Sign In
                 </button>
-                <UserIcon 
-                  user={user} 
-                  onSignOut={handleSignOut} 
-                  onGoToProfile={() => setViewState({ view: "profile", user: user })}
-                  onRemoveAccount={handleRemoveAccount} 
-                />
-              </>
-            ) : (
+              )}
               <button
-                onClick={() => setViewState({ view: "auth" })}
-                className={commonClasses.button.primary}
+                className={commonClasses.button.icon}
+                onClick={toggleTheme}
+                aria-label="Toggle theme"
               >
-                Sign In
+                {isDark ? <SunIcon /> : <MoonIcon />}
               </button>
-            )}
-            <button
-              className={commonClasses.button.icon}
-              onClick={toggleTheme}
-              aria-label="Toggle theme"
-            >
-              {isDark ? <SunIcon /> : <MoonIcon />}
-            </button>
-          </div>
-        </header>
+            </div>
+          </header>
+        )}
         
-        <div className="max-w-7xl mx-auto mb-8">
-          <div className="flex gap-8 border-b border-gray-200 dark:border-gray-700">
-            <button
-              onClick={() => setViewState({ view: "marketplace" })}
-              className={`py-3 font-semibold transition-colors ${
-                viewState.view === "marketplace"
-                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-              }`}
-            >
-              Filters
-            </button>
-            <button
-              onClick={() => setViewState({ view: "outfits" })}
-              className={`py-3 font-semibold transition-colors ${
-                viewState.view === "outfits"
-                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-              }`}
-            >
-              Outfits
-            </button>
-            <button
-              onClick={() => setViewState({ view: "feed" })}
-              className={`py-3 font-semibold transition-colors ${
-                viewState.view === "feed"
-                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-              }`}
-            >
-              Public Feed
-            </button>
+        {user && viewState.view !== "initialAuth" && ( // Only show navigation if user is logged in and not on initial auth screen
+          <div className="max-w-7xl mx-auto mb-8">
+            <div className="flex gap-8 border-b border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setViewState({ view: "marketplace" })}
+                className={`py-3 font-semibold transition-colors ${
+                  viewState.view === "marketplace"
+                    ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                    : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+                }`}
+              >
+                Filters
+              </button>
+              <button
+                onClick={() => setViewState({ view: "outfits" })}
+                className={`py-3 font-semibold transition-colors ${
+                  viewState.view === "outfits"
+                    ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                    : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+                }`}
+              >
+                Outfits
+              </button>
+              <button
+                onClick={() => setViewState({ view: "feed" })}
+                className={`py-3 font-semibold transition-colors ${
+                  viewState.view === "feed"
+                    ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                    : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+                }`}
+              >
+                Public Feed
+              </button>
+            </div>
           </div>
-        </div>
+        )}
         
         {renderView()}
       </div>
@@ -472,24 +487,25 @@ export default function Home() {
           onConfirm={confirmRemoveAccount}
           onCancel={() => setShowConfirmDialog(false)}
         />
-      )}
-
-      <div className="fixed bottom-0 left-0 right-0 z-10 pointer-events-none">
-        <div className="flex justify-end p-4">
-            <a href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center gap-2 pointer-events-auto">
-              <WhatsAppIcon />
-              <span className="hidden sm:inline">Join community for support</span>
-            </a>
-        </div>
-        <footer className="bg-base-100 dark:bg-dark-base-100 border-t border-base-300 dark:border-dark-base-300 shadow-lg p-4 pointer-events-auto">
-          <div className="mx-auto flex flex-col items-center">
-            <Dashboard user={user} setViewState={setViewState} addFilter={addFilter} />
-            <p className="text-xs text-content-200 dark:text-dark-content-200 mt-2">
-              © {new Date().getFullYear()} Genie. All rights reserved.
-            </p>
+      )}\n
+      {user && viewState.view !== "initialAuth" && ( // Only show footer if user is logged in and not on initial auth screen
+        <div className="fixed bottom-0 left-0 right-0 z-10 pointer-events-none">
+          <div className="flex justify-end p-4">
+              <a href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center gap-2 pointer-events-auto">
+                <WhatsAppIcon />
+                <span className="hidden sm:inline">Join community for support</span>
+              </a>
           </div>
-        </footer>
-      </div>
+          <footer className="bg-base-100 dark:bg-dark-base-100 border-t border-base-300 dark:border-dark-base-300 shadow-lg p-4 pointer-events-auto">
+            <div className="mx-auto flex flex-col items-center">
+              <Dashboard user={user} setViewState={setViewState} addFilter={addFilter} />
+              <p className="text-xs text-content-200 dark:text-dark-content-200 mt-2">
+                © {new Date().getFullYear()} Genie. All rights reserved.
+              </p>
+            </div>
+          </footer>
+        </div>
+      )}
     </div>
   );
 }

@@ -72,6 +72,34 @@ export const signIn = async (email: string, password: string): Promise<User> => 
 };
 
 /**
+ * Signs in with Google
+ * @returns A promise that resolves to the User object
+ */
+export const signInWithGoogle = async (): Promise<User | null> => {
+    try {
+        // Redirect to Google's authentication URL
+        // The backend /api/auth will handle the redirect to Google and then back to our app
+        window.location.href = '/api/auth?action=googleSignIn';
+
+        // Note: This function will not directly return a user as it initiates a redirect.
+        // The user will be handled by the redirect back to the app with session info.
+        return new Promise<User | null>(() => {}); // Never resolve this promise as we are redirecting
+
+    } catch (error) {
+        console.error('Error initiating Google sign-in:', error);
+        throw error;
+    }
+};
+
+/**
+ * Gets the currently authenticated user from local storage.
+ * @returns The User object if authenticated, null otherwise.
+ */
+export const getAuthUser = (): User | null => {
+    return loadUserSession();
+};
+
+/**
  * Signs out the current user
  */
 export const signOut = (): void => {
@@ -79,11 +107,38 @@ export const signOut = (): void => {
 };
 
 /**
- * Loads the user session from localStorage
+ * Loads the user session from localStorage or URL parameters (after Google redirect)
  * @returns The User object if found, null otherwise
  */
 export const loadUserSession = (): User | null => {
     try {
+        // First, check for user data in URL parameters (from Google OAuth redirect)
+        const urlParams = new URLSearchParams(window.location.search);
+        const idToken = urlParams.get('idToken');
+        const refreshToken = urlParams.get('refreshToken');
+        const uid = urlParams.get('uid');
+        const email = urlParams.get('email');
+        const expiresAt = urlParams.get('expiresAt');
+
+        if (idToken && refreshToken && uid && email && expiresAt) {
+            const user: User = {
+                idToken,
+                refreshToken,
+                uid,
+                email,
+                expiresAt: parseInt(expiresAt)
+            };
+
+            // Save to localStorage
+            localStorage.setItem(USER_SESSION_KEY, JSON.stringify(user));
+
+            // Clean the URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            return user;
+        }
+
+        // If not in URL, check localStorage
         const userData = localStorage.getItem(USER_SESSION_KEY);
         if (!userData) return null;
         
@@ -102,6 +157,7 @@ export const loadUserSession = (): User | null => {
         return null;
     }
 };
+
 
 /**
  * Updates the user session in localStorage
