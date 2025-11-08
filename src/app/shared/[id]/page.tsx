@@ -68,6 +68,7 @@ export async function generateMetadata({ params }: {params : any}): Promise<Meta
       url: absoluteUrl,
       siteName: "Genie",
       type: "website",
+      locale: "en_US", // Added og:locale tag
       images: [{
         url: finalImage,
         secureUrl: finalImage,

@@ -88,8 +88,38 @@ export const shareImage = async (
   }
 
   try {
+    // 1. Convert base64ImageDataUrl to Blob
+    const fetchRes = await fetch(base64ImageDataUrl);
+    const imageBlob = await fetchRes.blob();
+
+    // 2. Call /api/upload-url to get a signed URL for R2
+    const uploadUrlResponse = await fetch('/api/upload-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contentType: imageBlob.type, folder: 'shared' }),
+    });
+
+    if (!uploadUrlResponse.ok) {
+      const errorData = await uploadUrlResponse.json();
+      throw new Error(errorData.error || 'Failed to get upload URL for R2');
+    }
+
+    const { uploadUrl, fileUrl } = await uploadUrlResponse.json();
+
+    // 3. Upload image to R2 using the signed URL
+    const uploadImageResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': imageBlob.type },
+      body: imageBlob,
+    });
+
+    if (!uploadImageResponse.ok) {
+      throw new Error('Failed to upload image to R2');
+    }
+
+    // 4. Send fileUrl to /api/share
     const payload = {
-      imageUrl: base64ImageDataUrl,
+      imageUrl: fileUrl, // Use the public URL from R2
       filterName: filter.name,
       filterId: filter.id,
       username: user?.email ?? null,
