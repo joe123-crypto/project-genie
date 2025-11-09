@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useEffect } from "react";
@@ -311,6 +310,8 @@ export default function Home() {
     }
   };
 
+  const showDashboard = user && (viewState.view === "marketplace" || viewState.view === "feed" || viewState.view === "outfits");
+
   return (
     <div className={`${commonClasses.container.base} min-h-screen flex flex-col ${commonClasses.transitions.default}`}>
       <div className="flex-grow p-4 sm:p-6 md:p-8 pb-56 sm:pb-24">
@@ -404,25 +405,28 @@ export default function Home() {
           onCancel={() => setShowConfirmDialog(false)}
         />
       )}
+      
+      {showDashboard && (
+        <div className="fixed bottom-0 left-0 right-0 z-10">
+          <div className="mx-auto w-full max-w-xl p-4 bg-base-100 dark:bg-dark-base-100 shadow-lg rounded-t-2xl">
+            <Dashboard user={user} setViewState={setViewState} addFilter={addFilter} />
+          </div>
+          <div className="w-full bg-base-100 dark:bg-dark-base-100 py-2 text-center shadow-lg">
+            <p className="text-xs text-content-200 dark:text-dark-content-200">
+              © {new Date().getFullYear()} Genie. All rights reserved.
+            </p>
+          </div>
+        </div>
+      )}
 
-      {user && (
-        <div className="fixed bottom-0 left-0 right-0 z-10 pointer-events-none">
+      <div className="fixed bottom-0 left-0 right-0 z-10 pointer-events-none">
           <div className="flex justify-end p-4">
               <a href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center gap-2 pointer-events-auto">
                 <WhatsAppIcon />
                 <span className="hidden sm:inline">Join community for support</span>
               </a>
           </div>
-          <footer className="bg-base-100 dark:bg-dark-base-100 border-t border-base-300 dark:border-dark-base-300 shadow-lg p-4 pointer-events-auto">
-            <div className="mx-auto flex flex-col items-center">
-              <Dashboard user={user} setViewState={setViewState} addFilter={addFilter} />
-              <p className="text-xs text-content-200 dark:text-dark-content-200 mt-2">
-                © {new Date().getFullYear()} Genie. All rights reserved.
-              </p>
-            </div>
-          </footer>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

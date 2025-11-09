@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SparklesIcon, UploadIcon, SendIcon } from './icons';
+import { SparklesIcon, SendIcon } from './icons';
 import { User, ViewState, Filter } from '../types';
 import { getValidIdToken } from '../services/authService';
 import { improvePrompt } from '../services/geminiService';
@@ -74,19 +74,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
 
   return (
     <div className="w-full max-w-xl px-4">
-      <div className="bg-base-100 dark:bg-dark-base-100 rounded-2xl shadow-2xl p-2 flex items-end gap-2 border border-base-300 dark:border-dark-base-300">
+      <div className="bg-base-100 dark:bg-dark-base-100 rounded-2xl shadow-2xl p-2 flex items-end gap-2">
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={1}
-          placeholder="eg Make the person in the image look old(be specific)"
+          placeholder="Make the person in the image look old"
           className="w-full bg-transparent focus:outline-none text-content-100 dark:text-dark-content-100 px-4 resize-none overflow-y-hidden placeholder-gray-500 dark:placeholder-gray-400"
           disabled={isLoading}
         />
-        <button className="p-2 text-content-200 hover:text-brand-primary dark:text-dark-content-200 dark:hover:text-dark-brand-primary rounded-full transition-colors" disabled={isLoading}>
-          <UploadIcon className="h-5 w-5" />
-        </button>
         <button onClick={handleImprovePrompt} className="p-2 text-content-200 hover:text-brand-primary dark:text-dark-content-200 dark:hover:text-dark-brand-primary rounded-full transition-colors" disabled={isLoading}>
           <SparklesIcon className="h-4 w-4" />
         </button>
