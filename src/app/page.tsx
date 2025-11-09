@@ -78,7 +78,7 @@ export default function Home() {
 
         if (currentUser) {
             setUser(currentUser);
-            setViewState({ view: "marketplace" });
+            setViewState({ view: "feed" }); // Changed to feed
         } else {
             setViewState({ view: "initialAuth" });
         }
@@ -99,7 +99,7 @@ export default function Home() {
           } else if (!currentUser) {
             setViewState({ view: "initialAuth" });
           } else {
-            setViewState({ view: "marketplace" });
+            setViewState({ view: "feed" }); // Changed to feed
           }
           window.history.replaceState({}, document.title, window.location.pathname);
         }
@@ -117,7 +117,7 @@ export default function Home() {
   // Handle successful sign-in from InitialAuthView
   const handleInitialSignInSuccess = useCallback((signedInUser: User) => {
     setUser(signedInUser);
-    setViewState({ view: "marketplace" });
+    setViewState({ view: "feed" }); // Changed to feed
     setIsWelcomeModalOpen(true);
   }, []);
 
@@ -211,7 +211,7 @@ export default function Home() {
 
   const handleSignInSuccess = (signedInUser: User) => {
     setUser(signedInUser);
-    setViewState({ view: "marketplace" });
+    setViewState({ view: "feed" }); // Changed to feed
     setIsWelcomeModalOpen(true);
   };
 
@@ -319,7 +319,7 @@ export default function Home() {
           <header className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
             <div 
               className="flex items-center gap-3 cursor-pointer" 
-              onClick={() => setViewState({ view: "marketplace" })}
+              onClick={() => setViewState({ view: "feed" })}
             >
               <img src="/lamp.png" alt="Genie Lamp" className="h-8 w-8" />
               <h1 className={`text-2xl sm:text-3xl ${commonClasses.text.heading}`}>
