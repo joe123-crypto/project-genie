@@ -2,15 +2,15 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { v4 as uuidv4 } from 'uuid';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', ['GET']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
-  const { imageUrl } = req.body;
+  const { imageUrl } = req.query;
 
   if (typeof imageUrl !== 'string' || !imageUrl) {
-    return res.status(400).json({ error: 'Image URL is required in the request body.' });
+    return res.status(400).json({ error: 'Image URL is required as a query parameter.' });
   }
 
   try {
@@ -32,8 +32,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(imageResponse.status).send(imageResponse.statusText);
     }
 
-    // FINAL FIX: Force a generic content-type to prevent browser interference.
-    // This tells the browser to treat the file as a generic binary stream and not to second-guess the filename.
     res.setHeader('Content-Type', 'application/octet-stream');
 
     const originalPath = url.pathname;
@@ -44,7 +42,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const filename = `${uuidv4()}.${extension}`;
 
-    // The Content-Disposition header is the standard and correct way to specify the filename.
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
     const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());

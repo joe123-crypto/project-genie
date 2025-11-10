@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Share } from '../types';
-import { Spinner } from './Spinner'; // Changed to named import
+import { Spinner } from './Spinner';
 import ConfirmationDialog from './ConfirmationDialog';
 import { getValidIdToken } from '../services/authService';
 import { deleteUserImage } from '../services/userService';
@@ -18,7 +18,6 @@ const PostView: React.FC<PostViewProps> = ({ selectedImage, onClose, isOwner, on
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-
   const handleDeleteImage = async (imageId: string) => {
     try {
       const idToken = await getValidIdToken();
@@ -26,78 +25,37 @@ const PostView: React.FC<PostViewProps> = ({ selectedImage, onClose, isOwner, on
       await deleteUserImage(imageId, idToken);
       onDelete(imageId);
     } catch (err: any) {
-      // How to handle error display here? Maybe pass a callback
       console.error(`Failed to delete image: ${err.message}`);
     }
     setShowDeleteConfirm(null);
   };
 
   const getSafeImageUrl = (url: string | undefined): string | undefined => {
-    if (!url) {
-      return undefined;
-    }
-    if (url.startsWith('http') || url.startsWith('data:')) {
-      return url;
-    }
+    if (!url) return undefined;
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
     return `data:image/png;base64,${url}`;
   };
 
-  const handleDownload = useCallback(async () => {
+  const handleDownload = useCallback(() => {
     if (!selectedImage) return;
 
-    setIsDownloading(true);
-    setDownloadError(null);
-    
-    let objectUrl: string | null = null;
-
-    try {
-      const imageUrl = getSafeImageUrl(selectedImage.imageUrl || selectedImage.image || selectedImage.url);
-      if (!imageUrl) {
-        throw new Error('No image source found');
-      }
-
-      const response = await fetch('/api/v2/download', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ imageUrl }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
-        throw new Error(errorData.error);
-      }
-
-      const blob = await response.blob();
-      const contentDisposition = response.headers.get('content-disposition');
-      let filename = 'download.png';
-      if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename=\"?(.+)\"?/i);
-          if (filenameMatch && filenameMatch[1]) {
-              filename = filenameMatch[1];
-          }
-      }
-
-      const link = document.createElement('a');
-      objectUrl = URL.createObjectURL(blob);
-      
-      link.href = objectUrl;
-      link.download = filename;
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-    } catch (err) {
-      console.error("Download failed:", err);
-      setDownloadError(err instanceof Error ? err.message : "An unknown error occurred during download.");
-    } finally {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-      setIsDownloading(false);
+    const imageUrl = getSafeImageUrl(selectedImage.imageUrl || selectedImage.image || selectedImage.url);
+    if (!imageUrl) {
+      setDownloadError('No image source found');
+      return;
     }
+
+    // Construct the direct download URL
+    const downloadUrl = `/api/v2/download?imageUrl=${encodeURIComponent(imageUrl)}`;
+
+    // Create a temporary link and click it to trigger the download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', 'download.png'); // Suggest a default filename
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
   }, [selectedImage]);
 
   const imageUrl = getSafeImageUrl(selectedImage.imageUrl || selectedImage.image || selectedImage.url);
