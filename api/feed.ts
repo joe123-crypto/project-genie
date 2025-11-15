@@ -1,21 +1,20 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebaseAdmin';
+import { getDb } from '../lib/firebaseAdmin'; // Corrected path
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    const db = getDb();
+
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
     try {
-        const postsQuery = query(
-            collection(db, 'posts'),
-            orderBy('createdAt', 'desc'),
-            limit(50)
-        );
+        const postsSnapshot = await db.collection('posts')
+            .orderBy('createdAt', 'desc')
+            .limit(50)
+            .get();
 
-        const querySnapshot = await getDocs(postsQuery);
-        const posts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const posts = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         res.status(200).json(posts);
 

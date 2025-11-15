@@ -1,8 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebaseAdmin';
+import { getDb } from '../lib/firebaseAdmin'; // Corrected path
+import { FieldValue } from 'firebase-admin/firestore';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    const db = getDb();
+
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
@@ -14,12 +16,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        const docRef = await addDoc(collection(db, 'sharedImages'), {
+        const docRef = await db.collection('sharedImages').add({
             imageUrl,
             filterId,
             filterName,
             username,
-            createdAt: serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         });
 
         res.status(201).json({ id: docRef.id });
