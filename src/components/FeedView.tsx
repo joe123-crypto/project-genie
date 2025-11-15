@@ -2,10 +2,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Share, User } from '../types';
 import { fetchPublicFeed, toggleLike } from '../services/feedService';
-import { getValidIdToken } from '../services/authService';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { HeartIcon as HeartIconOutline } from '@heroicons/react/24/outline';
-import { Spinner } from './Spinner'; // Changed to named import
+import { Spinner } from './Spinner';
 import PostView from './PostView';
 
 interface FeedViewProps {
@@ -44,14 +43,7 @@ const FeedView: React.FC<FeedViewProps> = ({ user, onCreateYourOwn }) => {
     }
 
     try {
-      const idToken = await getValidIdToken();
-      if (!idToken) {
-        alert('Your session has expired. Please sign in again.');
-        return;
-      }
-
-      const updatedPost = await toggleLike(postToToggle.id, idToken);
-
+      const updatedPost = await toggleLike(postToToggle.id);
       setPosts(posts.map(p => p.id === postToToggle.id ? { ...p, likes: updatedPost.likes, likeCount: updatedPost.likeCount } : p));
     } catch (err) {
       console.error("Failed to toggle like:", err);

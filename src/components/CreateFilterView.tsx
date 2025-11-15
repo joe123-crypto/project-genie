@@ -5,7 +5,6 @@ import { Spinner } from './Spinner'; // Changed to named import
 import { improvePrompt, generateImageFromPrompt } from '../services/geminiService';
 import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from '../utils/fileUtils';
 import { saveFilter } from '../services/firebaseService';
-import { getValidIdToken } from '../services/authService';
 
 interface CreateFilterViewProps {
   setViewState: (viewState: ViewState) => void;
@@ -98,25 +97,16 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
     }
   
     try {
-      let finalImageUrl = formData.previewImageUrl;
+      const finalImageUrl = formData.previewImageUrl;
 
       if (formData.previewImageUrl && formData.previewImageUrl.startsWith('data:image')) {
-        const response = await fetch('/api/save-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              image: formData.previewImageUrl, 
-              destination: 'filters', 
-              directoryName: formData.name 
-            }),
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Failed to save image');
-        finalImageUrl = data.url;
+        // This section used a defunct API route. It should be replaced with a direct
+        // call to a client-side cloud storage upload function (like the one in firebaseService).
+        console.warn("Image saving via API is disabled. Using placeholder or existing URL.");
+        // const response = await fetch('/api/save-image', ...);
+        // finalImageUrl = data.url;
       }
 
-      const idToken = await getValidIdToken();
       const payload: Omit<Filter, 'id'> = {
         name: formData.name,
         description: formData.description,
@@ -136,7 +126,7 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
       if (filterToEdit && onUpdateFilter) {
         await onUpdateFilter({ ...filterToEdit, ...payload });
       } else {
-        const saved = await saveFilter(payload, idToken || '');
+        const saved = await saveFilter(payload);
         if (addFilter) addFilter(saved);
       }
   

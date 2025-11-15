@@ -1,11 +1,12 @@
 {
-  "name": "demo",
+  "name": "genaie",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_OPTIONS='--tls-min-v1.2' next dev",
-    "build": "NODE_OPTIONS='--tls-min-v1.2' next build",
-    "start": "NODE_OPTIONS='--tls-min-v1.2' next start",
+    "dev": "cross-env NODE_OPTIONS='--tls-min-v1.2' next dev",
+    "build": "cross-env NODE_OPTIONS='--tls-min-v1.2' next build",
+    "build:android": "cross-env BUILD_TARGET=capacitor npm run build",
+    "start": "cross-env NODE_OPTIONS='--tls-min-v1.2' next start",
     "lint": "eslint"
   },
   "dependencies": {
@@ -17,6 +18,7 @@
     "@vercel/analytics": "^1.5.0",
     "ai": "^5.0.44",
     "file-saver": "^2.0.5",
+    "firebase": "^10.12.3",
     "firebase-admin": "^13.5.0",
     "formidable": "^3.5.4",
     "heic2any": "^0.0.4",
@@ -25,6 +27,9 @@
     "react-dom": "19.1.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.1.0",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4.1.14",
     "@types/formidable": "^3.4.6",
@@ -32,6 +37,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
     "postcss": "^8.5.6",

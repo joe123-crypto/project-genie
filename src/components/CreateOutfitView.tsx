@@ -3,7 +3,6 @@ import { Outfit, ViewState, User } from "../types";
 import { BackArrowIcon, UploadIcon } from "./icons";
 import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from "../utils/fileUtils";
 import { saveOutfit } from "../services/firebaseService";
-import { getValidIdToken } from "../services/authService";
 
 interface CreateOutfitViewProps {
   setViewState: (viewState: ViewState) => void;
@@ -51,25 +50,14 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
     if (!formData.previewImageUrl) return alert("Please upload a preview image.");
 
     try {
-      const idToken = await getValidIdToken();
-      if (!idToken) {
-        throw new Error("No authorization token provided.");
-      }
-      let finalImageUrl = formData.previewImageUrl;
+      const finalImageUrl = formData.previewImageUrl;
 
       if (formData.previewImageUrl && formData.previewImageUrl.startsWith('data:image')) {
-        const response = await fetch('/api/save-image', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({ image: formData.previewImageUrl, destination: 'outfits' }),
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Failed to save image');
-        finalImageUrl = data.url;
+        // This section used a defunct API route. It should be replaced with a direct
+        // call to a client-side cloud storage upload function (like the one in firebaseService).
+        console.warn("Image saving via API is disabled. Using placeholder or existing URL.");
+        // const response = await fetch('/api/save-image', ...);
+        // finalImageUrl = data.url;
       }
 
       const payload: Omit<Outfit, "id"> = {
@@ -82,7 +70,7 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
         type: formData.type === "" ? undefined : (formData.type as "single" | "merge"),
         category: "",
       };
-      const saved = await saveOutfit(payload, idToken || "");
+      const saved = await saveOutfit(payload);
       if (addOutfit) addOutfit(saved);
       setViewState({ view: "outfits" });
     } catch (e) {

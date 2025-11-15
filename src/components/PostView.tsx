@@ -2,8 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { Share } from '../types';
 import { Spinner } from './Spinner';
 import ConfirmationDialog from './ConfirmationDialog';
-import { getValidIdToken } from '../services/authService';
-import { deleteUserImage } from '../services/userService';
+// import { getValidIdToken } from '../services/authService';
+// import { deleteUserImage } from '../services/userService';
 
 interface PostViewProps {
   selectedImage: Share;
@@ -19,14 +19,15 @@ const PostView: React.FC<PostViewProps> = ({ selectedImage, onClose, isOwner, on
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const handleDeleteImage = async (imageId: string) => {
-    try {
-      const idToken = await getValidIdToken();
-      if (!idToken) throw new Error('Session expired');
-      await deleteUserImage(imageId, idToken);
-      onDelete(imageId);
-    } catch (err: any) {
-      console.error(`Failed to delete image: ${err.message}`);
-    }
+    // try {
+    //   const idToken = await getValidIdToken();
+    //   if (!idToken) throw new Error('Session expired');
+    //   await deleteUserImage(imageId, idToken);
+    //   onDelete(imageId);
+    // } catch (err: any) {
+    //   console.error(`Failed to delete image: ${err.message}`);
+    // }
+    console.warn('Delete functionality is temporarily disabled.');
     setShowDeleteConfirm(null);
   };
 

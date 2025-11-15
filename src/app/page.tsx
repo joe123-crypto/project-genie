@@ -15,7 +15,7 @@ import WelcomeModal from "../components/WelcomeModal";
 import { SunIcon, MoonIcon, WhatsAppIcon } from "../components/icons";
 import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById } from "../services/firebaseService";
 import { deleteUser } from "../services/userService";
-import { loadUserSession, signOut, getValidIdToken } from "../services/authService";
+import { getAuthUser, signOut } from "../services/authService";
 import { Spinner } from "../components/Spinner"; // Corrected import for Spinner
 import { commonClasses } from "../utils/theme";
 import UserIcon from '../components/UserIcon';
@@ -68,7 +68,7 @@ export default function Home() {
       try {
         // Concurrently fetch data and check user session
         const dataPromise = Promise.all([getFilters(), getOutfits()]);
-        const userPromise = Promise.resolve(loadUserSession());
+        const userPromise = getAuthUser(); // Use the new getAuthUser function
 
         const [data, currentUser] = await Promise.all([dataPromise, userPromise]);
         const [fetchedFilters, fetchedOutfits] = data;
@@ -136,9 +136,7 @@ export default function Home() {
       if (!user || user.email !== "munemojoseph332@gmail.com")
         throw new Error("No permission to delete filters");
       try {
-        const idToken = await getValidIdToken();
-        if (!idToken) throw new Error("Session expired");
-        await deleteFilter(filterId, idToken);
+        await deleteFilter(filterId);
         setFilters(prev => prev.filter(f => f.id !== filterId));
       }
        catch (err) {
@@ -154,10 +152,8 @@ export default function Home() {
       if (!user || user.email !== "munemojoseph332@gmail.com")
         throw new Error("No permission to update filters");
       try {
-        const idToken = await getValidIdToken();
-        if (!idToken) throw new Error("Session expired");
         const { id, ...dataToUpdate } = filterToUpdate;
-        const updatedFilter = await updateFilter(id, dataToUpdate, idToken);
+        const updatedFilter = await updateFilter(id, dataToUpdate);
         setFilters(prev => prev.map(f => (f.id === id ? updatedFilter : f)));
       }
        catch (err) {
@@ -227,9 +223,7 @@ export default function Home() {
   
   const confirmRemoveAccount = async () => {
     try {
-      const idToken = await getValidIdToken();
-      if (!idToken) throw new Error("Session expired");
-      await deleteUser(idToken);
+      await deleteUser();
       handleSignOut();
     }
      catch (err) {

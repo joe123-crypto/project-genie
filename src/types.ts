@@ -59,6 +59,9 @@ export interface Outfit {
       image?: string;
       url?: string;
   }
+
+  // A Post is functionally the same as a Share in this application
+  export type Post = Share;
   
   export type ViewState =
     | { view: "marketplace" }

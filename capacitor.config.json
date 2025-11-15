@@ -1,0 +1,6 @@
+{
+  "appId": "com.example.demo",
+  "appName": "genaie",
+  "webDir": "out",
+  "bundledWebRuntime": false
+}

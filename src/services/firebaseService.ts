@@ -1,44 +1,33 @@
+import { db, storage } from '../lib/firebase';
+import { 
+    collection, 
+    getDocs, 
+    getDoc, 
+    doc, 
+    addDoc, 
+    deleteDoc, 
+    updateDoc, 
+    increment, 
+    serverTimestamp, 
+    query, 
+    orderBy, 
+    limit 
+} from "firebase/firestore";
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { Filter, Outfit, Post } from '../types';
 
-// Updated firebaseService.ts to only call our API routes
-import { Filter, Outfit } from '../types';
-
-const getApiBaseUrl = () => {
-    if (typeof window !== 'undefined') {
-        return '';
-    }
-    const vercelUrl = process.env.VERCEL_URL;
-    if (vercelUrl) {
-        return `https://${vercelUrl}`;
-    }
-
-    const renderInternalHostname = process.env.RENDER_INTERNAL_HOSTNAME;
-    if (renderInternalHostname) {
-        return `http://${renderInternalHostname}:${process.env.PORT}`;
-    }
-
-    return 'http://localhost:3000';
-};
+const FILTERS_COLLECTION = 'filters';
+const OUTFITS_COLLECTION = 'outfits';
+const POSTS_COLLECTION = 'posts';
 
 /**
- * Fetches all filters from the backend API
- * @returns A promise that resolves to an array of Filter objects
+ * Fetches all filters from Firestore.
  */
 export const getFilters = async (): Promise<Filter[]> => {
     try {
-        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=getFilters`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to fetch filters');
-        }
-
-        const data = await response.json();
-        return data.filters || [];
+        const q = query(collection(db, FILTERS_COLLECTION), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Filter));
     } catch (error) {
         console.error('Error fetching filters:', error);
         throw error;
@@ -46,62 +35,36 @@ export const getFilters = async (): Promise<Filter[]> => {
 };
 
 /**
- * Fetches a single filter by its ID from the backend API
- * @param id - The ID of the filter to fetch
- * @returns A promise that resolves to the Filter object
+ * Fetches a single filter by its ID from Firestore.
  */
-export const getFilterById = async (id: string): Promise<Filter> => {
+export const getFilterById = async (id: string): Promise<Filter | null> => {
     try {
-        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=getFilterById&id=${id}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to fetch filter');
+        const docRef = doc(db, FILTERS_COLLECTION, id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            return { id: docSnap.id, ...docSnap.data() } as Filter;
+        } else {
+            console.warn(`Filter with id ${id} not found.`);
+            return null;
         }
-
-        const data = await response.json();
-        return data.filter;
     } catch (error) {
         console.error(`Error fetching filter with id ${id}:`, error);
         throw error;
     }
-}
-
+};
 
 /**
- * Saves a filter to the backend
- * @param filter - The filter object to save
- * @param idToken - The user's ID token for authentication (currently unused)
- * @returns A promise that resolves to the saved Filter object
+ * Saves a filter to Firestore.
  */
-export const saveFilter = async (filter: Omit<Filter, 'id'>, idToken: string): Promise<Filter> => {
+export const saveFilter = async (filter: Omit<Filter, 'id'>): Promise<Filter> => {
     try {
-        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=saveFilter`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ filter, idToken }), // idToken is passed in the body for now
+        const docRef = await addDoc(collection(db, FILTERS_COLLECTION), {
+            ...filter,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            accessCount: 0
         });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Error saving filter, response text:", errorText);
-            try {
-                const errorData = JSON.parse(errorText);
-                throw new Error(errorData.error || 'Failed to save filter');
-            } catch {
-                throw new Error('Failed to save filter, and the response was not valid JSON.');
-            }
-        }
-
-        const data = await response.json();
-        return data.filter;
+        return { id: docRef.id, ...filter, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), accessCount: 0 };
     } catch (error) {
         console.error('Error saving filter:', error);
         throw error;
@@ -109,25 +72,33 @@ export const saveFilter = async (filter: Omit<Filter, 'id'>, idToken: string): P
 };
 
 /**
- * Deletes a filter from the backend
- * @param filterId - The ID of the filter to delete
- * @param idToken - The user's ID token for authentication (currently unused)
- * @returns A promise that resolves when the filter is deleted
+ * Saves a base64 encoded image to Firebase Storage.
  */
-export const deleteFilter = async (filterId: string, idToken: string): Promise<void> => {
+export const saveImage = async (imageB64: string, destination: 'saved' | 'shared', userId: string): Promise<string> => {
     try {
-        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=deleteFilter`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ filterId, idToken }),
-        });
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2, 8);
+        const imagePath = `${destination}/${userId}/${timestamp}-${randomId}.png`;
+        
+        const storageRef = ref(storage, imagePath);
+        
+        await uploadString(storageRef, imageB64, 'data_url');
+        
+        const downloadUrl = await getDownloadURL(storageRef);
+        
+        return downloadUrl;
+    } catch (error) {
+        console.error('Error saving image to storage:', error);
+        throw error;
+    }
+};
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to delete filter');
-        }
+/**
+ * Deletes a filter from Firestore.
+ */
+export const deleteFilter = async (filterId: string): Promise<void> => {
+    try {
+        await deleteDoc(doc(db, FILTERS_COLLECTION, filterId));
     } catch (error) {
         console.error('Error deleting filter:', error);
         throw error;
@@ -135,54 +106,14 @@ export const deleteFilter = async (filterId: string, idToken: string): Promise<v
 };
 
 /**
- * Deletes a user account from the backend
- * @param idToken - The user's ID token for authentication (currently unused)
- * @returns A promise that resolves when the user is deleted
+ * Updates a filter in Firestore.
  */
-export const deleteUser = async (idToken: string): Promise<void> => {
+export const updateFilter = async (filterId: string, filterData: Partial<Filter>): Promise<Filter> => {
     try {
-        const response = await fetch(`${getApiBaseUrl()}/api/user`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ idToken })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to delete user');
-        }
-    } catch (error) {
-        console.error('Error deleting user:', error);
-        throw error;
-    }
-};
-
-/**
- * Updates a filter in the backend
- * @param filterId - The ID of the filter to update
- * @param filterData - The updated filter data
- * @param idToken - The user's ID token for authentication (currently unused)
- * @returns A promise that resolves to the updated Filter object
- */
-export const updateFilter = async (filterId: string, filterData: Omit<Filter, 'id'>, idToken: string): Promise<Filter> => {
-    try {
-        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=updateFilter`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ filterId, filterData, idToken }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to update filter');
-        }
-
-        const data = await response.json();
-        return data.filter;
+        const filterRef = doc(db, FILTERS_COLLECTION, filterId);
+        await updateDoc(filterRef, { ...filterData, updatedAt: serverTimestamp() });
+        const updatedDoc = await getDoc(filterRef);
+        return { id: updatedDoc.id, ...updatedDoc.data() } as Filter;
     } catch (error) {
         console.error('Error updating filter:', error);
         throw error;
@@ -190,88 +121,26 @@ export const updateFilter = async (filterId: string, filterData: Omit<Filter, 'i
 };
 
 /**
- * Saves an outfit to the backend
- * @param outfitData - The outfit object to save
- * @param idToken - The user's ID token for authentication
- * @returns A promise that resolves to the saved Outfit object
- */
-
-export const saveOutfit = async (outfitData: Omit<Outfit, 'id'>, idToken: string) => {
-    try {
-        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=saveOutfit`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({
-                outfit: {
-                    ...outfitData,
-                    createdAt: new Date().toISOString(),
-                }
-            }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to save outfit to Firestore.');
-        }
-
-        return data.outfit;
-    } catch (err) {
-        console.error('❌ Error in saveOutfit:', err);
-        throw err;
-    }
-};
-  
-  
-/**
- * Increments the access count for a filter
- * @param filterId - The ID of the filter
- * @returns A promise that resolves when the count is incremented
+ * Increments the access count for a filter.
  */
 export const incrementFilterAccessCount = async (filterId: string): Promise<void> => {
     try {
-        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=incrementFilterAccessCount`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ id: filterId }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to increment access count');
-        }
+        const filterRef = doc(db, FILTERS_COLLECTION, filterId);
+        await updateDoc(filterRef, { accessCount: increment(1) });
     } catch (error) {
-        console.error('Error incrementing access count:', error);
-        // This is a non-critical operation, so we don't throw
+        console.error('Error incrementing filter access count:', error);
+        // Non-critical, so we don't re-throw
     }
 };
 
 /**
- * Fetches all outfits from the backend API
- * @returns A promise that resolves to an array of Outfit objects
+ * Fetches all outfits from Firestore.
  */
 export const getOutfits = async (): Promise<Outfit[]> => {
     try {
-        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=getOutfits`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to fetch outfits');
-        }
-
-        const data = await response.json();
-        console.log("outfits",data.outfits);
-        return data.outfits || [];
+        const q = query(collection(db, OUTFITS_COLLECTION), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Outfit));
     } catch (error) {
         console.error('Error fetching outfits:', error);
         throw error;
@@ -279,25 +148,43 @@ export const getOutfits = async (): Promise<Outfit[]> => {
 };
 
 /**
- * Fetches all posts from the backend API
- * @returns A promise that resolves to an array of Post objects
+ * Saves an outfit to Firestore.
  */
-export const getPosts = async (): Promise<any[]> => {
+export const saveOutfit = async (outfitData: Omit<Outfit, 'id'>): Promise<Outfit> => {
     try {
-        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=getPosts`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+        const docRef = await addDoc(collection(db, OUTFITS_COLLECTION), {
+            ...outfitData,
+            createdAt: serverTimestamp(),
+            accessCount: 0
         });
+        return { id: docRef.id, ...outfitData, createdAt: new Date().toISOString(), accessCount: 0 };
+    } catch (err) {
+        console.error('❌ Error in saveOutfit:', err);
+        throw err;
+    }
+};
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to fetch posts');
-        }
+/**
+ * Increments the access count for an outfit.
+ */
+export const incrementOutfitAccessCount = async (outfitId: string): Promise<void> => {
+    try {
+        const outfitRef = doc(db, OUTFITS_COLLECTION, outfitId);
+        await updateDoc(outfitRef, { accessCount: increment(1) });
+    } catch (error) {
+        console.error('Error incrementing outfit access count:', error);
+        // Non-critical, so we don't re-throw
+    }
+};
 
-        const data = await response.json();
-        return data.posts || [];
+/**
+ * Fetches all posts from Firestore.
+ */
+export const getPosts = async (): Promise<Post[]> => {
+    try {
+        const q = query(collection(db, POSTS_COLLECTION), orderBy("createdAt", "desc"), limit(50));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
     } catch (error) {
         console.error('Error fetching posts:', error);
         throw error;
@@ -305,24 +192,18 @@ export const getPosts = async (): Promise<any[]> => {
 };
 
 /**
- * Likes a post
- * @param postId - The ID of the post to like
- * @param userId - The ID of the user liking the post
- * @returns A promise that resolves when the post is liked
+ * Likes a post.
  */
 export const likePost = async (postId: string, userId: string): Promise<void> => {
     try {
-        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=likePost`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ postId, userId }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to like post');
+        const postRef = doc(db, POSTS_COLLECTION, postId);
+        const postSnap = await getDoc(postRef);
+        if (postSnap.exists()) {
+            const postData = postSnap.data();
+            const likes = postData.likes || [];
+            if (!likes.includes(userId)) {
+                await updateDoc(postRef, { likes: [...likes, userId] });
+            }
         }
     } catch (error) {
         console.error('Error liking post:', error);
@@ -331,52 +212,22 @@ export const likePost = async (postId: string, userId: string): Promise<void> =>
 };
 
 /**
- * Unlikes a post
- * @param postId - The ID of the post to unlike
- * @param userId - The ID of the user unliking the post
- * @returns A promise that resolves when the post is unliked
+ * Unlikes a post.
  */
 export const unlikePost = async (postId: string, userId: string): Promise<void> => {
     try {
-        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=unlikePost`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ postId, userId }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to unlike post');
+        const postRef = doc(db, POSTS_COLLECTION, postId);
+        const postSnap = await getDoc(postRef);
+        if (postSnap.exists()) {
+            const postData = postSnap.data();
+            let likes = postData.likes || [];
+            if (likes.includes(userId)) {
+                likes = likes.filter((id: string) => id !== userId);
+                await updateDoc(postRef, { likes });
+            }
         }
     } catch (error) {
         console.error('Error unliking post:', error);
         throw error;
-    }
-};
-
-/**
- * Increments the access count for an outfit
- * @param outfitId - The ID of the outfit
- * @returns A promise that resolves when the count is incremented
- */
-export const incrementOutfitAccessCount = async (outfitId: string): Promise<void> => {
-    try {
-        const response = await fetch(`${getApiBaseUrl()}/api/firebase?action=incrementOutfitAccessCount`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ id: outfitId }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to increment outfit access count');
-        }
-    } catch (error) {
-        console.error('Error incrementing outfit access count:', error);
-        // This is a non-critical operation, so we don't throw
     }
 };

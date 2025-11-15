@@ -1,6 +1,7 @@
 import React, { useState, useCallback, ChangeEvent, useEffect } from 'react';
 import { User, Share, Outfit, Filter } from '../types';
-import { updateUserProfile, uploadProfilePicture, fetchUserOutfits, fetchUserFilters, fetchUserSavedImages, deleteUserSavedImage } from '../services/userService';
+// import { updateUserProfile, uploadProfilePicture, fetchUserOutfits, fetchUserFilters, fetchUserSavedImages, deleteUserSavedImage } from '../services/userService';
+import { fetchUserOutfits, fetchUserFilters, fetchUserImages } from '../services/userService';
 import { getValidIdToken } from '../services/authService';
 import { Spinner } from './Spinner'; // Changed to named import
 import { DefaultUserIcon, TrashIcon } from './icons';
@@ -46,23 +47,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
 
   const loadUserData = useCallback(async () => {
     try {
-      let idToken: string | undefined;
-      if (isOwner) {
-        idToken = await getValidIdToken() || undefined;
-        if (!idToken) {
-          setError('Your session has expired or is invalid. Please sign in again.');
-          return;
-        }
-      }
-      
       if (typeof user.uid !== 'string' || !user.uid) {
         throw new Error('User UID is not available or is invalid');
       }
 
       const [userImages, userOutfits, userFilters] = await Promise.all([
-        fetchUserSavedImages(user.uid, idToken),
-        fetchUserOutfits(user.uid, idToken),
-        fetchUserFilters(user.uid, idToken)
+        fetchUserImages(user.uid),
+        fetchUserOutfits(user.uid),
+        fetchUserFilters(user.uid)
       ]);
 
       setImages(userImages);
@@ -90,37 +82,39 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
   };
 
   const handleSave = useCallback(async () => {
-    setIsSaving(true);
-    setError(null);
-    try {
-      const idToken = await getValidIdToken();
-      if (!idToken) throw new Error('Session expired');
+    // setIsSaving(true);
+    // setError(null);
+    // try {
+    //   const idToken = await getValidIdToken();
+    //   if (!idToken) throw new Error('Session expired');
 
-      let photoURL = user.photoURL;
-      if (newProfilePic) {
-        photoURL = await uploadProfilePicture(user.uid, newProfilePic, idToken);
-      }
+    //   let photoURL = user.photoURL;
+    //   if (newProfilePic) {
+    //     photoURL = await uploadProfilePicture(user.uid, newProfilePic, idToken);
+    //   }
 
-      await updateUserProfile(user.uid, { displayName, photoURL }, idToken);
+    //   await updateUserProfile(user.uid, { displayName, photoURL }, idToken);
       
-      setViewState({ view: 'marketplace' });
-    } catch (err) {
-      console.error(err);
-      setError('Failed to update profile. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
+    //   setViewState({ view: 'marketplace' });
+    // } catch (err) {
+    //   console.error(err);
+    //   setError('Failed to update profile. Please try again.');
+    // } finally {
+    //   setIsSaving(false);
+    // }
+    console.warn("Profile update functionality is temporarily disabled.");
   }, [user, displayName, newProfilePic, setViewState]);
 
   const handleDeleteImage = async (imageId: string) => {
-    try {
-      const idToken = await getValidIdToken();
-      if (!idToken) throw new Error('Session expired');
-      await deleteUserSavedImage(imageId, idToken);
-      setImages(images.filter(image => image.id !== imageId));
-    } catch (err: any) {
-      setError(`Failed to delete image: ${err.message}`);
-    }
+    // try {
+    //   const idToken = await getValidIdToken();
+    //   if (!idToken) throw new Error('Session expired');
+    //   await deleteUserSavedImage(imageId, idToken);
+    //   setImages(images.filter(image => image.id !== imageId));
+    // } catch (err: any) {
+    //   setError(`Failed to delete image: ${err.message}`);
+    // }
+    console.warn('Delete functionality is temporarily disabled.');
     setShowDeleteConfirm(null);
   };
 
