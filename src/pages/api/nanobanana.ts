@@ -77,6 +77,7 @@ function generateRandomFilename(extension = "png"): string {
 }
 
 export const config = {
+  maxDuration: 30,
   api: {
     bodyParser: {
       sizeLimit: "15mb",
