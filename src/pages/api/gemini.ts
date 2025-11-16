@@ -1,35 +1,123 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import { generateText } from 'ai';
+import type { NextApiRequest, NextApiResponse } from "next";
+import { generateText } from "ai";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+interface GeminiRequestBody {
+  prompt: string;
+  images?: string[];
+}
+
+interface GeminiResponse {
+  text?: string;
+  imageUrl?: string;
+  error?: string;
+}
+
+// Types for Gemini API content
+interface GeminiFileContent {
+  type: "file";
+  file: {
+    mediaType: string;
+    data: string;
+  };
+}
+
+interface GeminiTextContent {
+  type: "text";
+  text: string;
+}
+
+type GeminiContent = GeminiFileContent | GeminiTextContent;
+
+// Local type to project the SDK "steps" shape we consume
+interface GeminiStepLike {
+  content?: GeminiContent[];
+}
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GeminiResponse>
+) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { prompt } = req.body;
+  const { prompt, images } = req.body as GeminiRequestBody;
 
-  if (!prompt) {
-    return res.status(400).json({ error: 'Prompt is required' });
-  }
-
-  // Check for AI Gateway API key
-  const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.NEXT_PUBLIC_AI_GATEWAY_API_KEY;
-  if (!apiKey) {
-    console.warn("Warning: AI_GATEWAY_API_KEY not found. AI Gateway requests may fail.");
+  if (!prompt || !prompt.trim()) {
+    return res.status(400).json({ error: "Prompt is required" });
   }
 
   try {
-    const result = await generateText({
-      model: 'google/gemini-pro',
-      prompt: prompt,
-    });
+    const apiKey = process.env.AI_GATEWAY_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: "Server misconfiguration" });
+
+    const isImageRequest = images && images.length > 0;
+    const isImageGeneration = !isImageRequest && prompt.toLowerCase().includes("image") || 
+                             !isImageRequest && (prompt.toLowerCase().includes("generate") || 
+                             prompt.toLowerCase().includes("create") || 
+                             prompt.toLowerCase().includes("draw") || 
+                             prompt.toLowerCase().includes("paint"));
     
-    const text = result.text;
+    // Use image generation model for image requests or when prompt suggests image generation
+    const model = (isImageRequest || isImageGeneration) ? "google/gemini-2.5-flash-image-preview" : "google/gemini-2.5-flash";
+    const responseModalities = (isImageRequest || isImageGeneration) ? ["IMAGE", "TEXT"] : ["TEXT"];
 
-    res.status(200).json({ text });
+    const result = await generateText({
+      model,
+      providerOptions: {
+        google: {
+          apiKey,
+          responseModalities,
+        },
+      },
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            ...(images
+              ? images.map((img) => ({ type: "image" as const, image: img }))
+              : []),
+          ],
+        },
+      ],
+    });
 
-  } catch (error) {
-    console.error('Error in Gemini API call:', error);
-    res.status(500).json({ error: 'Failed to generate text from Gemini' });
+    // Use the SDK steps as-is and narrow type to the shape we consume
+    const steps: GeminiStepLike[] = (result.steps as unknown as GeminiStepLike[]) ?? [];
+
+    const textContent = steps
+      .flatMap((step) => step.content ?? [])
+      .filter((c): c is GeminiTextContent => c.type === "text")
+      .map((c) => c.text)
+      .join("\n");
+
+    const fileContent = steps
+      .flatMap((step) => step.content ?? [])
+      .filter((c): c is GeminiFileContent => c.type === "file" && Boolean(c.file?.data))
+      .map((c) => c.file.data)
+      .join("");
+
+    // Check for image content first (for both image requests and image generation)
+    if (fileContent) {
+      const firstMediaType = steps
+        .flatMap((step) => step.content ?? [])
+        .find((c): c is GeminiFileContent => c.type === "file" && !!c.file)
+        ?.file.mediaType || "image/jpeg";
+
+      const dataUrl = `data:${firstMediaType};base64,${fileContent}`;
+      return res.status(200).json({ imageUrl: dataUrl });
+    } else if (textContent) {
+      return res.status(200).json({ text: textContent });
+    } else {
+      console.error("No content returned from Gemini", result);
+      return res.status(500).json({ error: "No response from Gemini" });
+    }
+  } catch (err: unknown) {
+    console.error("Error calling Gemini API:", err);
+    if (err instanceof Error) {
+      return res.status(500).json({ error: err.message });
+    }
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
