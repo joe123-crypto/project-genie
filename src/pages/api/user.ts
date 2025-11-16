@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getAuth } from 'firebase-admin/auth';
-import { initializeFirebaseAdmin } from '../lib/firebaseAdmin'; // Corrected path
+import { initializeFirebaseAdmin } from '../../../lib/firebaseAdmin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     initializeFirebaseAdmin();

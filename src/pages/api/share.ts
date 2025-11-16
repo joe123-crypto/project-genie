@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getDb } from '../lib/firebaseAdmin'; // Corrected path
+import { getDb } from '../../../lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

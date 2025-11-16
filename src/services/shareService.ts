@@ -1,5 +1,5 @@
-
 import { Filter, User, Share } from '../types';
+import { getApiBaseUrlRuntime } from '../utils/api';
 
 interface SharedImage {
   imageUrl: string;
@@ -40,8 +40,9 @@ function isWindows(): boolean {
 }
 
 export const getSharedImage = async (shareId: string): Promise<SharedImage> => {
+  const baseUrl = getApiBaseUrlRuntime();
   try {
-    const response = await fetch(`/api/share?id=${shareId}`, {
+    const response = await fetch(`${baseUrl}/api/share?id=${shareId}`, {
       method: 'GET',
     });
 
@@ -63,6 +64,7 @@ export const shareImage = async (
   filter: Filter,
   user: User | null
 ): Promise<ShareResult> => {
+  const baseUrl = getApiBaseUrlRuntime();
   const appUrl = window.location.origin;
   const shareText = `Check out this image I created with the '${filter?.name ?? ""}' filter on Genie! Create your own here: ${appUrl}`;
   const filename = `filtered-${Date.now()}.png`;
@@ -93,7 +95,7 @@ export const shareImage = async (
     const imageBlob = await fetchRes.blob();
 
     // 2. Call /api/upload-url to get a signed URL for R2
-    const uploadUrlResponse = await fetch('/api/upload-url', {
+    const uploadUrlResponse = await fetch(`${baseUrl}/api/upload-url`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contentType: imageBlob.type, folder: 'shared' }),
@@ -125,7 +127,7 @@ export const shareImage = async (
       username: user?.email ?? null,
     };
 
-    const response = await fetch('/api/share', {
+    const response = await fetch(`${baseUrl}/api/share`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -146,8 +148,9 @@ export const shareImage = async (
 
 
 export const fetchPublicFeed = async (): Promise<Share[]> => {
+    const baseUrl = getApiBaseUrlRuntime();
     try {
-        const response = await fetch('/api/shares/public');
+        const response = await fetch(`${baseUrl}/api/shares/public`);
         if (!response.ok) {
             // Try to parse the error details from the API response
             const data: ShareApiResponse = await response.json().catch(() => ({ error: 'Failed to fetch public feed. The API response was not valid JSON.' }));
@@ -164,8 +167,9 @@ export const fetchPublicFeed = async (): Promise<Share[]> => {
 };
 
 export const fetchUser = async (userId: string): Promise<User> => {
+    const baseUrl = getApiBaseUrlRuntime();
     try {
-        const response = await fetch(`/api/user/profile?userId=${userId}`);
+        const response = await fetch(`${baseUrl}/api/user/profile?userId=${userId}`);
         if (!response.ok) {
             const data: ShareApiResponse = await response.json().catch(() => ({ error: `Failed to fetch user ${userId}` }));
             const errorMessage = `${data.error}${data.details ? `: ${data.details}` : ''}`;
@@ -180,7 +184,8 @@ export const fetchUser = async (userId: string): Promise<User> => {
 
 
 export const toggleLike = async (postId: string, idToken: string): Promise<Share> => {
-    const response = await fetch(`/api/shares/like`, {
+    const baseUrl = getApiBaseUrlRuntime();
+    const response = await fetch(`${baseUrl}/api/shares/like`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -204,8 +209,9 @@ export const toggleLike = async (postId: string, idToken: string): Promise<Share
 };
 
 export const postToFeed = async (shareId: string): Promise<void> => {
+  const baseUrl = getApiBaseUrlRuntime();
   try {
-    const response = await fetch(`/api/shares/post`, {
+    const response = await fetch(`${baseUrl}/api/shares/post`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ shareId }),
@@ -222,7 +228,8 @@ export const postToFeed = async (shareId: string): Promise<void> => {
 };
 
 export const fetchFilter = async (filterId: string, idToken: string): Promise<Filter> => {
-    const response = await fetch(`/api/filters/${filterId}`, {
+    const baseUrl = getApiBaseUrlRuntime();
+    const response = await fetch(`${baseUrl}/api/filters/${filterId}`, {
         headers: {
             'Authorization': `Bearer ${idToken}`,
         },

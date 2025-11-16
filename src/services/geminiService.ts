@@ -1,81 +1,5 @@
 import { downscale } from "../utils/downscale";
-
-// Helper function to determine the correct API base URL
-// Uses relative URLs for mobile/Android compatibility and to avoid CORS issues
-const getApiBaseUrl = (): string => {
-  // If explicitly set, use it (strip trailing slash)
-  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
-    return process.env.NEXT_PUBLIC_API_BASE_URL.replace(/\/+$/, '');
-  }
-  
-  // In browser/mobile environment, always use relative URLs
-  // This works with current origin and avoids CORS issues
-  if (typeof window !== 'undefined') {
-    return '';
-  }
-  
-  // Fallback for SSR/build time (shouldn't be used, but prevents errors)
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  
-  // Development fallback - use relative URLs
-  return '';
-};
-
-// Helper to detect if running in Capacitor (mobile app)
-const isCapacitor = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  // Check for Capacitor global object
-  return !!(window as any).Capacitor || !!(window as any).capacitor;
-};
-
-// Helper to detect if we're in a static export (Android build)
-const isStaticExport = (): boolean => {
-  // Check if API routes are available by looking at the URL structure
-  // In static export, we're likely served from a file:// or custom protocol
-  if (typeof window === 'undefined') return false;
-  
-  // If we have a production API URL set and we're not on localhost/web dev server,
-  // we might be in static export
-  const isLocalhost = window.location.hostname === 'localhost' || 
-                      window.location.hostname === '127.0.0.1' ||
-                      window.location.hostname.startsWith('192.168.') ||
-                      window.location.hostname.startsWith('10.0.');
-  
-  // If Capacitor is detected or we have API URL env var and not localhost, use production API
-  return isCapacitor() || (!!process.env.NEXT_PUBLIC_API_BASE_URL && !isLocalhost);
-};
-
-// Get API base URL dynamically (not at module load time for better mobile support)
-const getApiBaseUrlRuntime = (): string => {
-  // If we're in Capacitor/static export (Android), use production API URL
-  if (typeof window !== 'undefined' && isStaticExport()) {
-    // Use production API URL for Android/mobile
-    if (process.env.NEXT_PUBLIC_API_BASE_URL) {
-      return process.env.NEXT_PUBLIC_API_BASE_URL.replace(/\/+$/, '');
-    }
-    // Fallback to Vercel URL if available
-    if (process.env.NEXT_PUBLIC_VERCEL_URL) {
-      return `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
-    }
-    // Hardcoded fallback - you should set NEXT_PUBLIC_API_BASE_URL in your .env.local
-    return 'https://project-genie-sigma.vercel.app';
-  }
-  
-  // For web (dev and production), always use relative URLs
-  // This works because API routes are on the same server
-  if (typeof window !== 'undefined') {
-    return '';
-  }
-  
-  // SSR fallback
-  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
-    return process.env.NEXT_PUBLIC_API_BASE_URL.replace(/\/+$/, '');
-  }
-  
-  return '';
-};
+import { getApiBaseUrlRuntime } from "../utils/api";
 
 /**
  * Applies a filter to a single image using a prompt.
@@ -109,10 +33,7 @@ ${prompt}
 </USER>
 `;
 
-  const apiBase = getApiBaseUrlRuntime();
-  // Ensure we don't get double slashes - if apiBase is empty, just use /api/...
-  // If apiBase has a value, make sure it doesn't end with a slash
-  const baseUrl = apiBase ? apiBase.replace(/\/+$/, '') : '';
+  const baseUrl = getApiBaseUrlRuntime();
   const targetUrl = `${baseUrl}/api/nanobanana`;
   console.log(`[CLIENT] Attempting to fetch: ${targetUrl}`); // Client-side logging
 
@@ -149,8 +70,7 @@ ${prompt}
 // ... (rest of the functions updated similarly)
 
 export const generateImage = async (prompt: string, destination?: string): Promise<string> => {
-  const apiBase = getApiBaseUrlRuntime();
-  const baseUrl = apiBase ? apiBase.replace(/\/+$/, '') : '';
+  const baseUrl = getApiBaseUrlRuntime();
   const targetUrl = `${baseUrl}/api/nanobanana`;
   console.log(`[CLIENT] Attempting to fetch: ${targetUrl}`);
   try {
@@ -172,8 +92,7 @@ export const generateImage = async (prompt: string, destination?: string): Promi
 };
 
 export const generateText = async (prompt: string): Promise<string> => {
-  const apiBase = getApiBaseUrlRuntime();
-  const baseUrl = apiBase ? apiBase.replace(/\/+$/, '') : '';
+  const baseUrl = getApiBaseUrlRuntime();
   const targetUrl = `${baseUrl}/api/gemini`;
   console.log(`[CLIENT] Attempting to fetch: ${targetUrl}`);
   try {
@@ -193,8 +112,7 @@ export const generateText = async (prompt: string): Promise<string> => {
 };
 
 export const improvePrompt = async (prompt: string): Promise<string> => {
-  const apiBase = getApiBaseUrlRuntime();
-  const baseUrl = apiBase ? apiBase.replace(/\/+$/, '') : '';
+  const baseUrl = getApiBaseUrlRuntime();
   const targetUrl = `${baseUrl}/api/gemini`;
   console.log(`[CLIENT] Attempting to fetch: ${targetUrl}`);
   try {
@@ -224,8 +142,7 @@ export const mergeImages = async (
   
   const mergePrompt = `...`; // Prompt content omitted for brevity
 
-  const apiBase = getApiBaseUrlRuntime();
-  const baseUrl = apiBase ? apiBase.replace(/\/+$/, '') : '';
+  const baseUrl = getApiBaseUrlRuntime();
   const targetUrl = `${baseUrl}/api/nanobanana`;
   console.log(`[CLIENT] Attempting to fetch: ${targetUrl}`);
 

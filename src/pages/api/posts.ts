@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getDb } from '../lib/firebaseAdmin'; // Corrected path
+import { getDb } from '../../../lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -10,24 +10,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const { imageUrl, filterId, filterName, username } = req.body;
+        const { imageUrl, filterId, userId } = req.body;
 
-        if (!imageUrl || !filterId || !filterName) {
+        if (!imageUrl || !filterId || !userId) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        const docRef = await db.collection('sharedImages').add({
+        const docRef = await db.collection('posts').add({
             imageUrl,
             filterId,
-            filterName,
-            username,
+            authorId: userId,
             createdAt: FieldValue.serverTimestamp(),
+            likes: [],
         });
 
         res.status(201).json({ id: docRef.id });
 
     } catch (error) {
-        console.error('Error creating share:', error);
-        res.status(500).json({ error: 'Failed to create share' });
+        console.error('Error creating post:', error);
+        res.status(500).json({ error: 'Failed to create post' });
     }
 }
