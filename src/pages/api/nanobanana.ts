@@ -55,15 +55,12 @@ async function uploadPreviewToR2(
 
   await r2Client.send(new PutObjectCommand(params));
 
-  // Always use R2_PUBLIC_BASE_URL for public URLs
-  // R2_ENDPOINT is the private storage endpoint and should not be used for public URLs
   const publicBase = process.env.R2_PUBLIC_BASE_URL;
   if (!publicBase) {
     console.error("⚠️ R2_PUBLIC_BASE_URL is not set! Images will not be publicly accessible.");
     throw new Error("R2_PUBLIC_BASE_URL environment variable is required for public image URLs");
   }
   
-  // Construct the public URL using the public base URL
   const publicUrl = `${publicBase.replace(/\/+$/, "")}/${finalKey}`;
   console.log(`[SERVER] Generated public URL: ${publicUrl}`);
   
@@ -89,12 +86,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Server-side logging
   console.log(`[SERVER] Received request to /api/nanobanana.`);
   console.log(`[SERVER] Request Origin: ${req.headers.origin}`);
 
   if (req.method === 'OPTIONS') {
-    // Handle preflight OPTIONS request for CORS
     return res.status(200).json({ message: 'OPTIONS request successful' });
   }
 
@@ -102,18 +97,16 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { textPrompt, images, imageBase64, destination } = req.body as {
+  const { textPrompt, images, save } = req.body as {
     textPrompt?: string;
     images?: ImageInput[];
-    imageBase64?: string;
-    destination?: string;
+    save?: string;
   };
 
   if (!textPrompt) {
     return res.status(400).json({ error: "textPrompt required" });
   }
   
-  // Check for AI Gateway API key
   const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.NEXT_PUBLIC_AI_GATEWAY_API_KEY;
   if (!apiKey) {
     console.warn("Warning: AI_GATEWAY_API_KEY not found. AI Gateway requests may fail.");
@@ -132,31 +125,23 @@ export default async function handler(
           role: "user",
           content: [
             { type: "text", text: textPrompt },
-            ...(imageBase64
-              ? [
-                  {
-                    type: "file" as const,
-                    mediaType: "image/png",
-                    data: imageBase64,
-                  },
-                ]
-              : (images || []).map((img) => {
-                  if (img.data) {
-                    return {
-                      type: "file" as const,
-                      mediaType: img.mediaType,
-                      data: img.data,
-                    };
-                  } else if (img.url) {
-                    return {
-                      type: "file" as const,
-                      mediaType: img.mediaType,
-                      data: img.url,
-                    };
-                  } else {
-                    throw new Error("Image must have either data or url");
-                  }
-                })),
+            ...(images || []).map((img) => {
+              if (img.data) {
+                return {
+                  type: "file" as const,
+                  mediaType: img.mediaType,
+                  data: img.data,
+                };
+              } else if (img.url) {
+                return {
+                  type: "file" as const,
+                  mediaType: img.mediaType,
+                  data: img.url,
+                };
+              } else {
+                throw new Error("Image must have either data or url");
+              }
+            }),
           ],
         },
       ],
@@ -172,22 +157,30 @@ export default async function handler(
     }
 
     const { base64Data, mediaType = "image/png" } = filePart.file;
-    const filename = generateRandomFilename("png");
-    const folder = destination || "filtered";
 
-    const r2Url = await uploadPreviewToR2(
-      filename,
-      base64Data,
-      mediaType,
-      folder,
-    );
-    
-    console.log(`[SERVER] Successfully uploaded image to: ${r2Url}`);
-    
-    return res.status(200).json({
-      imageUrl: r2Url,
-      mimeType: mediaType,
-    });
+    // If a 'save' directory is specified, upload to R2 and return the URL
+    if (save) {
+      const filename = generateRandomFilename("png");
+      const r2Url = await uploadPreviewToR2(
+        filename,
+        base64Data,
+        mediaType,
+        save,
+      );
+      
+      console.log(`[SERVER] Successfully uploaded image to: ${r2Url}`);
+      
+      return res.status(200).json({
+        imageUrl: r2Url,
+        mimeType: mediaType,
+      });
+    } else {
+      // Otherwise, return the base64 data directly
+      return res.status(200).json({
+        imageBase64: base64Data,
+        mimeType: mediaType,
+      });
+    }
   } catch (err: unknown) {
     console.error("Nanobanana/Gemini error:", err);
 

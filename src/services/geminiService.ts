@@ -275,7 +275,7 @@ ${prompt}
       return input;
     });
       
-    // Convert both images to safe base64 strings and downscale them
+    // Convert both. Images to safe base64 strings and downscale them
     const [imageBase64A, imageBase64B] = await Promise.all([
       downscale(processedInputs[0], 1024, "webp", 0.8),
       downscale(processedInputs[1], 1024, "webp", 0.8),

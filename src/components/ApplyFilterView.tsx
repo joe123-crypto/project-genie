@@ -1,10 +1,12 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { saveAs } from 'file-saver';
 import { applyImageFilter } from '../services/geminiService';
 import { shareImage, ShareResult } from '../services/shareService';
-import { saveImage } from '../services/firebaseService'; // Updated import
-import { getFilterById } from '../services/firebaseService'; // Import getFilterById
+import { saveImage } from '../services/firebaseService';
+import { getFilterById } from '../services/firebaseService';
 import { Filter, User, ViewState } from '../types';
 import { UploadIcon, ShareIcon, DownloadIcon } from './icons';
 import ShareModal from './ShareModal';
@@ -31,13 +33,15 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [isPosting, setIsPosting] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [isNative, setIsNative] = useState(false);
+
+  useEffect(() => {
+    setIsNative(Capacitor.isNativePlatform());
+  }, []);
 
   const filterType = filter?.type ?? 'single';
   const filterPrompt = filter?.prompt ?? '';
-
-  const isWindows = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent);
-
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchFilter = async () => {
@@ -46,9 +50,9 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
         try {
           const fetchedFilter = await getFilterById(filterId);
           if (fetchedFilter) {
-              setFilter(fetchedFilter);
+            setFilter(fetchedFilter);
           } else {
-              throw new Error("Filter not found");
+            throw new Error("Filter not found");
           }
         } catch (err) {
           console.error("❌ Error fetching filter:", err);
@@ -63,7 +67,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
 
   const handleApplyFilter = useCallback(async () => {
     setError(null);
-    setSaveStatus('idle'); // Reset save status
+    setSaveStatus('idle');
 
     const imagesToProcess: string[] = [];
     if (uploadedImage1) imagesToProcess.push(uploadedImage1);
@@ -80,10 +84,10 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
 
     try {
       const combinedPrompt = personalPrompt ? `${filterPrompt}\n${personalPrompt}` : filterPrompt;
-      const result = await applyImageFilter(imagesToProcess, combinedPrompt, "filtered");
+      const result = await applyImageFilter(imagesToProcess, combinedPrompt, isNative ? undefined : "filtered");
       setGeneratedImage(result);
 
-      if (result && result.includes('r2.dev')) {
+      if (!isNative && result && result.includes('r2.dev')) {
         const keyStart = result.indexOf("filtered/");
         if (keyStart !== -1) {
           const key = result.substring(keyStart);
@@ -92,7 +96,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
           const urlParts = result.split('/');
           setGeneratedImageFilename(urlParts[urlParts.length - 1]);
         }
-      } else {
+      } else if (isNative) {
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 8);
         setGeneratedImageFilename(`filtered-${timestamp}-${randomId}.png`);
@@ -102,7 +106,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     } finally {
       setIsLoading(false);
     }
-  }, [uploadedImage1, uploadedImage2, filterPrompt, filterType, personalPrompt]);
+  }, [uploadedImage1, uploadedImage2, filterPrompt, filterType, personalPrompt, isNative]);
 
   const fetchImageAsBase64 = async (url: string): Promise<string> => {
     const response = await fetch(url);
@@ -144,50 +148,6 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
       setIsSaving(false);
     }
   }, [generatedImage, generatedImageFilename, user]);
-    
-  const handlePost = useCallback(async () => {
-    if (!user) {
-      setError("You must be logged in to post.");
-      return;
-    }
-
-    setIsPosting(true);
-    setError(null);
-
-    try {
-      const imageUrlToPost = await handleSave();
-
-      if (!imageUrlToPost) {
-        throw new Error("Failed to save image before posting.");
-      }
-
-      const filterIdToPost = filter?.id;
-
-      if (personalPrompt && filter) {
-        // const combinedPrompt = `${filter.prompt}\n${personalPrompt}`;
-        // This still uses a defunct API route, needs fixing if used.
-        console.warn("The custom filter generation feature is currently disabled.");
-        // const res = await fetch('/api/generate-filter', ...);
-        // ...
-      }
-
-      if (!filterIdToPost) {
-        throw new Error("Could not determine a filter ID for the post.");
-      }
-
-      // This also uses a defunct API route.
-      console.warn("The post creation feature is currently disabled.");
-      // const postRes = await fetch("/api/posts", ...);
-      // ...
-
-      // alert(`Post created successfully! Post ID: ${postData.id}`);
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An unknown error occurred while posting.");
-    } finally {
-      setIsPosting(false);
-    }
-  }, [user, handleSave, filter, personalPrompt]);
 
   const handleShare = useCallback(async () => {
     if (!generatedImage) return;
@@ -196,44 +156,64 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     setError(null);
 
     try {
+      if (isNative) {
+        await Share.share({
+          title: filter?.name,
+          text: filter?.description,
+          url: generatedImage,
+          dialogTitle: 'Share your creation',
+        });
+      } else {
         const finalImageUrl = await handleSave();
 
         if (!finalImageUrl) {
-            throw new Error("Could not get a saveable image URL.");
+          throw new Error("Could not get a saveable image URL.");
         }
 
         if (!filter) {
-            console.error("No filter given");
-            return;
+          console.error("No filter given");
+          return;
         }
         const result: ShareResult = await shareImage(finalImageUrl, filter, user);
 
         setShareUrl(result.shareUrl);
 
         if (result.status === 'modal') {
-            setIsShareModalOpen(true);
+          setIsShareModalOpen(true);
         }
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? `Sharing failed: ${err.message}` : 'Unknown error');
     } finally {
       setIsSharing(false);
     }
-  }, [generatedImage, filter, user, handleSave]);
+  }, [generatedImage, filter, user, handleSave, isNative]);
 
   const handleDownload = useCallback(async () => {
     if (!generatedImage) return;
 
     try {
-      const response = await fetch(generatedImage);
-      if (!response.ok) throw new Error('Failed to fetch image for download.');
-      const blob = await response.blob();
-      const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substring(2, 8);
-      saveAs(blob, `filtered-${timestamp}-${randomId}.png`);
+      if (isNative) {
+        const base64Data = generatedImage.split(',')[1];
+        const fileName = `filtered-${Date.now()}.png`;
+        await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Documents,
+        });
+        alert(`Image saved to Documents/${fileName}`);
+      } else {
+        const response = await fetch(generatedImage);
+        if (!response.ok) throw new Error('Failed to fetch image for download.');
+        const blob = await response.blob();
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2, 8);
+        saveAs(blob, `filtered-${timestamp}-${randomId}.png`);
+      }
     } catch (err) {
-        setError(err instanceof Error ? `Download failed: ${err.message}` : 'Download failed');
+      setError(err instanceof Error ? `Download failed: ${err.message}` : 'Download failed');
     }
-  }, [generatedImage]);
+  }, [generatedImage, isNative]);
 
   const isApplyDisabled = isLoading || !uploadedImage1 || (filterType === 'merge' && !uploadedImage2);
 
@@ -363,7 +343,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
                 className="flex items-center gap-2 bg-neutral-200 hover:bg-neutral-300 dark:bg-dark-neutral-200 dark:hover:bg-dark-neutral-300 text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
               >
                 <ShareIcon />
-                {isWindows ? 'Share' : 'Share'}
+                Share
               </button>
               <button
                 onClick={handleDownload}
@@ -372,20 +352,15 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
                 <DownloadIcon />
                 Download
               </button>
-              <button
-                onClick={handleSave}
-                disabled={isSaving || isLoading || saveStatus === 'saved'}
-                className="flex items-center gap-2 bg-green-200 hover:bg-green-300 dark:bg-green-800 dark:hover:bg-green-700 text-green-900 dark:text-green-100 font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
-              >
-                {isSaving ? 'Saving...' : (saveStatus === 'saved' ? 'Saved!' : 'Save')}
-              </button>
-              <button
-                onClick={handlePost}
-                disabled={isPosting || isLoading}
-                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
-              >
-                {isPosting ? 'Posting...' : 'Post'}
-              </button>
+              {!isNative && (
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving || isLoading || saveStatus === 'saved'}
+                  className="flex items-center gap-2 bg-green-200 hover:bg-green-300 dark:bg-green-800 dark:hover:bg-green-700 text-green-900 dark:text-green-100 font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {isSaving ? 'Saving...' : (saveStatus === 'saved' ? 'Saved!' : 'Save')}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -417,7 +392,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
         </button>
       </div>
 
-      {generatedImage && shareUrl && filter && (
+      {generatedImage && shareUrl && filter && !isNative && (
         <ShareModal
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
