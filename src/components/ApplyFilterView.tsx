@@ -4,12 +4,14 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { saveAs } from 'file-saver';
 import { applyImageFilter } from '../services/geminiService';
-import { shareImage, ShareResult } from '../services/shareService';
-import { saveImage } from '../services/firebaseService';
+import { shareImage, ShareResult, getFilterUrl } from '../services/shareService';
+import { downscale } from '../utils/downscale';
+import { getApiBaseUrlRuntime } from '../utils/api';
 import { getFilterById } from '../services/firebaseService';
 import { Filter, User, ViewState } from '../types';
 import { UploadIcon, ShareIcon, DownloadIcon } from './icons';
 import ShareModal from './ShareModal';
+import FileSaver from '../plugins/file-saver'; // Use the new plugin
 
 interface ApplyFilterViewProps {
   filter?: Filter;
@@ -27,6 +29,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
   const [generatedImageFilename, setGeneratedImageFilename] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [personalPrompt, setPersonalPrompt] = useState("");
@@ -34,6 +37,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [isPosting, setIsPosting] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [filterUrl, setFilterUrl] = useState<string | null>(null);
   const [isNative, setIsNative] = useState(false);
 
   useEffect(() => {
@@ -87,20 +91,11 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
       const result = await applyImageFilter(imagesToProcess, combinedPrompt, isNative ? undefined : "filtered");
       setGeneratedImage(result);
 
-      if (!isNative && result && result.includes('r2.dev')) {
-        const keyStart = result.indexOf("filtered/");
-        if (keyStart !== -1) {
-          const key = result.substring(keyStart);
-          setGeneratedImageFilename(key);
-        } else {
-          const urlParts = result.split('/');
-          setGeneratedImageFilename(urlParts[urlParts.length - 1]);
-        }
-      } else if (isNative) {
-        const timestamp = Date.now();
-        const randomId = Math.random().toString(36).substring(2, 8);
-        setGeneratedImageFilename(`filtered-${timestamp}-${randomId}.png`);
-      }
+      // Generate a simple filename for all cases, now handled by native plugin if needed
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 8);
+      setGeneratedImageFilename(`genie-${timestamp}-${randomId}.png`);
+
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
     } finally {
@@ -131,9 +126,75 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     setError(null);
 
     try {
-      const imageBase64 = await fetchImageAsBase64(generatedImage);
-      const savedImageUrl = await saveImage(imageBase64, 'saved', user.uid);
+      const baseUrl = getApiBaseUrlRuntime();
       
+      // 1. Convert image to data URL if needed
+      let imageDataUrl = generatedImage;
+      if (!imageDataUrl.startsWith('data:')) {
+        imageDataUrl = await fetchImageAsBase64(imageDataUrl);
+      }
+
+      // 2. Downscale the image to reduce size before uploading (max 1024px, WebP format with 0.8 quality)
+      // This prevents payload size issues and speeds up uploads
+      console.log('[Save] Downscaling image before upload...');
+      let downscaledBase64: string;
+      try {
+        downscaledBase64 = await downscale(imageDataUrl, 1024, 'webp', 0.8);
+        console.log('[Save] Image downscaled successfully');
+      } catch (downscaleError) {
+        console.error('[Save] Downscale failed:', downscaleError);
+        // If WebP downscale fails, try PNG as fallback
+        console.log('[Save] Trying PNG format as fallback...');
+        downscaledBase64 = await downscale(imageDataUrl, 1024, 'png', 1.0);
+        console.log('[Save] Image downscaled to PNG successfully');
+      }
+      
+      const downscaledDataUrl = downscaledBase64.startsWith('data:') 
+        ? downscaledBase64 
+        : `data:image/webp;base64,${downscaledBase64}`;
+
+      // 3. Generate filename with user ID for organization (same structure as Firebase had)
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 8);
+      const directoryName = `${user.uid}/${timestamp}-${randomId}`;
+
+      // 4. Upload to R2 using /api/save-image endpoint with "saved" destination
+      console.log('[Save] Uploading image to R2...');
+      const uploadResponse = await fetch(`${baseUrl}/api/save-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          image: downscaledDataUrl, 
+          destination: 'saved',
+          directoryName: directoryName
+        }),
+      });
+
+      if (!uploadResponse.ok) {
+        let errorText = 'Failed to upload image';
+        try {
+          const errorData = await uploadResponse.json();
+          errorText = errorData.error || `Upload failed with status ${uploadResponse.status}`;
+          console.error('[Save] Upload error:', errorData);
+        } catch (parseError) {
+          const text = await uploadResponse.text().catch(() => 'Unknown error');
+          console.error('[Save] Upload error response:', text);
+          errorText = `Upload failed: ${text.substring(0, 200)}`;
+        }
+        throw new Error(errorText);
+      }
+
+      const uploadData = await uploadResponse.json();
+      const savedImageUrl = uploadData.url;
+      
+      if (!savedImageUrl) {
+        console.error('[Save] No URL in upload response:', uploadData);
+        throw new Error('No URL returned from image upload');
+      }
+
+      console.log('[Save] Image saved successfully, URL:', savedImageUrl);
+      
+      // Update state with saved image URL and filename
       setGeneratedImage(savedImageUrl);
       const newFilename = savedImageUrl.substring(savedImageUrl.indexOf("saved/"));
       setGeneratedImageFilename(newFilename);
@@ -141,6 +202,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
       return savedImageUrl;
 
     } catch (err: unknown) {
+      console.error('[Save] Save error:', err);
       setError(err instanceof Error ? `Save failed: ${err.message}` : 'An unknown error occurred while saving.');
       setSaveStatus('error');
       return null;
@@ -157,27 +219,53 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
 
     try {
       if (isNative) {
-        await Share.share({
-          title: filter?.name,
-          text: filter?.description,
-          url: generatedImage,
-          dialogTitle: 'Share your creation',
+        // Generate filter URL for sharing
+        if (!filter) { console.error("No filter given"); return; }
+        const generatedFilterUrl = getFilterUrl(filter.id);
+        setFilterUrl(generatedFilterUrl);
+        
+        // Use the same direct base64 sharing logic
+        const base64Data = generatedImage.startsWith('data:') ? generatedImage.split(',')[1] : generatedImage;
+        const fileName = `share-${Date.now()}.png`;
+        
+        const result = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Cache,
         });
+
+        // Create an inviting message with the filter link
+        // The text will be combined with the URL by the share dialog
+        const shareText = `🎨 Check out this image I created with the "${filter.name}" filter on Genie!\n\n✨ Try this filter yourself:\n${generatedFilterUrl}\n\nCreate amazing images with AI filters! 🚀`;
+        
+        await Share.share({
+          title: `Try the "${filter.name}" Filter on Genie`,
+          text: shareText,
+          url: generatedFilterUrl, // The URL will be included as a clickable link in the share
+          dialogTitle: 'Share Image & Filter',
+        });
+
       } else {
-        const finalImageUrl = await handleSave();
-
-        if (!finalImageUrl) {
-          throw new Error("Could not get a saveable image URL.");
+        // Use the generated image directly - shareImage can handle both data URLs and HTTP URLs
+        // No need to save to Firebase first, as shareImage will upload to R2 anyway
+        if (!filter) { console.error("No filter given"); return; }
+        
+        // Ensure we have a usable image URL
+        let imageToShare = generatedImage;
+        
+        // If the image is already a URL (from R2/Firebase), use it directly
+        // If it's a data URL, shareImage will handle it
+        // If it needs to be converted, convert it
+        if (!imageToShare.startsWith('data:') && !imageToShare.startsWith('http')) {
+          // This shouldn't happen, but convert to data URL just in case
+          imageToShare = await fetchImageAsBase64(imageToShare);
         }
 
-        if (!filter) {
-          console.error("No filter given");
-          return;
-        }
-        const result: ShareResult = await shareImage(finalImageUrl, filter, user);
-
+        const result: ShareResult = await shareImage(imageToShare, filter, user);
         setShareUrl(result.shareUrl);
-
+        if (result.filterUrl) {
+          setFilterUrl(result.filterUrl);
+        }
         if (result.status === 'modal') {
           setIsShareModalOpen(true);
         }
@@ -192,28 +280,75 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
   const handleDownload = useCallback(async () => {
     if (!generatedImage) return;
 
+    setIsDownloading(true);
+    setError(null);
+
     try {
       if (isNative) {
-        const base64Data = generatedImage.split(',')[1];
-        const fileName = `filtered-${Date.now()}.png`;
-        await Filesystem.writeFile({
-          path: fileName,
-          data: base64Data,
-          directory: Directory.Documents,
+        console.log('[Download] Starting download on native platform');
+        console.log('[Download] Generated image type:', generatedImage.startsWith('data:') ? 'data URL' : 'URL');
+        console.log('[Download] Generated image preview:', generatedImage.substring(0, 100));
+        
+        // Convert URL to data URL if needed (for Android download)
+        let dataUrl = generatedImage;
+        if (!generatedImage.startsWith('data:')) {
+          console.log('[Download] Fetching image from URL to convert to data URL...');
+          dataUrl = await fetchImageAsBase64(generatedImage);
+          console.log('[Download] Image converted to data URL, length:', dataUrl.length);
+        }
+        
+        console.log('[Download] Calling FileSaver plugin...');
+        const result = await FileSaver.saveBase64ToDownloads({
+          dataUrl: dataUrl,
         });
-        alert(`Image saved to Documents/${fileName}`);
+        console.log('[Download] FileSaver plugin success:', result);
+        
       } else {
-        const response = await fetch(generatedImage);
-        if (!response.ok) throw new Error('Failed to fetch image for download.');
-        const blob = await response.blob();
+        // Web download using file-saver
+        // Convert image to Blob if needed (saveAs requires Blob/File, not data URL or HTTP URL)
+        let blob: Blob;
+        
+        if (generatedImage.startsWith('data:')) {
+          // Convert data URL to Blob
+          const response = await fetch(generatedImage);
+          blob = await response.blob();
+        } else if (generatedImage.startsWith('http')) {
+          // Fetch HTTP URL and convert to Blob
+          const response = await fetch(generatedImage);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.statusText}`);
+          }
+          blob = await response.blob();
+        } else {
+          // If it's already a Blob (unlikely), use it directly
+          throw new Error('Invalid image format for download');
+        }
+        
+        // Generate filename with proper extension based on blob type
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 8);
-        saveAs(blob, `filtered-${timestamp}-${randomId}.png`);
+        let filename = generatedImageFilename || `genie-${timestamp}-${randomId}`;
+        
+        // Ensure filename has proper extension
+        if (!filename.includes('.')) {
+          // Determine extension from blob MIME type
+          const extension = blob.type.includes('webp') ? '.webp' 
+            : blob.type.includes('jpeg') || blob.type.includes('jpg') ? '.jpg'
+            : '.png';
+          filename = `${filename}${extension}`;
+        }
+        
+        saveAs(blob, filename);
       }
     } catch (err) {
+      console.error("[Download] Download error:", err);
+      console.error("[Download] Error details:", JSON.stringify(err, Object.getOwnPropertyNames(err)));
       setError(err instanceof Error ? `Download failed: ${err.message}` : 'Download failed');
+    } finally {
+      setIsDownloading(false);
     }
-  }, [generatedImage, isNative]);
+  }, [generatedImage, generatedImageFilename, isNative]);
+
 
   const isApplyDisabled = isLoading || !uploadedImage1 || (filterType === 'merge' && !uploadedImage2);
 
@@ -339,7 +474,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
             <div className="flex gap-3 mt-4 flex-wrap justify-center">
               <button
                 onClick={handleShare}
-                disabled={isSharing || isLoading}
+                disabled={isSharing || isLoading || isDownloading}
                 className="flex items-center gap-2 bg-neutral-200 hover:bg-neutral-300 dark:bg-dark-neutral-200 dark:hover:bg-dark-neutral-300 text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
               >
                 <ShareIcon />
@@ -347,10 +482,11 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
               </button>
               <button
                 onClick={handleDownload}
+                disabled={isDownloading || isLoading || isSharing}
                 className="flex items-center gap-2 bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 border border-border-color dark:border-dark-border-color text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg transition-colors text-center"
               >
                 <DownloadIcon />
-                Download
+                {isNative ? (isDownloading ? 'Saving...' : 'Save') : (isDownloading ? 'Downloading...' : 'Download')}
               </button>
               {!isNative && (
                 <button
@@ -392,13 +528,14 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
         </button>
       </div>
 
-      {generatedImage && shareUrl && filter && !isNative && (
+      {generatedImage && filter && !isNative && (
         <ShareModal
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
           imageUrl={generatedImage}
           filterName={filter.name}
-          shareUrl={shareUrl}
+          shareUrl={shareUrl || undefined}
+          filterUrl={filterUrl || undefined}
         />
       )}
     </div>

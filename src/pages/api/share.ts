@@ -24,7 +24,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             createdAt: FieldValue.serverTimestamp(),
         });
 
-        res.status(201).json({ id: docRef.id });
+        // Generate the share URL - use request origin for better compatibility
+        const origin = req.headers.origin || req.headers.host 
+          ? (req.headers.origin || `https://${req.headers.host}`)
+          : (process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL 
+              ? `https://${process.env.VERCEL_URL}` 
+              : 'http://localhost:3000');
+        const shareUrl = `${origin}/shared?id=${docRef.id}`;
+
+        res.status(201).json({ 
+            id: docRef.id,
+            shareUrl: shareUrl
+        });
 
     } catch (error) {
         console.error('Error creating share:', error);

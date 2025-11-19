@@ -11,6 +11,15 @@ const s3Client = new S3Client({
     },
 });
 
+// Configure body parser to accept larger payloads (up to 10MB for base64 images)
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '10mb',
+        },
+    },
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });

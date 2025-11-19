@@ -1,5 +1,7 @@
 import { Filter, User, Share } from '../types';
 import { getApiBaseUrlRuntime } from '../utils/api';
+import { downscale } from '../utils/downscale';
+import { Capacitor } from '@capacitor/core';
 
 interface SharedImage {
   imageUrl: string;
@@ -20,6 +22,7 @@ interface ShareApiResponse {
 export interface ShareResult {
   status: 'shared' | 'modal';
   shareUrl: string;
+  filterUrl?: string; // URL to the filter that created the image
 }
 
 // Specific type for the response from the toggleLike API
@@ -59,6 +62,29 @@ export const getSharedImage = async (shareId: string): Promise<SharedImage> => {
   }
 };
 
+// Helper function to generate filter URL for sharing
+export const getFilterUrl = (filterId: string): string => {
+  if (typeof window === 'undefined') return '';
+  
+  // On native platforms, use production URL instead of file:// or capacitor://
+  const isNative = Capacitor.isNativePlatform();
+  let baseUrl: string;
+  
+  if (isNative) {
+    // Use production URL for native platforms
+    baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL 
+      ? process.env.NEXT_PUBLIC_API_BASE_URL.replace(/\/+$/, '')
+      : (process.env.NEXT_PUBLIC_VERCEL_URL 
+          ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+          : 'https://project-genie-sigma.vercel.app');
+  } else {
+    // Use current origin for web
+    baseUrl = window.location.origin;
+  }
+  
+  return `${baseUrl}/?view=apply&filterId=${filterId}`;
+};
+
 export const shareImage = async (
   base64ImageDataUrl: string,
   filter: Filter,
@@ -66,7 +92,8 @@ export const shareImage = async (
 ): Promise<ShareResult> => {
   const baseUrl = getApiBaseUrlRuntime();
   const appUrl = window.location.origin;
-  const shareText = `Check out this image I created with the '${filter?.name ?? ""}' filter on Genie! Create your own here: ${appUrl}`;
+  const filterUrl = getFilterUrl(filter.id);
+  const shareText = `Check out this image I created with the '${filter?.name ?? ""}' filter on Genie! Create your own here: ${filterUrl}`;
   const filename = `filtered-${Date.now()}.png`;
 
   if (!isWindows() && navigator.share && navigator.canShare) {
@@ -90,34 +117,91 @@ export const shareImage = async (
   }
 
   try {
-    // 1. Convert base64ImageDataUrl to Blob
-    const fetchRes = await fetch(base64ImageDataUrl);
-    const imageBlob = await fetchRes.blob();
+    console.log('[Share] Starting share process...');
+    
+    // 1. Convert base64ImageDataUrl to proper format if needed and downscale it
+    let imageDataUrl = base64ImageDataUrl;
+    console.log('[Share] Image format:', imageDataUrl.startsWith('data:') ? 'data URL' : 'HTTP URL');
+    
+    // If it's already a data URL, use it directly
+    // If it's an HTTP URL, fetch it and convert to data URL
+    if (!imageDataUrl.startsWith('data:')) {
+      console.log('[Share] Fetching image from URL...');
+      const fetchRes = await fetch(imageDataUrl);
+      if (!fetchRes.ok) {
+        throw new Error(`Failed to fetch image: ${fetchRes.statusText}`);
+      }
+      const imageBlob = await fetchRes.blob();
+      imageDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(imageBlob);
+      });
+      console.log('[Share] Image converted to data URL');
+    }
 
-    // 2. Call /api/upload-url to get a signed URL for R2
-    const uploadUrlResponse = await fetch(`${baseUrl}/api/upload-url`, {
+    // 2. Downscale the image to reduce size before uploading (max 1024px, WebP format with 0.8 quality)
+    // This prevents 413 Payload Too Large errors and speeds up uploads
+    console.log('[Share] Downscaling image before upload...');
+    let downscaledBase64: string;
+    try {
+      downscaledBase64 = await downscale(imageDataUrl, 1024, 'webp', 0.8);
+      console.log('[Share] Image downscaled successfully, size:', downscaledBase64.length, 'bytes');
+    } catch (downscaleError) {
+      console.error('[Share] Downscale failed:', downscaleError);
+      // If WebP downscale fails, try PNG as fallback
+      console.log('[Share] Trying PNG format as fallback...');
+      downscaledBase64 = await downscale(imageDataUrl, 1024, 'png', 1.0);
+      console.log('[Share] Image downscaled to PNG successfully');
+    }
+    
+    const downscaledDataUrl = downscaledBase64.startsWith('data:') 
+      ? downscaledBase64 
+      : `data:image/webp;base64,${downscaledBase64}`;
+
+    // 3. Upload downscaled image to R2 using /api/save-image endpoint
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2, 8);
+    const directoryName = `${timestamp}-${randomId}`;
+    
+    console.log('[Share] Uploading image to R2...');
+    const uploadResponse = await fetch(`${baseUrl}/api/save-image`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contentType: imageBlob.type, folder: 'shared' }),
+      body: JSON.stringify({ 
+        image: downscaledDataUrl, 
+        destination: 'shared',
+        directoryName: directoryName
+      }),
     });
 
-    if (!uploadUrlResponse.ok) {
-      const errorData = await uploadUrlResponse.json();
-      throw new Error(errorData.error || 'Failed to get upload URL for R2');
+    console.log('[Share] Upload response status:', uploadResponse.status);
+    
+    if (!uploadResponse.ok) {
+      let errorText = 'Failed to upload image';
+      try {
+        const errorData = await uploadResponse.json();
+        errorText = errorData.error || `Upload failed with status ${uploadResponse.status}`;
+        console.error('[Share] Upload error:', errorData);
+      } catch (parseError) {
+        const text = await uploadResponse.text().catch(() => 'Unknown error');
+        console.error('[Share] Upload error response:', text);
+        errorText = `Upload failed: ${text.substring(0, 200)}`;
+      }
+      throw new Error(errorText);
     }
 
-    const { uploadUrl, fileUrl } = await uploadUrlResponse.json();
-
-    // 3. Upload image to R2 using the signed URL
-    const uploadImageResponse = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': imageBlob.type },
-      body: imageBlob,
-    });
-
-    if (!uploadImageResponse.ok) {
-      throw new Error('Failed to upload image to R2');
+    const uploadData = await uploadResponse.json();
+    console.log('[Share] Upload response data:', uploadData);
+    
+    const fileUrl = uploadData.url;
+    if (!fileUrl) {
+      console.error('[Share] No URL in upload response:', uploadData);
+      throw new Error('No URL returned from image upload');
     }
+
+    console.log('[Share] Image uploaded successfully, URL:', fileUrl);
 
     // 4. Send fileUrl to /api/share
     const payload = {
@@ -127,21 +211,44 @@ export const shareImage = async (
       username: user?.email ?? null,
     };
 
+    console.log('[Share] Creating share record...', payload);
     const response = await fetch(`${baseUrl}/api/share`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
-    const data: ShareApiResponse = await response.json();
-
-    if (!response.ok || !data.shareUrl) {
-      throw new Error(data.error ?? 'Failed to share image');
+    console.log('[Share] Share API response status:', response.status);
+    
+    let data: ShareApiResponse;
+    try {
+      data = await response.json();
+      console.log('[Share] Share API response data:', data);
+    } catch (parseError) {
+      const text = await response.text().catch(() => 'Unknown error');
+      console.error('[Share] Failed to parse share API response:', text);
+      throw new Error(`Failed to parse share response: ${text.substring(0, 200)}`);
     }
 
-    return { status: 'modal', shareUrl: data.shareUrl };
+    if (!response.ok) {
+      throw new Error(data.error ?? `Share API failed with status ${response.status}`);
+    }
+    
+    if (!data.shareUrl) {
+      console.error('[Share] No shareUrl in response:', data);
+      throw new Error('No shareUrl returned from share API');
+    }
+
+    console.log('[Share] Share created successfully:', data.shareUrl);
+
+    // Include both the shared image URL and the filter URL for convenience
+    return { status: 'modal', shareUrl: data.shareUrl, filterUrl };
   } catch (error: unknown) {
     console.error('❌ Error sharing image:', error);
+    if (error instanceof Error) {
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error stack:', error.stack);
+    }
     throw error;
   }
 };
