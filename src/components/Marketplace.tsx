@@ -1,5 +1,5 @@
 
-import React, { useMemo, useRef, useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Filter, User } from '../types';
 import FilterCard from './FilterCard';
 
@@ -54,37 +54,6 @@ const Marketplace: React.FC<MarketplaceProps> = ({ filters, onSelectFilter, user
         return { trendingSection: { name: 'Trending', filters: trendingFilters }, otherSections };
     }, [filters]);
 
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const [isPaused, setIsPaused] = useState(false);
-
-    useEffect(() => {
-        const scrollContainer = scrollRef.current;
-        if (!scrollContainer || isPaused || trendingSection.filters.length === 0) return;
-
-        let animationFrameId: number;
-        let scrollAmount = scrollContainer.scrollLeft;
-        const speed = 1.5; // Increased speed
-
-        const animate = () => {
-            if (scrollContainer) {
-                scrollAmount += speed;
-                // If we've scrolled past the first set of items (halfway point of the duplicated list)
-                // reset to 0 to create the seamless loop effect
-                if (scrollAmount >= scrollContainer.scrollWidth / 2) {
-                    scrollAmount = 0;
-                    scrollContainer.scrollLeft = 0;
-                } else {
-                    scrollContainer.scrollLeft = scrollAmount;
-                }
-                animationFrameId = requestAnimationFrame(animate);
-            }
-        };
-
-        animationFrameId = requestAnimationFrame(animate);
-
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [isPaused, trendingSection.filters]);
-
     // Duplicate filters for infinite scroll effect if there are enough items
     const infiniteTrendingFilters = trendingSection.filters.length > 0
         ? [...trendingSection.filters, ...trendingSection.filters]
@@ -102,34 +71,29 @@ const Marketplace: React.FC<MarketplaceProps> = ({ filters, onSelectFilter, user
 
             <div className="space-y-12">
                 {trendingSection.filters.length > 0 && (
-                    <section className="pl-4 sm:pl-6 lg:pl-8">
-                        <div className="flex items-center justify-between mb-6 pr-4 sm:pr-6 lg:pr-8">
+                    <section className="overflow-hidden">
+                        <div className="px-4 sm:px-6 lg:px-8 mb-6">
                             <h3 className="text-2xl font-bold text-content-100 dark:text-dark-content-100">
                                 {trendingSection.name} 🔥
                             </h3>
                         </div>
 
-                        <div
-                            ref={scrollRef}
-                            className="flex overflow-x-auto pb-6 -ml-4 px-4 sm:-ml-6 sm:px-6 lg:-ml-8 lg:px-8 gap-4 scrollbar-hide snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
-                            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                            onMouseEnter={() => setIsPaused(true)}
-                            onMouseLeave={() => setIsPaused(false)}
-                            onTouchStart={() => setIsPaused(true)}
-                            onTouchEnd={() => setIsPaused(false)}
-                        >
-                            {infiniteTrendingFilters.map((filter, index) => (
-                                <div key={`${filter.id}-${index}`} className="snap-start shrink-0 w-[160px] sm:w-[200px]">
-                                    <FilterCard
-                                        filter={filter}
-                                        onSelect={() => onSelectFilter(filter)}
-                                        aspectRatio={ASPECT_RATIOS[index % ASPECT_RATIOS.length]}
-                                        user={user}
-                                        onDelete={onDeleteFilter}
-                                        onEdit={onEditFilter}
-                                    />
-                                </div>
-                            ))}
+                        {/* Scroll Container */}
+                        <div className="relative w-full overflow-hidden">
+                            <div className="flex animate-scroll w-max hover:pause">
+                                {infiniteTrendingFilters.map((filter, index) => (
+                                    <div key={`${filter.id}-${index}`} className="w-[160px] sm:w-[200px] mx-2 sm:mx-3 shrink-0">
+                                        <FilterCard
+                                            filter={filter}
+                                            onSelect={() => onSelectFilter(filter)}
+                                            aspectRatio={ASPECT_RATIOS[index % ASPECT_RATIOS.length]}
+                                            user={user}
+                                            onDelete={onDeleteFilter}
+                                            onEdit={onEditFilter}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </section>
                 )}
