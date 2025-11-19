@@ -224,10 +224,28 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
         const generatedFilterUrl = getFilterUrl(filter.id);
         setFilterUrl(generatedFilterUrl);
         
-        // Use the same direct base64 sharing logic
-        const base64Data = generatedImage.startsWith('data:') ? generatedImage.split(',')[1] : generatedImage;
-        const fileName = `share-${Date.now()}.png`;
+        // Convert image to base64 if needed (handle both data URLs and HTTP URLs)
+        let base64Data: string;
+        if (generatedImage.startsWith('data:')) {
+          base64Data = generatedImage.split(',')[1];
+        } else if (generatedImage.startsWith('http')) {
+          // Fetch HTTP URL and convert to base64
+          const response = await fetch(generatedImage);
+          const blob = await response.blob();
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          base64Data = dataUrl.split(',')[1];
+        } else {
+          base64Data = generatedImage;
+        }
         
+        const fileName = `genie-share-${Date.now()}.png`;
+        
+        // Write image file to cache directory so it can be shared
         const result = await Filesystem.writeFile({
           path: fileName,
           data: base64Data,
@@ -235,13 +253,15 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
         });
 
         // Create an inviting message with the filter link
-        // The text will be combined with the URL by the share dialog
+        // The text will include the filter link so both image and link are shared
         const shareText = `🎨 Check out this image I created with the "${filter.name}" filter on Genie!\n\n✨ Try this filter yourself:\n${generatedFilterUrl}\n\nCreate amazing images with AI filters! 🚀`;
         
+        // On Android, use the file URI so the image is attached AND include the filter link in the text
+        // This ensures both the image and the filter link are shared together
         await Share.share({
           title: `Try the "${filter.name}" Filter on Genie`,
-          text: shareText,
-          url: generatedFilterUrl, // The URL will be included as a clickable link in the share
+          text: shareText, // Filter link is included in the text
+          url: result.uri, // Use file URI so the image is attached to the share
           dialogTitle: 'Share Image & Filter',
         });
 
@@ -302,6 +322,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
           dataUrl: dataUrl,
         });
         console.log('[Download] FileSaver plugin success:', result);
+        alert("Image saved to Downloads!");
         
       } else {
         // Web download using file-saver

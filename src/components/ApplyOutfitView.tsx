@@ -1,8 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { saveAs } from 'file-saver';
 import { mergeImages } from '../services/geminiService';
+import { shareImage, ShareResult, getFilterUrl } from '../services/shareService';
+import { downscale } from '../utils/downscale';
+import { getApiBaseUrlRuntime } from '../utils/api';
 import { Outfit, User } from '../types';
 import { UploadIcon, ShareIcon, DownloadIcon } from './icons';
 import ShareModal from './ShareModal';
+import FileSaver from '../plugins/file-saver';
 
 interface ApplyOutfitViewProps {
   outfit: Outfit;
@@ -18,6 +26,15 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [isNative, setIsNative] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [filterUrl, setFilterUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsNative(Capacitor.isNativePlatform());
+  }, []);
 
   useEffect(() => {
     if (saveStatus === 'saved') {
@@ -25,6 +42,17 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
       return () => clearTimeout(timer);
     }
   }, [saveStatus]);
+
+  const fetchImageAsBase64 = async (url: string): Promise<string> => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
 
   const handleApplyOutfit = useCallback(async () => {
     if (!uploadedImage) {
@@ -64,35 +92,192 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
   }, [uploadedImage, outfit.previewImageUrl, outfit.prompt]);
 
   const handleSave = useCallback(async () => {
-    if (!generatedImageFilename || saveStatus === 'saved') return;
+    if (!generatedImage || !user) return;
+    if (generatedImageFilename?.startsWith('saved/')) {
+      setSaveStatus('saved');
+      return;
+    }
 
     setIsSaving(true);
     setSaveStatus('idle');
     setError(null);
 
     try {
-      const response = await fetch('/api/save-image', {
+      const baseUrl = getApiBaseUrlRuntime();
+
+      // 1. Convert image to data URL if needed
+      let imageDataUrl = generatedImage;
+      if (!imageDataUrl.startsWith('data:')) {
+        imageDataUrl = await fetchImageAsBase64(imageDataUrl);
+      }
+
+      // 2. Downscale the image
+      console.log('[Save] Downscaling image before upload...');
+      let downscaledBase64: string;
+      try {
+        downscaledBase64 = await downscale(imageDataUrl, 1024, 'webp', 0.8);
+      } catch (downscaleError) {
+        console.error('[Save] Downscale failed:', downscaleError);
+        downscaledBase64 = await downscale(imageDataUrl, 1024, 'png', 1.0);
+      }
+
+      const downscaledDataUrl = downscaledBase64.startsWith('data:')
+        ? downscaledBase64
+        : `data:image/webp;base64,${downscaledBase64}`;
+
+      // 3. Generate filename
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 8);
+      const directoryName = `${user.uid}/${timestamp}-${randomId}`;
+
+      // 4. Upload to R2
+      const uploadResponse = await fetch(`${baseUrl}/api/save-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: generatedImageFilename, destination: 'saved' }),
+        body: JSON.stringify({
+          image: downscaledDataUrl,
+          destination: 'saved',
+          directoryName: directoryName
+        }),
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Save failed');
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload image');
+      }
 
-      if (data.url) {
-        setGeneratedImage(data.url);
-        setGeneratedImageFilename(data.url.substring(data.url.indexOf("saved/")));
+      const uploadData = await uploadResponse.json();
+      const savedImageUrl = uploadData.url;
+
+      if (savedImageUrl) {
+        setGeneratedImage(savedImageUrl);
+        setGeneratedImageFilename(savedImageUrl.substring(savedImageUrl.indexOf("saved/")));
         setSaveStatus('saved');
       }
 
     } catch (err: unknown) {
+      console.error('[Save] Save error:', err);
       setError(err instanceof Error ? `Save failed: ${err.message}` : 'An unknown error occurred while saving.');
       setSaveStatus('error');
     } finally {
       setIsSaving(false);
     }
-  }, [generatedImageFilename, saveStatus]);
+  }, [generatedImage, generatedImageFilename, user]);
+
+  const handleShare = useCallback(async () => {
+    if (!generatedImage) return;
+
+    setIsSharing(true);
+    setError(null);
+
+    try {
+      if (isNative) {
+        const generatedFilterUrl = getFilterUrl(outfit.id);
+        setFilterUrl(generatedFilterUrl);
+
+        let base64Data: string;
+        if (generatedImage.startsWith('data:')) {
+          base64Data = generatedImage.split(',')[1];
+        } else if (generatedImage.startsWith('http')) {
+          const response = await fetch(generatedImage);
+          const blob = await response.blob();
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          base64Data = dataUrl.split(',')[1];
+        } else {
+          base64Data = generatedImage;
+        }
+
+        const fileName = `genie-share-${Date.now()}.png`;
+
+        const result = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Cache,
+        });
+
+        const shareText = `🎨 Check out this outfit I created with "${outfit.name}" on Genie!\n\n✨ Try it yourself:\n${generatedFilterUrl}\n\nCreate amazing images with AI! 🚀`;
+
+        await Share.share({
+          title: `Try "${outfit.name}" on Genie`,
+          text: shareText,
+          url: result.uri,
+          dialogTitle: 'Share Outfit',
+        });
+
+      } else {
+        // Web share
+        const result: ShareResult = await shareImage(generatedImage, outfit as any, user);
+        setShareUrl(result.shareUrl);
+        if (result.filterUrl) {
+          setFilterUrl(result.filterUrl);
+        }
+        if (result.status === 'modal') {
+          setIsShareModalOpen(true);
+        }
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? `Sharing failed: ${err.message}` : 'Unknown error');
+    } finally {
+      setIsSharing(false);
+    }
+  }, [generatedImage, outfit, user, isNative]);
+
+  const handleDownload = useCallback(async () => {
+    if (!generatedImage) return;
+
+    setIsDownloading(true);
+    setError(null);
+
+    try {
+      if (isNative) {
+        let dataUrl = generatedImage;
+        if (!generatedImage.startsWith('data:')) {
+          dataUrl = await fetchImageAsBase64(generatedImage);
+        }
+
+        const result = await FileSaver.saveBase64ToDownloads({
+          dataUrl: dataUrl,
+        });
+        console.log('[Download] FileSaver plugin success:', result);
+        alert("Image saved to Downloads!");
+
+      } else {
+        // Web download
+        let blob: Blob;
+        if (generatedImage.startsWith('data:')) {
+          const response = await fetch(generatedImage);
+          blob = await response.blob();
+        } else if (generatedImage.startsWith('http')) {
+          const response = await fetch(generatedImage);
+          blob = await response.blob();
+        } else {
+          throw new Error('Invalid image format');
+        }
+
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2, 8);
+        let filename = generatedImageFilename || `genie-outfit-${timestamp}-${randomId}`;
+
+        if (!filename.includes('.')) {
+          const extension = blob.type.includes('webp') ? '.webp'
+            : blob.type.includes('jpeg') || blob.type.includes('jpg') ? '.jpg'
+              : '.png';
+          filename = `${filename}${extension}`;
+        }
+
+        saveAs(blob, filename);
+      }
+    } catch (err) {
+      console.error("[Download] Download error:", err);
+      setError(err instanceof Error ? `Download failed: ${err.message}` : 'Download failed');
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [generatedImage, generatedImageFilename, isNative]);
 
   const isApplyDisabled = isLoading || !uploadedImage;
 
@@ -106,9 +291,9 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
           {outfit.type && <span className="text-lg font-light">-{outfit.type}</span>}
         </h1>
         {outfit.description && <p className="text-content-200 dark:text-dark-content-200 mb-4">{outfit.description}</p>}
-        
+
         <div className="aspect-video w-full bg-base-300 dark:bg-dark-base-300 rounded-lg flex items-center justify-center overflow-hidden mb-4">
-            <img src={outfit.previewImageUrl} alt="Filter Preview" className="object-contain max-h-full max-w-full"/>
+          <img src={outfit.previewImageUrl} alt="Filter Preview" className="object-contain max-h-full max-w-full" />
         </div>
 
         {/* User Upload Section */}
@@ -133,7 +318,7 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
               }
             }}
           />
-          {uploadedImage && <img src={uploadedImage} alt="User upload preview" className="mt-4 max-w-full max-h-48 object-contain rounded-md shadow"/>}
+          {uploadedImage && <img src={uploadedImage} alt="User upload preview" className="mt-4 max-w-full max-h-48 object-contain rounded-md shadow" />}
         </div>
 
         {/* Action Button */}
@@ -157,20 +342,33 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
                 <span className="text-content-200 dark:text-dark-content-200">Generating image...</span>
               </div>
             ) : generatedImage && (
-              <img src={generatedImage} alt="Generated outfit result" className="max-w-full max-h-[50vh] object-contain rounded-lg shadow-lg"/>
+              <img src={generatedImage} alt="Generated outfit result" className="max-w-full max-h-[50vh] object-contain rounded-lg shadow-lg" />
             )}
           </div>
 
           {generatedImage && (
             <div className="flex flex-wrap gap-3 mt-4 justify-center">
-              <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-2 bg-neutral-200 hover:bg-neutral-300 dark:bg-dark-neutral-200 dark:hover:bg-dark-neutral-300 text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg shadow">
+              <button
+                onClick={handleShare}
+                disabled={isSharing || isLoading || isDownloading}
+                className="flex items-center gap-2 bg-neutral-200 hover:bg-neutral-300 dark:bg-dark-neutral-200 dark:hover:bg-dark-neutral-300 text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg shadow disabled:opacity-50"
+              >
                 <ShareIcon /> Share
               </button>
-              <a href={generatedImage} download={generatedImageFilename || 'creation.png'} className="flex items-center gap-2 bg-base-300 hover:bg-base-400 dark:bg-dark-base-300 dark:hover:bg-dark-base-400 text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg shadow">
-                <DownloadIcon /> Download
-              </a>
-              {user && (
-                <button onClick={handleSave} disabled={isSaving || saveStatus === 'saved'} className="flex items-center gap-2 bg-green-200 hover:bg-green-300 dark:bg-green-800 dark:hover:bg-green-700 text-green-900 dark:text-green-100 font-bold py-2 px-4 rounded-lg shadow disabled:opacity-60">
+              <button
+                onClick={handleDownload}
+                disabled={isDownloading || isLoading || isSharing}
+                className="flex items-center gap-2 bg-base-300 hover:bg-base-400 dark:bg-dark-base-300 dark:hover:bg-dark-base-400 text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg shadow disabled:opacity-50"
+              >
+                <DownloadIcon />
+                {isNative ? (isDownloading ? 'Saving...' : 'Save') : (isDownloading ? 'Downloading...' : 'Download')}
+              </button>
+              {!isNative && user && (
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving || saveStatus === 'saved'}
+                  className="flex items-center gap-2 bg-green-200 hover:bg-green-300 dark:bg-green-800 dark:hover:bg-green-700 text-green-900 dark:text-green-100 font-bold py-2 px-4 rounded-lg shadow disabled:opacity-60"
+                >
                   {isSaving ? 'Saving...' : (saveStatus === 'saved' ? 'Saved!' : 'Save Creation')}
                 </button>
               )}
@@ -192,6 +390,8 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
           onClose={() => setIsShareModalOpen(false)}
           imageUrl={generatedImage}
           filterName={outfit.name}
+          shareUrl={shareUrl || undefined}
+          filterUrl={filterUrl || undefined}
         />
       )}
     </div>
