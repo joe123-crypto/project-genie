@@ -352,8 +352,8 @@ export default function Home() {
               <button
                 onClick={() => setViewState({ view: "marketplace" })}
                 className={`py-3 font-semibold transition-colors ${viewState.view === "marketplace"
-                    ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                    : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
                   }`}
               >
                 Filters
@@ -361,8 +361,8 @@ export default function Home() {
               <button
                 onClick={() => setViewState({ view: "outfits" })}
                 className={`py-3 font-semibold transition-colors ${viewState.view === "outfits"
-                    ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                    : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
                   }`}
               >
                 Outfits
@@ -370,8 +370,8 @@ export default function Home() {
               <button
                 onClick={() => setViewState({ view: "feed" })}
                 className={`py-3 font-semibold transition-colors ${viewState.view === "feed"
-                    ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                    : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
                   }`}
               >
                 Public Feed
@@ -398,12 +398,12 @@ export default function Home() {
       )}
 
       {showDashboard && (
-        <div className="fixed bottom-0 left-0 right-0 z-10">
-          <div className="mx-auto w-full max-w-xl p-4 bg-base-100 dark:bg-dark-base-100 shadow-lg rounded-t-2xl">
+        <div className="fixed bottom-0 left-0 right-0 z-10 pointer-events-none">
+          <div className="mx-auto w-full max-w-xl p-4 pointer-events-auto">
             <Dashboard user={user} setViewState={setViewState} addFilter={addFilter} />
           </div>
-          <div className="w-full bg-base-100 dark:bg-dark-base-100 py-2 text-center shadow-lg">
-            <p className="text-xs text-content-200 dark:text-dark-content-200">
+          <div className="w-full py-2 text-center pointer-events-none">
+            <p className="text-xs text-white font-medium mix-blend-difference opacity-80">
               © {new Date().getFullYear()} Genie. All rights reserved.
             </p>
           </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { SparklesIcon, SendIcon } from './icons';
 import { User, ViewState, Filter } from '../types';
@@ -27,7 +28,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
 
     setIsLoading(true);
     try {
-      const idToken = await getValidIdToken(); 
+      const idToken = await getValidIdToken();
       if (!idToken) {
         throw new Error("Session expired. Please sign in again.");
       }
@@ -73,34 +74,49 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
   };
 
   return (
-    <div className="w-full max-w-xl px-4">
-      <div className="bg-base-100 dark:bg-dark-base-100 rounded-2xl shadow-2xl p-2 flex items-end gap-2">
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={1}
-          placeholder="Make the person in the image look old"
-          className="w-full bg-transparent focus:outline-none text-content-100 dark:text-dark-content-100 px-4 resize-none overflow-y-hidden placeholder-gray-500 dark:placeholder-gray-400"
-          disabled={isLoading}
-        />
-        <button onClick={handleImprovePrompt} className="p-2 text-content-200 hover:text-brand-primary dark:text-dark-content-200 dark:hover:text-dark-brand-primary rounded-full transition-colors" disabled={isLoading}>
-          <SparklesIcon className="h-4 w-4" />
-        </button>
-        <button
-          onClick={handleSend}
-          className="p-3 bg-brand-primary text-white rounded-full flex items-center justify-center hover:bg-brand-secondary dark:hover:bg-dark-brand-secondary transition-colors"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          ) : (
-            <SendIcon className="h-4 w-4" />
-          )}
-        </button>
+    <div className="w-full max-w-2xl px-4 mx-auto">
+      <div className="bg-base-100/80 dark:bg-dark-base-100/80 backdrop-blur-xl rounded-full shadow-2xl border border-white/20 dark:border-white/10 p-2 flex items-end gap-2 transition-all duration-300 hover:shadow-brand-primary/10">
+        <div className="flex-1 pl-4 py-2">
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={1}
+            placeholder="Describe a filter you want to create..."
+            className="w-full bg-transparent focus:outline-none text-content-100 dark:text-dark-content-100 resize-none overflow-y-hidden placeholder-content-300 dark:placeholder-dark-content-300 text-base font-medium max-h-32"
+            disabled={isLoading}
+            style={{ minHeight: '24px' }}
+          />
+        </div>
+
+        <div className="flex items-center gap-1 pr-1 pb-1">
+          <button
+            onClick={handleImprovePrompt}
+            className="p-2 text-brand-primary dark:text-dark-brand-primary hover:bg-brand-primary/10 dark:hover:bg-dark-brand-primary/10 rounded-full transition-colors"
+            disabled={isLoading || !text.trim()}
+            title="Improve prompt with AI"
+          >
+            <SparklesIcon className="h-5 w-5" />
+          </button>
+
+          <button
+            onClick={handleSend}
+            className={`p-3 rounded-full flex items-center justify-center transition-all duration-300 ${text.trim()
+                ? 'bg-brand-primary text-white hover:bg-brand-secondary shadow-lg hover:shadow-brand-primary/30'
+                : 'bg-neutral-200 dark:bg-dark-neutral-200 text-content-300 dark:text-dark-content-300 cursor-not-allowed'
+              }`}
+            disabled={isLoading || !text.trim()}
+          >
+            {isLoading ? (
+              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <SendIcon className="h-5 w-5" />
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
