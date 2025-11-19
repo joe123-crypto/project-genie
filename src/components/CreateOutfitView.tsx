@@ -1,17 +1,18 @@
+
 import React, { useState } from "react";
 import { Outfit, ViewState, User } from "../types";
 import { BackArrowIcon, UploadIcon } from "./icons";
 import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from "../utils/fileUtils";
 import { saveOutfit } from "../services/firebaseService";
+import { commonClasses } from "../utils/theme";
 
 interface CreateOutfitViewProps {
   setViewState: (viewState: ViewState) => void;
   user: User | null;
   addOutfit?: (newOutfit: Outfit) => void;
-  filterToEdit?: Outfit; // renamed from outfitToEdit
+  filterToEdit?: Outfit;
   onBack?: () => void;
 }
-
 
 const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
   setViewState,
@@ -53,11 +54,7 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
       const finalImageUrl = formData.previewImageUrl;
 
       if (formData.previewImageUrl && formData.previewImageUrl.startsWith('data:image')) {
-        // This section used a defunct API route. It should be replaced with a direct
-        // call to a client-side cloud storage upload function (like the one in firebaseService).
         console.warn("Image saving via API is disabled. Using placeholder or existing URL.");
-        // const response = await fetch('/api/save-image', ...);
-        // finalImageUrl = data.url;
       }
 
       const payload: Omit<Outfit, "id"> = {
@@ -84,30 +81,30 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
       {/* Back Button */}
       <button
         onClick={() => (onBack ? onBack() : setViewState({ view: "create" }))}
-        className="flex items-center gap-2 text-content-200 dark:text-dark-content-200 hover:text-content-100 dark:hover:text-dark-content-100 mb-6 font-semibold"
+        className="flex items-center gap-2 text-content-200 dark:text-dark-content-200 hover:text-content-100 dark:hover:text-dark-content-100 mb-6 font-semibold transition-colors"
       >
         <BackArrowIcon />
         Back to Menu
       </button>
 
       {/* Split Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-base-200 dark:bg-dark-base-200 p-6 rounded-2xl shadow-md">
+      <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${commonClasses.container.card}`}>
         {/* Left: Form */}
         <div className="flex flex-col space-y-6">
-          <h2 className="text-2xl font-bold text-content-100 dark:text-dark-content-100">
+          <h2 className={`text-2xl ${commonClasses.text.heading}`}>
             Create Outfit
           </h2>
 
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+            <label className={`block text-sm font-medium ${commonClasses.text.heading} mb-2`}>
               Brand Name
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              className="w-full p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all"
               placeholder="e.g. Golden Hour Glow"
               required
             />
@@ -115,13 +112,13 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+            <label className={`block text-sm font-medium ${commonClasses.text.heading} mb-2`}>
               Description (optional)
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              className="w-full p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all"
               placeholder="Describe the mood or vibe of your outfit..."
               rows={3}
             />
@@ -129,13 +126,13 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
 
           {/* Type */}
           <div>
-            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+            <label className={`block text-sm font-medium ${commonClasses.text.heading} mb-2`}>
               Type
             </label>
             <select
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              className="w-full p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              className="w-full p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all"
             >
               <option value="">None</option>
               <option value="single">Single</option>
@@ -145,14 +142,14 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
 
           {/* Additional Style */}
           <div>
-            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+            <label className={`block text-sm font-medium ${commonClasses.text.heading} mb-2`}>
               Additional Style
             </label>
             <input
               type="text"
               value={formData.additionalStyle}
               onChange={(e) => setFormData({ ...formData, additionalStyle: e.target.value })}
-              className="w-full p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              className="w-full p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all"
               placeholder="do not remove the person's shoes"
             />
             <p className="text-xs text-content-300 dark:text-dark-content-300 mt-1">
@@ -164,7 +161,7 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
           <div className="flex justify-end pt-4">
             <button
               onClick={handleSave}
-              className="px-6 py-2 bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-semibold rounded-lg transition-colors"
+              className={commonClasses.button.primary}
             >
               Save Outfit
             </button>
@@ -182,7 +179,7 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
               />
               <label
                 htmlFor="upload"
-                className="absolute bottom-4 right-4 bg-black/50 text-white text-sm px-3 py-1 rounded-md cursor-pointer hover:bg-black/70"
+                className="absolute bottom-4 right-4 bg-black/50 text-white text-sm px-3 py-1 rounded-md cursor-pointer hover:bg-black/70 backdrop-blur-sm transition-colors"
               >
                 Change
               </label>
@@ -190,10 +187,10 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
           ) : (
             <label
               htmlFor="upload"
-              className="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-border-color dark:border-dark-border-color rounded-lg w-full aspect-square hover:border-brand-primary transition-colors"
+              className="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-border-color dark:border-dark-border-color rounded-lg w-full aspect-square hover:border-brand-primary hover:bg-base-200 dark:hover:bg-dark-base-200 transition-all"
             >
               <UploadIcon />
-              <span className="mt-2 text-content-200 dark:text-dark-content-200 text-sm">
+              <span className="mt-2 text-content-200 dark:text-dark-content-200 text-sm font-medium">
                 Click or drag image to upload
               </span>
             </label>

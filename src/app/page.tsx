@@ -77,10 +77,10 @@ export default function Home() {
         setOutfits(fetchedOutfits);
 
         if (currentUser) {
-            setUser(currentUser);
-            setViewState({ view: "feed" }); // Changed to feed
+          setUser(currentUser);
+          setViewState({ view: "marketplace" });
         } else {
-            setViewState({ view: "initialAuth" });
+          setViewState({ view: "initialAuth" });
         }
 
         // Handle initial URL parameters
@@ -99,7 +99,7 @@ export default function Home() {
           } else if (!currentUser) {
             setViewState({ view: "initialAuth" });
           } else {
-            setViewState({ view: "feed" }); // Changed to feed
+            setViewState({ view: "marketplace" });
           }
           window.history.replaceState({}, document.title, window.location.pathname);
         }
@@ -117,7 +117,7 @@ export default function Home() {
   // Handle successful sign-in from InitialAuthView
   const handleInitialSignInSuccess = useCallback((signedInUser: User) => {
     setUser(signedInUser);
-    setViewState({ view: "feed" }); // Changed to feed
+    setViewState({ view: "marketplace" });
     setIsWelcomeModalOpen(true);
   }, []);
 
@@ -139,7 +139,7 @@ export default function Home() {
         await deleteFilter(filterId);
         setFilters(prev => prev.filter(f => f.id !== filterId));
       }
-       catch (err) {
+      catch (err) {
         console.error(err);
         throw err;
       }
@@ -156,7 +156,7 @@ export default function Home() {
         const updatedFilter = await updateFilter(id, dataToUpdate);
         setFilters(prev => prev.map(f => (f.id === id ? updatedFilter : f)));
       }
-       catch (err) {
+      catch (err) {
         console.error(err);
         throw err;
       }
@@ -193,13 +193,13 @@ export default function Home() {
     },
     []
   );
-  
+
   const handleCreateYourOwn = async (filterId: string) => {
     try {
       const filter = await fetchFilterById(filterId);
       setViewState({ view: 'apply', filter });
     }
-     catch (error) {
+    catch (error) {
       console.error('Error fetching filter:', error);
       alert('Error fetching filter. Please try again.');
     }
@@ -207,7 +207,7 @@ export default function Home() {
 
   const handleSignInSuccess = (signedInUser: User) => {
     setUser(signedInUser);
-    setViewState({ view: "feed" }); // Changed to feed
+    setViewState({ view: "marketplace" });
     setIsWelcomeModalOpen(true);
   };
 
@@ -216,20 +216,20 @@ export default function Home() {
     setUser(null);
     setViewState({ view: "initialAuth" }); // Go back to InitialAuthView on sign out
   };
-  
+
   const handleRemoveAccount = async () => {
     setShowConfirmDialog(true);
   };
-  
+
   const confirmRemoveAccount = async () => {
     try {
       await deleteUser();
       handleSignOut();
     }
-     catch (err) {
+    catch (err) {
       console.error(err);
     }
-     finally {
+    finally {
       setShowConfirmDialog(false);
     }
   };
@@ -237,23 +237,23 @@ export default function Home() {
   const renderView = () => {
     // If loading, and we either have a user or are not on the auth screen, show a spinner.
     if (isLoading && (user || viewState.view !== 'initialAuth')) {
-        return (
-            <div className="flex flex-col items-center justify-center pt-20">
-                <Spinner className="h-10 w-10 text-brand-primary dark:text-dark-brand-primary"/>
-                <p className="mt-4 text-lg text-content-200 dark:text-dark-content-200">
-                    Loading...
-                </p>
-            </div>
-        );
+      return (
+        <div className="flex flex-col items-center justify-center pt-20">
+          <Spinner className="h-10 w-10 text-brand-primary dark:text-dark-brand-primary" />
+          <p className="mt-4 text-lg text-content-200 dark:text-dark-content-200">
+            Loading...
+          </p>
+        </div>
+      );
     }
-    
+
     // If not loading and the view is initialAuth, or if there's no user, show the auth view.
     if ((!isLoading && viewState.view === "initialAuth") || !user) {
-        return (
-            <div className="flex justify-center items-center h-screen">
-                <InitialAuthView onSignInSuccess={handleInitialSignInSuccess} />
-            </div>
-        );
+      return (
+        <div className="flex justify-center items-center h-screen">
+          <InitialAuthView onSignInSuccess={handleInitialSignInSuccess} />
+        </div>
+      );
     }
 
     switch (viewState.view) {
@@ -275,7 +275,7 @@ export default function Home() {
             setViewState={setViewState}
             user={user}
             addFilter={addFilter}
-            onBack={()=> setViewState({view: "create"})}
+            onBack={() => setViewState({ view: "create" })}
           />
         );
       case "createOutfit":
@@ -311,9 +311,9 @@ export default function Home() {
       <div className="flex-grow p-4 sm:p-6 md:p-8 pb-56 sm:pb-24">
         {user && (
           <header className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
-            <div 
-              className="flex items-center gap-3 cursor-pointer" 
-              onClick={() => setViewState({ view: "feed" })}
+            <div
+              className="flex items-center gap-3 cursor-pointer"
+              onClick={() => setViewState({ view: "marketplace" })}
             >
               <img src="/lamp.png" alt="Genie Lamp" className="h-8 w-8" />
               <h1 className={`text-2xl sm:text-3xl ${commonClasses.text.heading}`}>
@@ -321,20 +321,20 @@ export default function Home() {
               </h1>
             </div>
             <div className="flex items-center gap-4">
-                <>
-                  <button
-                    onClick={() => setViewState({ view: "create" })}
-                    className={commonClasses.button.primary}
-                  >
-                    Create
-                  </button>
-                  <UserIcon 
-                    user={user} 
-                    onSignOut={handleSignOut} 
-                    onGoToProfile={() => setViewState({ view: "profile", user: user })}
-                    onRemoveAccount={handleRemoveAccount} 
-                  />
-                </>
+              <>
+                <button
+                  onClick={() => setViewState({ view: "create" })}
+                  className={commonClasses.button.primary}
+                >
+                  Create
+                </button>
+                <UserIcon
+                  user={user}
+                  onSignOut={handleSignOut}
+                  onGoToProfile={() => setViewState({ view: "profile", user: user })}
+                  onRemoveAccount={handleRemoveAccount}
+                />
+              </>
               <button
                 className={commonClasses.button.icon}
                 onClick={toggleTheme}
@@ -345,51 +345,48 @@ export default function Home() {
             </div>
           </header>
         )}
-        
+
         {user && (
           <div className="max-w-7xl mx-auto mb-8">
             <div className="flex justify-center gap-8 border-b border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => setViewState({ view: "marketplace" })}
-                className={`py-3 font-semibold transition-colors ${
-                  viewState.view === "marketplace"
+                className={`py-3 font-semibold transition-colors ${viewState.view === "marketplace"
                     ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
                     : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-                }`}
+                  }`}
               >
                 Filters
               </button>
               <button
                 onClick={() => setViewState({ view: "outfits" })}
-                className={`py-3 font-semibold transition-colors ${
-                  viewState.view === "outfits"
+                className={`py-3 font-semibold transition-colors ${viewState.view === "outfits"
                     ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
                     : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-                }`}
+                  }`}
               >
                 Outfits
               </button>
               <button
                 onClick={() => setViewState({ view: "feed" })}
-                className={`py-3 font-semibold transition-colors ${
-                  viewState.view === "feed"
+                className={`py-3 font-semibold transition-colors ${viewState.view === "feed"
                     ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
                     : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-                }`}
+                  }`}
               >
                 Public Feed
               </button>
             </div>
           </div>
         )}
-        
+
         {renderView()}
       </div>
 
       {isWelcomeModalOpen && (
-        <WelcomeModal 
+        <WelcomeModal
           isOpen={isWelcomeModalOpen}
-          onClose={() => setIsWelcomeModalOpen(false)} 
+          onClose={() => setIsWelcomeModalOpen(false)}
         />
       )}
       {showConfirmDialog && (
@@ -399,7 +396,7 @@ export default function Home() {
           onCancel={() => setShowConfirmDialog(false)}
         />
       )}
-      
+
       {showDashboard && (
         <div className="fixed bottom-0 left-0 right-0 z-10">
           <div className="mx-auto w-full max-w-xl p-4 bg-base-100 dark:bg-dark-base-100 shadow-lg rounded-t-2xl">
@@ -414,12 +411,12 @@ export default function Home() {
       )}
 
       <div className="fixed bottom-0 left-0 right-0 z-10 pointer-events-none">
-          <div className="flex justify-end p-4">
-              <a href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center gap-2 pointer-events-auto">
-                <WhatsAppIcon />
-                <span className="hidden sm:inline">Join community for support</span>
-              </a>
-          </div>
+        <div className="flex justify-end p-4">
+          <a href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center gap-2 pointer-events-auto">
+            <WhatsAppIcon />
+            <span className="hidden sm:inline">Join community for support</span>
+          </a>
+        </div>
       </div>
     </div>
   );

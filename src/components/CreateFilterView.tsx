@@ -1,17 +1,19 @@
+
 import React, { useState } from 'react';
 import { Filter, ViewState, User } from '../types';
 import { BackArrowIcon, SparklesIcon } from './icons';
-import { Spinner } from './Spinner'; // Changed to named import
+import { Spinner } from './Spinner';
 import { improvePrompt, generateImageFromPrompt } from '../services/geminiService';
 import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from '../utils/fileUtils';
 import { saveFilter } from '../services/firebaseService';
+import { commonClasses } from '../utils/theme';
 
 interface CreateFilterViewProps {
   setViewState: (viewState: ViewState) => void;
   user: User | null;
   addFilter?: (newFilter: Filter) => void;
-  filterToEdit?: Filter; // ✅ for editing
-  onUpdateFilter?: (filterToUpdate: Filter) => Promise<void> | void; // ✅ for updates
+  filterToEdit?: Filter;
+  onUpdateFilter?: (filterToUpdate: Filter) => Promise<void> | void;
   onBack?: () => void;
 }
 
@@ -90,21 +92,17 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
   // Save filter to Firestore
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-  
+
     if (!formData.name.trim() || !formData.prompt.trim() || !formData.category.trim()) {
       alert('Please provide a name, category, and prompt.');
       return;
     }
-  
+
     try {
       const finalImageUrl = formData.previewImageUrl;
 
       if (formData.previewImageUrl && formData.previewImageUrl.startsWith('data:image')) {
-        // This section used a defunct API route. It should be replaced with a direct
-        // call to a client-side cloud storage upload function (like the one in firebaseService).
         console.warn("Image saving via API is disabled. Using placeholder or existing URL.");
-        // const response = await fetch('/api/save-image', ...);
-        // finalImageUrl = data.url;
       }
 
       const payload: Omit<Filter, 'id'> = {
@@ -122,14 +120,14 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
         creatorId: user?.uid || '',
         settings: {},
       };
-  
+
       if (filterToEdit && onUpdateFilter) {
         await onUpdateFilter({ ...filterToEdit, ...payload });
       } else {
         const saved = await saveFilter(payload);
         if (addFilter) addFilter(saved);
       }
-  
+
       setViewState({ view: 'marketplace' });
     } catch (e) {
       console.error('Failed to save filter', e);
@@ -141,28 +139,28 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
     <div className="max-w-2xl mx-auto animate-fade-in">
       <button
         onClick={() => (onBack ? onBack() : setViewState({ view: "create" }))}
-        className="flex items-center gap-2 text-content-200 dark:text-dark-content-200 hover:text-content-100 dark:hover:text-dark-content-100 mb-6 font-semibold"
+        className="flex items-center gap-2 text-content-200 dark:text-dark-content-200 hover:text-content-100 dark:hover:text-dark-content-100 mb-6 font-semibold transition-colors"
       >
         <BackArrowIcon />
         Back to Menu
       </button>
 
-      <div className="bg-base-200 dark:bg-dark-base-200 p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-content-100 dark:text-dark-content-100 mb-6">
+      <div className={commonClasses.container.card}>
+        <h2 className={`text-2xl ${commonClasses.text.heading} mb-6`}>
           Create Filter
         </h2>
 
         <form onSubmit={handleSave} className="space-y-6">
           {/* Filter Name */}
           <div>
-            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+            <label className={`block text-sm font-medium ${commonClasses.text.heading} mb-2`}>
               Filter Name
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full p-2 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100"
+              className="w-full p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all"
               placeholder="Enter filter name"
               required
             />
@@ -170,13 +168,13 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+            <label className={`block text-sm font-medium ${commonClasses.text.heading} mb-2`}>
               Category
             </label>
             <select
               value={formData.category}
               onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-              className="w-full p-2 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100"
+              className="w-full p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all"
               required
             >
               <option value="" disabled>Select a category</option>
@@ -190,13 +188,13 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+            <label className={`block text-sm font-medium ${commonClasses.text.heading} mb-2`}>
               Description
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              className="w-full p-2 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100"
+              className="w-full p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all"
               placeholder="Describe your filter"
               rows={3}
             />
@@ -204,21 +202,21 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
 
           {/* Prompt */}
           <div>
-            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+            <label className={`block text-sm font-medium ${commonClasses.text.heading} mb-2`}>
               Prompt
             </label>
             <div className="flex gap-2">
               <textarea
                 value={formData.prompt}
                 onChange={(e) => setFormData(prev => ({ ...prev, prompt: e.target.value }))}
-                className="flex-1 p-2 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100"
+                className="flex-1 p-3 rounded-lg border border-border-color dark:border-dark-border-color bg-base-100 dark:bg-dark-base-100 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all"
                 placeholder="Enter or generate a prompt"
                 rows={3}
               />
               <button
                 type="button"
                 onClick={handleGeneratePrompt}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-brand-secondary/10 text-brand-primary dark:text-dark-brand-primary hover:bg-brand-secondary/20 rounded-lg transition-colors flex items-center gap-2 font-semibold whitespace-nowrap"
                 disabled={isGeneratingPrompt}
               >
                 {isGeneratingPrompt ? (
@@ -226,7 +224,7 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
                 ) : (
                   <>
                     <SparklesIcon className="h-5 w-5" />
-                    Improve with AI
+                    Improve
                   </>
                 )}
               </button>
@@ -235,12 +233,12 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
 
           {/* Preview Image */}
           <div>
-            <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100 mb-2">
+            <label className={`block text-sm font-medium ${commonClasses.text.heading} mb-2`}>
               Preview Image
             </label>
             <div className="space-y-4">
               {formData.previewImageUrl && (
-                <div className="w-full aspect-square rounded-lg overflow-hidden bg-base-300 dark:bg-dark-base-300">
+                <div className="w-full aspect-square rounded-lg overflow-hidden bg-base-300 dark:bg-dark-base-300 border border-border-color dark:border-dark-border-color">
                   <img
                     src={formData.previewImageUrl}
                     alt="Preview"
@@ -249,9 +247,9 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <label className="flex-1 cursor-pointer">
-                  <div className="px-4 py-2 bg-neutral-200 dark:bg-dark-neutral-200 text-content-100 dark:text-dark-content-100 rounded-lg hover:bg-neutral-300 dark:hover:bg-dark-neutral-300 transition-colors text-center">
+                  <div className="px-4 py-3 bg-neutral-200 dark:bg-dark-neutral-200 text-content-100 dark:text-dark-content-100 rounded-lg hover:bg-neutral-300 dark:hover:bg-dark-neutral-300 transition-colors text-center font-semibold">
                     Upload Image
                   </div>
                   <input
@@ -264,7 +262,7 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
                 <button
                   type="button"
                   onClick={handleGenerateImage}
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+                  className="px-4 py-3 bg-brand-secondary/10 text-brand-primary dark:text-dark-brand-primary hover:bg-brand-secondary/20 rounded-lg transition-colors flex items-center gap-2 font-semibold"
                   disabled={isGeneratingImage}
                 >
                   {isGeneratingImage ? (
@@ -272,7 +270,7 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
                   ) : (
                     <>
                       <SparklesIcon className="h-5 w-5" />
-                      Generate with AI
+                      Generate
                     </>
                   )}
                 </button>
@@ -284,7 +282,7 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
           <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className="px-6 py-2 bg-brand-primary hover:bg-brand-secondary dark:bg-dark-brand-primary dark:hover:bg-dark-brand-secondary text-white font-bold rounded-lg transition-colors"
+              className={commonClasses.button.primary}
             >
               Save Filter
             </button>
