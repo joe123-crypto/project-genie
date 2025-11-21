@@ -192,15 +192,15 @@ export async function convertToPngBase64(
 
   const srcW = img.naturalWidth || img.width;
   const srcH = img.naturalHeight || img.height;
-  const initialMaxDim = options?.maxDimension ?? 1024;
+  const initialMaxDim = options?.maxDimension;
   const maxBytes = options?.maxBytes; // e.g., 2_500_000 (~2.5MB)
 
   let targetW: number;
   let targetH: number;
 
-  const drawAndEncode = (maxDim: number): string => {
+  const drawAndEncode = (maxDim?: number): string => {
     const maxSrcDim = Math.max(srcW, srcH);
-    const scale = maxSrcDim > maxDim ? maxDim / maxSrcDim : 1;
+    const scale = (maxDim && maxSrcDim > maxDim) ? maxDim / maxSrcDim : 1;
     targetW = Math.max(1, Math.round(srcW * scale));
     targetH = Math.max(1, Math.round(srcH * scale));
     canvas.width = targetW;
@@ -210,7 +210,7 @@ export async function convertToPngBase64(
     return canvas.toDataURL('image/png');
   };
 
-  let currentMaxDim = initialMaxDim;
+  let currentMaxDim = initialMaxDim ?? Math.max(srcW, srcH);
   let pngDataUrl = drawAndEncode(currentMaxDim);
 
   if (maxBytes) {
