@@ -11,6 +11,7 @@ import { Outfit, User } from '../types';
 import { UploadIcon, ShareIcon, DownloadIcon } from './icons';
 import ShareModal from './ShareModal';
 import FileSaver from '../plugins/file-saver';
+import { scheduleNotification } from '../utils/notificationUtils';
 
 interface ApplyOutfitViewProps {
   outfit: Outfit;
@@ -69,6 +70,8 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
     try {
       const result = await mergeImages([uploadedImage, outfit.previewImageUrl], outfit.prompt, "filtered");
       setGeneratedImage(result);
+
+      await scheduleNotification('Outfit Ready', `Your outfit using "${outfit.name}" is ready!`);
 
       if (result && result.includes('r2.dev')) {
         const keyStart = result.indexOf("filtered/");

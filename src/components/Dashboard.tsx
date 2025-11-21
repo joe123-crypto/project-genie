@@ -75,7 +75,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
 
   return (
     <div className="w-full max-w-2xl px-4 mx-auto">
-      <div className="bg-base-100/80 dark:bg-dark-base-100/80 backdrop-blur-xl rounded-full shadow-2xl border border-white/20 dark:border-white/10 p-2 flex items-end gap-2 transition-all duration-300 hover:shadow-brand-primary/10">
+      <div
+        className="bg-white/30 dark:bg-black/30 backdrop-blur-xl backdrop-saturate-150 rounded-full shadow-2xl border border-white/20 dark:border-white/10 p-2 flex items-end gap-2 transition-all duration-300 hover:shadow-brand-primary/10"
+      >
         <div className="flex-1 pl-4 py-2">
           <textarea
             ref={textareaRef}
@@ -102,8 +104,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
           <button
             onClick={handleSend}
             className={`p-3 rounded-full flex items-center justify-center transition-all duration-300 ${text.trim()
-                ? 'bg-brand-primary text-white hover:bg-brand-secondary shadow-lg hover:shadow-brand-primary/30'
-                : 'bg-neutral-200 dark:bg-dark-neutral-200 text-content-300 dark:text-dark-content-300 cursor-not-allowed'
+              ? 'bg-brand-primary text-white hover:bg-brand-secondary shadow-lg hover:shadow-brand-primary/30'
+              : 'bg-neutral-200 dark:bg-dark-neutral-200 text-content-300 dark:text-dark-content-300 cursor-not-allowed'
               }`}
             disabled={isLoading || !text.trim()}
           >
