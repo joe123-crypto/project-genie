@@ -41,9 +41,9 @@ async function uploadPreviewToR2(
     endpoint: process.env.R2_ENDPOINT,
     forcePathStyle: true,
     credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID as string,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY as string,
-      }
+      accessKeyId: process.env.R2_ACCESS_KEY_ID as string,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY as string,
+    }
   });
 
   const { buffer } = parseBase64ToBuffer(base64, mimeType);
@@ -75,6 +75,16 @@ function generateRandomFilename(extension = "png"): string {
 }
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*'); // Adjust this to your app's domain for better security
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight OPTIONS request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -82,12 +92,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   // --- Environment Variable Validation ---
   const missingR2Vars = requiredR2EnvVars.filter(v => !process.env[v]);
   if (missingR2Vars.length > 0) {
-      console.error(`Missing R2 environment variables: ${missingR2Vars.join(', ')}`);
-      return res.status(500).json({ error: `Server configuration error: Missing R2 environment variables: ${missingR2Vars.join(', ')}` });
+    console.error(`Missing R2 environment variables: ${missingR2Vars.join(', ')}`);
+    return res.status(500).json({ error: `Server configuration error: Missing R2 environment variables: ${missingR2Vars.join(', ')}` });
   }
   if (!process.env.AI_GATEWAY_API_KEY) {
-      console.error("AI_GATEWAY_API_KEY is not set in the environment variables.");
-      return res.status(500).json({ error: "Server configuration error: AI API key is missing." });
+    console.error("AI_GATEWAY_API_KEY is not set in the environment variables.");
+    return res.status(500).json({ error: "Server configuration error: AI API key is missing." });
   }
 
   const { prompt } = req.body;
@@ -112,34 +122,34 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     let name, description, category;
     try {
-        const cleanedText = nameDescAndCategoryResponse.text.replace(/```json\n/g, '').replace(/\n```/g, '');
-        const jsonResponse = JSON.parse(cleanedText);
-        name = jsonResponse.name;
-        description = jsonResponse.description;
-        category = jsonResponse.category;
-    } catch (e: any) { 
-        console.error("Failed to parse name, description and category from Gemini response", {
-            responseText: nameDescAndCategoryResponse.text,
-            error: e.message,
-        });
-        return res.status(500).json({ error: "Failed to generate filter details from AI response." });
+      const cleanedText = nameDescAndCategoryResponse.text.replace(/```json\n/g, '').replace(/\n```/g, '');
+      const jsonResponse = JSON.parse(cleanedText);
+      name = jsonResponse.name;
+      description = jsonResponse.description;
+      category = jsonResponse.category;
+    } catch (e: any) {
+      console.error("Failed to parse name, description and category from Gemini response", {
+        responseText: nameDescAndCategoryResponse.text,
+        error: e.message,
+      });
+      return res.status(500).json({ error: "Failed to generate filter details from AI response." });
     }
 
     // 2. Generate image preview
     const imageResponse = await generateText({
-        model: "google/gemini-2.5-flash-image-preview",
-        providerOptions: {
-            google: {
-              apiKey,
-              responseModalities: ["IMAGE"],
-            },
+      model: "google/gemini-2.5-flash-image-preview",
+      providerOptions: {
+        google: {
+          apiKey,
+          responseModalities: ["IMAGE"],
         },
-        messages: [
-            {
-            role: "user",
-            content: `Generate a thumbnail preview image for a filter with the following description: '${description}'`,
-            },
-        ],
+      },
+      messages: [
+        {
+          role: "user",
+          content: `Generate a thumbnail preview image for a filter with the following description: '${description}'`,
+        },
+      ],
     });
 
     const firstStep: any = imageResponse.steps?.[0];
@@ -180,13 +190,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     res.status(200).json(savedFilter);
   } catch (error: any) {
     console.error("Detailed error in generate-filter API:", {
-        message: error.message,
-        stack: error.stack,
-        cause: error.cause,
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause,
     });
     res.status(500).json({
-        error: "An internal server error occurred.",
-        details: error.message || "No specific error message available."
+      error: "An internal server error occurred.",
+      details: error.message || "No specific error message available."
     });
   }
 };

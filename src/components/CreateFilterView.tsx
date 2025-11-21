@@ -7,7 +7,6 @@ import { improvePrompt, generateImageFromPrompt } from '../services/geminiServic
 import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from '../utils/fileUtils';
 import { saveFilter } from '../services/firebaseService';
 import { commonClasses } from '../utils/theme';
-import { scheduleNotification } from '../utils/notificationUtils';
 
 interface CreateFilterViewProps {
   setViewState: (viewState: ViewState) => void;
@@ -130,15 +129,11 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
       }
 
       setViewState({ view: 'marketplace' });
-
-      // Schedule notification
-      await scheduleNotification('Filter Created', `Your filter "${formData.name}" has been created successfully!`);
     } catch (e) {
       console.error('Failed to save filter', e);
       alert('Failed to save filter. Please try again.');
     }
   };
-
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
       <button

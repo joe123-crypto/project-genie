@@ -1,7 +1,12 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 
-export const scheduleNotification = async (title: string, body: string) => {
+export const scheduleNotification = async (
+    title: string,
+    body: string,
+    largeIcon?: string,
+    attachmentUrl?: string
+) => {
     if (!Capacitor.isNativePlatform()) {
         console.log('Notifications are only supported on native platforms.');
         return;
@@ -26,7 +31,8 @@ export const scheduleNotification = async (title: string, body: string) => {
                     id: Math.floor(Math.random() * 100000),
                     schedule: { at: new Date(Date.now() + 1000) }, // Schedule for 1 second later
                     sound: undefined,
-                    attachments: undefined,
+                    attachments: attachmentUrl ? [{ id: 'image', url: attachmentUrl }] : undefined,
+                    largeIcon: largeIcon,
                     actionTypeId: "",
                     extra: null
                 }

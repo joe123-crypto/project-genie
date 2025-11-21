@@ -1,6 +1,7 @@
 import { Analytics } from "@vercel/analytics/react"
 import type { Metadata } from "next"
 import { Outfit } from "next/font/google"
+import NotificationManager from "../components/NotificationManager"
 
 import "./globals.css?v=2"
 
@@ -49,6 +50,7 @@ export default function RootLayout({
       <body className={`${outfit.variable} font-sans`}>
         {children}
         <Analytics />
+        <NotificationManager />
       </body>
     </html>
   )

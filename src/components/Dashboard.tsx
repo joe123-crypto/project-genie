@@ -4,6 +4,7 @@ import { SparklesIcon, SendIcon } from './icons';
 import { User, ViewState, Filter } from '../types';
 import { getValidIdToken } from '../services/authService';
 import { improvePrompt } from '../services/geminiService';
+import { getApiBaseUrlRuntime } from '../utils/api';
 
 interface DashboardProps {
   user: User | null;
@@ -33,7 +34,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
         throw new Error("Session expired. Please sign in again.");
       }
 
-      const response = await fetch('/api/generate-filter', {
+      const baseUrl = getApiBaseUrlRuntime();
+      const targetUrl = `${baseUrl}/api/generate-filter`;
+
+      const response = await fetch(targetUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,9 +46,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
         body: JSON.stringify({ prompt: text }),
       });
 
+      // Check if response is HTML instead of JSON
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('text/html')) {
+        throw new Error(`Server returned HTML instead of JSON. Status: ${response.status}. The API endpoint may not be deployed or accessible.`);
+      }
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create filter');
+        let errorMessage = 'Failed to create filter';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          errorMessage = `Server error (${response.status}): Unable to parse error response`;
+        }
+        throw new Error(errorMessage);
       }
 
       const newFilter: Filter = await response.json();
