@@ -307,8 +307,16 @@ export default function Home() {
   const showDashboard = user && (viewState.view === "marketplace" || viewState.view === "feed" || viewState.view === "outfits");
 
   return (
-    <div className={`${commonClasses.container.base} min-h-screen flex flex-col ${commonClasses.transitions.default}`}>
-      <div className="flex-grow p-4 sm:p-6 md:p-8 pb-56 sm:pb-24">
+    <div className={`${commonClasses.container.base} min-h-screen flex flex-col ${commonClasses.transitions.default} relative`}>
+      {/* Blurred background overlay */}
+      {user && (
+        <div className="fixed inset-0 z-0 pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-purple-50/20 to-pink-50/30 dark:from-blue-950/20 dark:via-purple-950/10 dark:to-pink-950/20" />
+          <div className="absolute inset-0 backdrop-blur-3xl" />
+        </div>
+      )}
+
+      <div className="flex-grow p-4 sm:p-6 md:p-8 pb-56 sm:pb-24 relative z-10">
         {user && (
           <header className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
             <div
@@ -398,7 +406,7 @@ export default function Home() {
       )}
 
       {showDashboard && (
-        <div className="fixed bottom-0 left-0 right-0 z-10 pointer-events-none">
+        <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
           <div className="mx-auto w-full max-w-xl p-4 pointer-events-auto">
             <Dashboard user={user} setViewState={setViewState} addFilter={addFilter} />
           </div>
@@ -410,7 +418,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 z-10 pointer-events-none">
+      <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
         <div className="flex justify-end p-4">
           <a href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center gap-2 pointer-events-auto">
             <WhatsAppIcon />
