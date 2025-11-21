@@ -62,14 +62,14 @@ export default async function handler(
     if (!apiKey) return res.status(500).json({ error: "Server misconfiguration" });
 
     const isImageRequest = images && images.length > 0;
-    const isImageGeneration = !isImageRequest && prompt.toLowerCase().includes("image") || 
-                             !isImageRequest && (prompt.toLowerCase().includes("generate") || 
-                             prompt.toLowerCase().includes("create") || 
-                             prompt.toLowerCase().includes("draw") || 
-                             prompt.toLowerCase().includes("paint"));
-    
+    const isImageGeneration = !isImageRequest && prompt.toLowerCase().includes("image") ||
+      !isImageRequest && (prompt.toLowerCase().includes("generate") ||
+        prompt.toLowerCase().includes("create") ||
+        prompt.toLowerCase().includes("draw") ||
+        prompt.toLowerCase().includes("paint"));
+
     // Use image generation model for image requests or when prompt suggests image generation
-    const model = (isImageRequest || isImageGeneration) ? "google/gemini-2.5-flash-image-preview" : "google/gemini-2.5-flash";
+    const model = (isImageRequest || isImageGeneration) ? "google/gemini-3-pro-image" : "google/gemini-3-pro-image";
     const responseModalities = (isImageRequest || isImageGeneration) ? ["IMAGE", "TEXT"] : ["TEXT"];
 
     const result = await generateText({

@@ -22,9 +22,9 @@ const r2Client = new S3Client({
   credentials:
     process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY
       ? {
-          accessKeyId: process.env.R2_ACCESS_KEY_ID as string,
-          secretAccessKey: process.env.R2_SECRET_ACCESS_KEY as string,
-        }
+        accessKeyId: process.env.R2_ACCESS_KEY_ID as string,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY as string,
+      }
       : undefined,
 });
 
@@ -60,10 +60,10 @@ async function uploadPreviewToR2(
     console.error("⚠️ R2_PUBLIC_BASE_URL is not set! Images will not be publicly accessible.");
     throw new Error("R2_PUBLIC_BASE_URL environment variable is required for public image URLs");
   }
-  
+
   const publicUrl = `${publicBase.replace(/\/+$/, "")}/${finalKey}`;
   console.log(`[SERVER] Generated public URL: ${publicUrl}`);
-  
+
   return publicUrl;
 }
 
@@ -106,15 +106,15 @@ export default async function handler(
   if (!textPrompt) {
     return res.status(400).json({ error: "textPrompt required" });
   }
-  
+
   const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.NEXT_PUBLIC_AI_GATEWAY_API_KEY;
   if (!apiKey) {
     console.warn("Warning: AI_GATEWAY_API_KEY not found. AI Gateway requests may fail.");
   }
-  
+
   try {
     const result = await generateText({
-      model: "google/gemini-2.5-flash-image",
+      model: "google/gemini-3-pro-image",
       providerOptions: {
         google: {
           responseModalities: ["IMAGE"],
@@ -167,9 +167,9 @@ export default async function handler(
         mediaType,
         save,
       );
-      
+
       console.log(`[SERVER] Successfully uploaded image to: ${r2Url}`);
-      
+
       return res.status(200).json({
         imageUrl: r2Url,
         mimeType: mediaType,
@@ -195,7 +195,7 @@ export default async function handler(
           if (parsed?.error?.message) {
             return res.status(500).json({ error: parsed.error.message });
           }
-        } catch {}
+        } catch { }
       }
     }
 
