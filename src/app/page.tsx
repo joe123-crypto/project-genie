@@ -406,7 +406,7 @@ export default function Home() {
       )}
 
       {showDashboard && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+        <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none">
           <div className="mx-auto w-full max-w-xl p-4 pointer-events-auto">
             <Dashboard user={user} setViewState={setViewState} addFilter={addFilter} />
           </div>

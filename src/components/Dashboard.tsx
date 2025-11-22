@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { SparklesIcon, SendIcon } from './icons';
 import { User, ViewState, Filter } from '../types';
@@ -16,6 +15,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
   const [text, setText] = useState('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -92,7 +93,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
   return (
     <div className="w-full max-w-2xl px-4 mx-auto">
       <div
-        className="bg-white/30 dark:bg-black/30 backdrop-blur-xl backdrop-saturate-150 rounded-full shadow-2xl border border-white/20 dark:border-white/10 p-2 flex items-end gap-2 transition-all duration-300 hover:shadow-brand-primary/10"
+        ref={containerRef}
+        className="bg-white/95 dark:bg-black/95 backdrop-blur-xl backdrop-saturate-150 rounded-3xl shadow-2xl border border-white/20 dark:border-white/10 p-3 flex items-end gap-2 transition-all duration-300 hover:shadow-brand-primary/10"
       >
         <div className="flex-1 pl-4 py-2">
           <textarea
@@ -101,7 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
             onChange={(e) => setText(e.target.value)}
             rows={1}
             placeholder="Describe a filter you want to create..."
-            className="w-full bg-transparent focus:outline-none text-content-100 dark:text-dark-content-100 resize-none overflow-y-hidden placeholder-content-300 dark:placeholder-dark-content-300 text-base font-medium max-h-32"
+            className="w-full bg-transparent focus:outline-none text-black dark:text-white resize-none overflow-y-hidden placeholder-gray-700 dark:placeholder-gray-300 text-base font-medium max-h-32"
             disabled={isLoading}
             style={{ minHeight: '24px' }}
           />
