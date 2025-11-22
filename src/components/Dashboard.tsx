@@ -11,7 +11,7 @@ interface DashboardProps {
   addFilter: (filter: Filter) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) => {
+const Dashboard: React.FC<DashboardProps> = ({ setViewState, addFilter }) => {
   const [text, setText] = useState('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -58,7 +58,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, setViewState, addFilter }) 
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
-        } catch (parseError) {
+        } catch (error) {
           errorMessage = `Server error (${response.status}): Unable to parse error response`;
         }
         throw new Error(errorMessage);

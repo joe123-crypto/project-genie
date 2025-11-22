@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { SparklesIcon, BackArrowIcon } from "./icons";
+import { SparklesIcon } from "./icons";
 import CreateFilterView from "./CreateFilterView";
 import CreateOutfitView from "./CreateOutfitView";
 import { ViewState, User, Filter } from "../types";

@@ -12,7 +12,7 @@ import StudioView from "../components/CreateFilterView";
 import AuthView from "../components/AuthView"; // Keep existing AuthView for later access if needed
 import SharedImageView from "../components/SharedImageView";
 import WelcomeModal from "../components/WelcomeModal";
-import { SunIcon, MoonIcon, WhatsAppIcon } from "../components/icons";
+import { SunIcon, MoonIcon, WhatsAppIcon, SearchIcon } from "../components/icons";
 import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById } from "../services/firebaseService";
 import { deleteUser } from "../services/userService";
 import { getAuthUser, signOut } from "../services/authService";
@@ -25,6 +25,7 @@ import Dashboard from '../components/Dashboard';
 import FeedView from '../components/FeedView'; // Import FeedView
 import { fetchFilterById } from "../services/filterService";
 import { InitialAuthView } from "../components/InitialAuthView"; // Import the new InitialAuthView
+import SearchView from "../components/SearchView";
 
 const CreateOutfitView = dynamic(() => import('../components/CreateOutfitView'), { ssr: false });
 
@@ -299,6 +300,19 @@ export default function Home() {
         );
       case "feed":
         return <FeedView user={user} onCreateYourOwn={handleCreateYourOwn} />;
+
+      case "search":
+        return (
+          <SearchView
+            filters={filters}
+            outfits={outfits}
+            onSelectFilter={handleSelectFilter}
+            onSelectOutfit={handleSelectOutfit}
+            user={user}
+            onDeleteFilter={handleDeleteFilter}
+            onEditFilter={(f: Filter) => setViewState({ view: "edit", filter: f })}
+          />
+        );
       default:
         return null; // Should not happen if viewState is managed correctly
     }
@@ -357,6 +371,16 @@ export default function Home() {
         {user && (
           <div className="max-w-7xl mx-auto mb-8">
             <div className="flex justify-center gap-8 border-b border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setViewState({ view: "search" })}
+                className={`py-3 px-4 transition-colors ${viewState.view === "search"
+                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+                  }`}
+                aria-label="Search"
+              >
+                <SearchIcon className="h-5 w-5" />
+              </button>
               <button
                 onClick={() => setViewState({ view: "marketplace" })}
                 className={`py-3 font-semibold transition-colors ${viewState.view === "marketplace"

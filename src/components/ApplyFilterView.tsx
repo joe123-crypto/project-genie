@@ -35,7 +35,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
   const [personalPrompt, setPersonalPrompt] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
-  const [isPosting, setIsPosting] = useState(false);
+
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [filterUrl, setFilterUrl] = useState<string | null>(null);
   const [isNative, setIsNative] = useState(false);
@@ -127,7 +127,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
 
     try {
       const baseUrl = getApiBaseUrlRuntime();
-      
+
       // 1. Convert image to data URL if needed
       let imageDataUrl = generatedImage;
       if (!imageDataUrl.startsWith('data:')) {
@@ -148,9 +148,9 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
         downscaledBase64 = await downscale(imageDataUrl, 1024, 'png', 1.0);
         console.log('[Save] Image downscaled to PNG successfully');
       }
-      
-      const downscaledDataUrl = downscaledBase64.startsWith('data:') 
-        ? downscaledBase64 
+
+      const downscaledDataUrl = downscaledBase64.startsWith('data:')
+        ? downscaledBase64
         : `data:image/webp;base64,${downscaledBase64}`;
 
       // 3. Generate filename with user ID for organization (same structure as Firebase had)
@@ -163,8 +163,8 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
       const uploadResponse = await fetch(`${baseUrl}/api/save-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          image: downscaledDataUrl, 
+        body: JSON.stringify({
+          image: downscaledDataUrl,
           destination: 'saved',
           directoryName: directoryName
         }),
@@ -176,7 +176,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
           const errorData = await uploadResponse.json();
           errorText = errorData.error || `Upload failed with status ${uploadResponse.status}`;
           console.error('[Save] Upload error:', errorData);
-        } catch (parseError) {
+        } catch (error) {
           const text = await uploadResponse.text().catch(() => 'Unknown error');
           console.error('[Save] Upload error response:', text);
           errorText = `Upload failed: ${text.substring(0, 200)}`;
@@ -186,14 +186,14 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
 
       const uploadData = await uploadResponse.json();
       const savedImageUrl = uploadData.url;
-      
+
       if (!savedImageUrl) {
         console.error('[Save] No URL in upload response:', uploadData);
         throw new Error('No URL returned from image upload');
       }
 
       console.log('[Save] Image saved successfully, URL:', savedImageUrl);
-      
+
       // Update state with saved image URL and filename
       setGeneratedImage(savedImageUrl);
       const newFilename = savedImageUrl.substring(savedImageUrl.indexOf("saved/"));
@@ -223,7 +223,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
         if (!filter) { console.error("No filter given"); return; }
         const generatedFilterUrl = getFilterUrl(filter.id);
         setFilterUrl(generatedFilterUrl);
-        
+
         // Convert image to base64 if needed (handle both data URLs and HTTP URLs)
         let base64Data: string;
         if (generatedImage.startsWith('data:')) {
@@ -242,9 +242,9 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
         } else {
           base64Data = generatedImage;
         }
-        
+
         const fileName = `genie-share-${Date.now()}.png`;
-        
+
         // Write image file to cache directory so it can be shared
         const result = await Filesystem.writeFile({
           path: fileName,
@@ -255,7 +255,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
         // Create an inviting message with the filter link
         // The text will include the filter link so both image and link are shared
         const shareText = `🎨 Check out this image I created with the "${filter.name}" filter on Genie!\n\n✨ Try this filter yourself:\n${generatedFilterUrl}\n\nCreate amazing images with AI filters! 🚀`;
-        
+
         // On Android, use the file URI so the image is attached AND include the filter link in the text
         // This ensures both the image and the filter link are shared together
         await Share.share({
@@ -269,10 +269,10 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
         // Use the generated image directly - shareImage can handle both data URLs and HTTP URLs
         // No need to save to Firebase first, as shareImage will upload to R2 anyway
         if (!filter) { console.error("No filter given"); return; }
-        
+
         // Ensure we have a usable image URL
         let imageToShare = generatedImage;
-        
+
         // If the image is already a URL (from R2/Firebase), use it directly
         // If it's a data URL, shareImage will handle it
         // If it needs to be converted, convert it
@@ -308,7 +308,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
         console.log('[Download] Starting download on native platform');
         console.log('[Download] Generated image type:', generatedImage.startsWith('data:') ? 'data URL' : 'URL');
         console.log('[Download] Generated image preview:', generatedImage.substring(0, 100));
-        
+
         // Convert URL to data URL if needed (for Android download)
         let dataUrl = generatedImage;
         if (!generatedImage.startsWith('data:')) {
@@ -316,19 +316,19 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
           dataUrl = await fetchImageAsBase64(generatedImage);
           console.log('[Download] Image converted to data URL, length:', dataUrl.length);
         }
-        
+
         console.log('[Download] Calling FileSaver plugin...');
         const result = await FileSaver.saveBase64ToDownloads({
           dataUrl: dataUrl,
         });
         console.log('[Download] FileSaver plugin success:', result);
         alert("Image saved to Downloads!");
-        
+
       } else {
         // Web download using file-saver
         // Convert image to Blob if needed (saveAs requires Blob/File, not data URL or HTTP URL)
         let blob: Blob;
-        
+
         if (generatedImage.startsWith('data:')) {
           // Convert data URL to Blob
           const response = await fetch(generatedImage);
@@ -344,21 +344,21 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
           // If it's already a Blob (unlikely), use it directly
           throw new Error('Invalid image format for download');
         }
-        
+
         // Generate filename with proper extension based on blob type
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 8);
         let filename = generatedImageFilename || `genie-${timestamp}-${randomId}`;
-        
+
         // Ensure filename has proper extension
         if (!filename.includes('.')) {
           // Determine extension from blob MIME type
-          const extension = blob.type.includes('webp') ? '.webp' 
+          const extension = blob.type.includes('webp') ? '.webp'
             : blob.type.includes('jpeg') || blob.type.includes('jpg') ? '.jpg'
-            : '.png';
+              : '.png';
           filename = `${filename}${extension}`;
         }
-        
+
         saveAs(blob, filename);
       }
     } catch (err) {
@@ -480,7 +480,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
                   alt="Filtered result"
                   className="max-w-full max-h-96 object-contain rounded shadow-lg"
                 />
-                <div 
+                <div
                   className="absolute inset-0 bg-transparent"
                   onContextMenu={(e) => e.preventDefault()}
                 ></div>
