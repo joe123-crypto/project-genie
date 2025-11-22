@@ -26,12 +26,12 @@ const OutfitsView: React.FC<OutfitsViewProps> = ({ outfits, onSelectOutfit }) =>
       {brandSections.map(brandName => (
         <section key={brandName} className="mb-8">
           <h3 className="text-2xl font-bold text-content-100 dark:text-dark-content-100 mb-4">{brandName}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
             {groupedOutfits[brandName].map(outfit => (
-              <OutfitCard 
-                key={outfit.id} 
-                outfit={outfit} 
-                onSelect={() => onSelectOutfit(outfit)} 
+              <OutfitCard
+                key={outfit.id}
+                outfit={outfit}
+                onSelect={() => onSelectOutfit(outfit)}
               />
             ))}
           </div>
@@ -41,12 +41,12 @@ const OutfitsView: React.FC<OutfitsViewProps> = ({ outfits, onSelectOutfit }) =>
       {otherSection && otherSection.length > 0 && (
         <section className="mb-8">
           <h3 className="text-2xl font-bold text-content-100 dark:text-dark-content-100 mb-4">Others</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
             {otherSection.map(outfit => (
-              <OutfitCard 
-                key={outfit.id} 
-                outfit={outfit} 
-                onSelect={() => onSelectOutfit(outfit)} 
+              <OutfitCard
+                key={outfit.id}
+                outfit={outfit}
+                onSelect={() => onSelectOutfit(outfit)}
               />
             ))}
           </div>

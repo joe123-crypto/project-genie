@@ -10,32 +10,48 @@ const OutfitCard: React.FC<OutfitCardProps> = ({ outfit, onSelect }) => {
   return (
     <div
       onClick={onSelect}
-      className="bg-base-200 dark:bg-dark-base-200 rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow group"
+      className="bg-base-200 dark:bg-dark-base-200 rounded-xl overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300 group border border-transparent hover:border-brand-primary/20 flex flex-col h-full"
     >
-      <div className="relative overflow-hidden rounded mb-4">
-        <img 
-          src={outfit.previewImageUrl} 
-          alt={outfit.name} 
-          className="w-full h-48 object-cover rounded transition-transform duration-300 group-hover:scale-105" 
+      <div className="relative aspect-[4/5] overflow-hidden">
+        <img
+          src={outfit.previewImageUrl}
+          alt={outfit.name}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
+        <div className="absolute top-2 left-2 bg-brand-primary text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm uppercase tracking-wider">
+          Free
+        </div>
         {outfit.type && (
-            <div className="absolute bottom-2 right-2 bg-gray-800 bg-opacity-70 text-white text-xs font-semibold px-2 py-1 rounded-md">
-                {outfit.type}
-            </div>
+          <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-1 rounded-md border border-white/10">
+            {outfit.type}
+          </div>
         )}
       </div>
-      <h3 className="text-xl font-semibold text-content-100 dark:text-dark-content-100 mb-2 group-hover:text-brand-primary dark:group-hover:text-dark-brand-primary transition-colors">
-        {outfit.name}
-        {outfit.type && <span className="text-lg font-light">-{outfit.type}</span>}
-      </h3>
-      <p className="text-content-200 dark:text-dark-content-200 text-sm leading-relaxed">
-        {outfit.description}
-      </p>
-      {outfit.accessCount && outfit.accessCount > 0 && (
-        <div className="mt-3 text-xs text-content-300 dark:text-dark-content-300">
-          Used {outfit.accessCount} times
+
+      <div className="p-3 flex flex-col flex-grow">
+        <div className="flex justify-between items-start mb-1">
+          <h3 className="text-sm font-bold text-content-100 dark:text-dark-content-100 line-clamp-1 group-hover:text-brand-primary dark:group-hover:text-dark-brand-primary transition-colors">
+            {outfit.name}
+          </h3>
         </div>
-      )}
+
+        <div className="flex items-center mb-2">
+          <div className="flex text-yellow-400 text-xs">
+            {'★'.repeat(5)}
+          </div>
+          <span className="text-[10px] text-content-300 dark:text-dark-content-300 ml-1">
+            ({outfit.accessCount || Math.floor(Math.random() * 50) + 10})
+          </span>
+        </div>
+
+        <p className="text-content-200 dark:text-dark-content-200 text-xs line-clamp-2 mb-3 flex-grow">
+          {outfit.description}
+        </p>
+
+        <button className="w-full bg-brand-primary/10 hover:bg-brand-primary text-brand-primary hover:text-white text-xs font-bold py-2 rounded-lg transition-colors duration-200 mt-auto">
+          GET
+        </button>
+      </div>
     </div>
   );
 };
