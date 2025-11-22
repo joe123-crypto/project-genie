@@ -6,7 +6,6 @@ import { improvePrompt } from '../services/geminiService';
 import { getApiBaseUrlRuntime } from '../utils/api';
 
 interface DashboardProps {
-  user: User | null;
   setViewState: React.Dispatch<React.SetStateAction<ViewState>>;
   addFilter: (filter: Filter) => void;
 }

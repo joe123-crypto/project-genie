@@ -235,6 +235,46 @@ export default function Home() {
     }
   };
 
+  // Swipe Navigation State
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [transitionDirection, setTransitionDirection] = useState<"left" | "right" | "none">("none");
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe || isRightSwipe) {
+      const tabs = ["search", "marketplace", "outfits", "feed"];
+      const currentIndex = tabs.indexOf(viewState.view);
+
+      if (currentIndex !== -1) {
+        if (isLeftSwipe && currentIndex < tabs.length - 1) {
+          setTransitionDirection("left");
+          const nextView = tabs[currentIndex + 1] as "search" | "marketplace" | "outfits" | "feed";
+          setViewState({ view: nextView });
+        } else if (isRightSwipe && currentIndex > 0) {
+          setTransitionDirection("right");
+          const prevView = tabs[currentIndex - 1] as "search" | "marketplace" | "outfits" | "feed";
+          setViewState({ view: prevView });
+        }
+      }
+    }
+  };
+
   const renderView = () => {
     // If loading, and we either have a user or are not on the auth screen, show a spinner.
     if (isLoading && (user || viewState.view !== 'initialAuth')) {
@@ -257,71 +297,83 @@ export default function Home() {
       );
     }
 
-    switch (viewState.view) {
-      case "marketplace":
-        return (
-          <Marketplace
-            filters={filters}
-            onSelectFilter={handleSelectFilter}
-            user={user}
-            onDeleteFilter={handleDeleteFilter}
-            onEditFilter={(f: Filter) => setViewState({ view: "edit", filter: f })}
-          />
-        );
-      case "apply":
-        return <ApplyFilterView filter={viewState.filter!} setViewState={setViewState} user={user} />;
-      case "create":
-        return (
-          <CreateMenu
-            setViewState={setViewState}
-            user={user}
-            addFilter={addFilter}
-            onBack={() => setViewState({ view: "create" })}
-          />
-        );
-      case "createOutfit":
-        return <CreateOutfitView setViewState={setViewState} user={user} addOutfit={addOutfit} />;
-      case "edit":
-        return <StudioView setViewState={setViewState} user={user} filterToEdit={viewState.filter} onUpdateFilter={handleUpdateFilter} />;
-      case "auth":
-        return <AuthView setViewState={setViewState} onSignInSuccess={handleSignInSuccess} />;
-      case "shared":
-        return <SharedImageView shareId={viewState.shareId!} setViewState={setViewState} />;
-      case "profile":
-        return <ProfileView user={viewState.user || user!} currentUser={user} setViewState={setViewState} onCreateYourOwn={handleCreateYourOwn} />;
-      case "outfits":
-        return <OutfitsView outfits={outfits} onSelectOutfit={handleSelectOutfit} />;
-      case "applyOutfit":
-        return (
-          <ApplyOutfitView
-            outfit={viewState.outfit!}
-            user={user}
-          />
-        );
-      case "feed":
-        return <FeedView user={user} onCreateYourOwn={handleCreateYourOwn} />;
+    const animationClass = transitionDirection === "left" ? "animate-slide-left" : transitionDirection === "right" ? "animate-slide-right" : "animate-fade-in";
 
-      case "search":
-        return (
-          <SearchView
-            filters={filters}
-            outfits={outfits}
-            onSelectFilter={handleSelectFilter}
-            onSelectOutfit={handleSelectOutfit}
-            user={user}
-            onDeleteFilter={handleDeleteFilter}
-            onEditFilter={(f: Filter) => setViewState({ view: "edit", filter: f })}
-          />
-        );
-      default:
-        return null; // Should not happen if viewState is managed correctly
-    }
+    return (
+      <div key={viewState.view} className={animationClass}>
+        {(() => {
+          switch (viewState.view) {
+            case "marketplace":
+              return (
+                <Marketplace
+                  filters={filters}
+                  onSelectFilter={handleSelectFilter}
+                  user={user}
+                  onDeleteFilter={handleDeleteFilter}
+                  onEditFilter={(f: Filter) => setViewState({ view: "edit", filter: f })}
+                />
+              );
+            case "apply":
+              return <ApplyFilterView filter={viewState.filter!} setViewState={setViewState} user={user} />;
+            case "create":
+              return (
+                <CreateMenu
+                  setViewState={setViewState}
+                  user={user}
+                  addFilter={addFilter}
+                  onBack={() => setViewState({ view: "create" })}
+                />
+              );
+            case "createOutfit":
+              return <CreateOutfitView setViewState={setViewState} user={user} addOutfit={addOutfit} />;
+            case "edit":
+              return <StudioView setViewState={setViewState} user={user} filterToEdit={viewState.filter} onUpdateFilter={handleUpdateFilter} />;
+            case "auth":
+              return <AuthView setViewState={setViewState} onSignInSuccess={handleSignInSuccess} />;
+            case "shared":
+              return <SharedImageView shareId={viewState.shareId!} setViewState={setViewState} />;
+            case "profile":
+              return <ProfileView user={viewState.user || user!} currentUser={user} setViewState={setViewState} onCreateYourOwn={handleCreateYourOwn} />;
+            case "outfits":
+              return <OutfitsView outfits={outfits} onSelectOutfit={handleSelectOutfit} />;
+            case "applyOutfit":
+              return (
+                <ApplyOutfitView
+                  outfit={viewState.outfit!}
+                  user={user}
+                />
+              );
+            case "feed":
+              return <FeedView user={user} onCreateYourOwn={handleCreateYourOwn} />;
+            case "search":
+              return (
+                <SearchView
+                  filters={filters}
+                  outfits={outfits}
+                  onSelectFilter={handleSelectFilter}
+                  onSelectOutfit={handleSelectOutfit}
+                  user={user}
+                  onDeleteFilter={handleDeleteFilter}
+                  onEditFilter={(f: Filter) => setViewState({ view: "edit", filter: f })}
+                />
+              );
+            default:
+              return null;
+          }
+        })()}
+      </div>
+    );
   };
 
   const showDashboard = user && (viewState.view === "marketplace" || viewState.view === "feed" || viewState.view === "outfits");
 
   return (
-    <div className={`${commonClasses.container.base} min-h-screen flex flex-col ${commonClasses.transitions.default} relative`}>
+    <div
+      className={`${commonClasses.container.base} min-h-screen flex flex-col ${commonClasses.transitions.default} relative`}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       {/* Blurred background overlay */}
       {user && (
         <div className="fixed inset-0 z-0 pointer-events-none">
@@ -432,7 +484,7 @@ export default function Home() {
       {showDashboard && (
         <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none">
           <div className="mx-auto w-full max-w-xl p-4 pointer-events-auto">
-            <Dashboard user={user} setViewState={setViewState} addFilter={addFilter} />
+            <Dashboard setViewState={setViewState} addFilter={addFilter} />
           </div>
           <div className="w-full py-2 text-center pointer-events-none">
             <p className="text-xs text-white font-medium mix-blend-difference opacity-80">
