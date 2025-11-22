@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import dynamic from 'next/dynamic';
+import { Capacitor } from '@capacitor/core';
 import { Filter, ViewState, User, Outfit } from "../types";
 import CreateMenu from "../components/CreateMenu";
 import Marketplace from "../components/Marketplace";
@@ -26,6 +27,7 @@ import FeedView from '../components/FeedView'; // Import FeedView
 import { fetchFilterById } from "../services/filterService";
 import { InitialAuthView } from "../components/InitialAuthView"; // Import the new InitialAuthView
 import SearchView from "../components/SearchView";
+import LandingPage from "../components/LandingPage";
 
 const CreateOutfitView = dynamic(() => import('../components/CreateOutfitView'), { ssr: false });
 
@@ -38,6 +40,21 @@ export default function Home() {
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(false);
   const [isDark, setIsDark] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState<boolean>(false);
+  const [showLandingPage, setShowLandingPage] = useState<boolean>(false);
+  const [isWeb, setIsWeb] = useState<boolean>(false);
+
+  // Check if running on web platform
+  useEffect(() => {
+    const platform = Capacitor.getPlatform();
+    const isWebPlatform = platform === 'web';
+    setIsWeb(isWebPlatform);
+
+    // Show landing page only on web and if user hasn't dismissed it
+    const hasSeenLanding = sessionStorage.getItem('hasSeenLanding');
+    if (isWebPlatform && !hasSeenLanding) {
+      setShowLandingPage(true);
+    }
+  }, []);
 
   // Load theme from localStorage
   useEffect(() => {
@@ -120,6 +137,22 @@ export default function Home() {
     setUser(signedInUser);
     setViewState({ view: "marketplace" });
     setIsWelcomeModalOpen(true);
+  }, []);
+
+  // Handle landing page actions
+  const handleGetStarted = useCallback(() => {
+    sessionStorage.setItem('hasSeenLanding', 'true');
+    setShowLandingPage(false);
+    // If user is already signed in, go to marketplace, otherwise show auth
+    if (!user) {
+      setViewState({ view: "initialAuth" });
+    }
+  }, [user]);
+
+  const handleLandingSignIn = useCallback(() => {
+    sessionStorage.setItem('hasSeenLanding', 'true');
+    setShowLandingPage(false);
+    setViewState({ view: "initialAuth" });
   }, []);
 
   const addFilter = useCallback(
@@ -212,10 +245,16 @@ export default function Home() {
     setIsWelcomeModalOpen(true);
   };
 
-  const handleSignOut = () => {
-    signOut();
-    setUser(null);
-    setViewState({ view: "initialAuth" }); // Go back to InitialAuthView on sign out
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Even if sign out fails (e.g. network), we should clear local state
+    } finally {
+      setUser(null);
+      setViewState({ view: "initialAuth" }); // Go back to InitialAuthView on sign out
+    }
   };
 
   const handleRemoveAccount = async () => {
@@ -366,6 +405,18 @@ export default function Home() {
   };
 
   const showDashboard = user && (viewState.view === "marketplace" || viewState.view === "feed" || viewState.view === "outfits");
+
+  // Show landing page on web for first-time visitors
+  if (isWeb && showLandingPage) {
+    return (
+      <LandingPage
+        onGetStarted={handleGetStarted}
+        onSignIn={handleLandingSignIn}
+        isDark={isDark}
+        toggleTheme={toggleTheme}
+      />
+    );
+  }
 
   return (
     <div
