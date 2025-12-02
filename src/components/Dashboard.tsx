@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { SparklesIcon, SendIcon } from './icons';
-import { User, ViewState, Filter } from '../types';
+import { ViewState, Filter } from '../types';
 import { getValidIdToken } from '../services/authService';
 import { improvePrompt } from '../services/geminiService';
 import { getApiBaseUrlRuntime } from '../utils/api';
@@ -57,7 +57,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setViewState, addFilter }) => {
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
-        } catch (error) {
+        } catch {
           errorMessage = `Server error (${response.status}): Unable to parse error response`;
         }
         throw new Error(errorMessage);

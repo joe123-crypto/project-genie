@@ -2,6 +2,7 @@ import { Analytics } from "@vercel/analytics/react"
 import type { Metadata } from "next"
 import { Outfit } from "next/font/google"
 import NotificationManager from "../components/NotificationManager"
+import UpdateChecker from "../components/UpdateChecker"
 
 import "./globals.css?v=2"
 
@@ -51,6 +52,7 @@ export default function RootLayout({
         {children}
         <Analytics />
         <NotificationManager />
+        <UpdateChecker />
       </body>
     </html>
   )

@@ -1,5 +1,5 @@
 import React from 'react';
-import { commonClasses } from '../utils/theme';
+
 
 interface LandingPageProps {
     onGetStarted: () => void;

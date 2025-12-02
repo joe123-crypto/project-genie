@@ -24,7 +24,7 @@ export const InitialAuthView: React.FC<InitialAuthViewProps> = ({ onSignInSucces
         if (user) {
           onSignInSuccess(user);
         }
-      } catch (err) {
+      } catch {
         // No user signed in, or error checking. Proceed to show auth options.
       } finally {
         setIsLoading(false);
@@ -33,7 +33,7 @@ export const InitialAuthView: React.FC<InitialAuthViewProps> = ({ onSignInSucces
     checkUser();
   }, [onSignInSuccess]);
 
-  const handleAuthAction = async (action: 'signIn' | 'signUp') => {
+  const handleAuthAction = async () => {
     if (!email || !password) {
       setError('Please enter both email and password.');
       return;
@@ -120,7 +120,7 @@ export const InitialAuthView: React.FC<InitialAuthViewProps> = ({ onSignInSucces
           className={`w-full px-4 py-2 border ${themeColors.border.light} ${themeColors.border.dark} rounded-md focus:outline-none focus:ring-2`}
         />
         <button
-          onClick={() => handleAuthAction(isSigningUp ? 'signUp' : 'signIn')}
+          onClick={() => handleAuthAction()}
           className={`w-full py-2 rounded-md ${commonClasses.button.primary} ${commonClasses.transitions.default}`}
           disabled={isLoading}
         >

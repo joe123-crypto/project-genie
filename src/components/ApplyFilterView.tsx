@@ -176,7 +176,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
           const errorData = await uploadResponse.json();
           errorText = errorData.error || `Upload failed with status ${uploadResponse.status}`;
           console.error('[Save] Upload error:', errorData);
-        } catch (error) {
+        } catch {
           const text = await uploadResponse.text().catch(() => 'Unknown error');
           console.error('[Save] Upload error response:', text);
           errorText = `Upload failed: ${text.substring(0, 200)}`;
@@ -295,7 +295,7 @@ const ApplyFilterView: React.FC<ApplyFilterViewProps> = ({ filter: initialFilter
     } finally {
       setIsSharing(false);
     }
-  }, [generatedImage, filter, user, handleSave, isNative]);
+  }, [generatedImage, filter, user, isNative]);
 
   const handleDownload = useCallback(async () => {
     if (!generatedImage) return;

@@ -297,7 +297,7 @@ export default function Home() {
     const isRightSwipe = distance < -minSwipeDistance;
 
     if (isLeftSwipe || isRightSwipe) {
-      const tabs = ["search", "marketplace", "outfits", "feed"];
+      const tabs = ["search", "marketplace", "outfits"];
       const currentIndex = tabs.indexOf(viewState.view);
 
       if (currentIndex !== -1) {
@@ -502,15 +502,7 @@ export default function Home() {
               >
                 Outfits
               </button>
-              <button
-                onClick={() => setViewState({ view: "feed" })}
-                className={`py-3 font-semibold transition-colors ${viewState.view === "feed"
-                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-                  }`}
-              >
-                Public Feed
-              </button>
+
             </div>
           </div>
         )}

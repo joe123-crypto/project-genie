@@ -14,7 +14,7 @@ const NotificationManager: React.FC = () => {
         // Listen for new filters
         const filtersQuery = query(
             collection(db, 'filters'),
-            where('createdAt', '>', startTime.toISOString())
+            where('createdAt', '>', Timestamp.fromDate(startTime))
         );
 
         const unsubscribeFilters = onSnapshot(filtersQuery, (snapshot) => {
@@ -33,7 +33,7 @@ const NotificationManager: React.FC = () => {
 
         const outfitsQuery = query(
             collection(db, 'outfits'),
-            where('createdAt', '>', startTime.toISOString())
+            where('createdAt', '>', Timestamp.fromDate(startTime))
         );
 
         const unsubscribeOutfits = onSnapshot(outfitsQuery, (snapshot) => {
