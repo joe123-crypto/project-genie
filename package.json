@@ -1,6 +1,6 @@
 {
   "name": "genaie",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "dev": "cross-env NODE_OPTIONS='--tls-min-v1.2' next dev",
