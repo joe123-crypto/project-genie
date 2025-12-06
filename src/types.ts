@@ -19,15 +19,27 @@ export interface Filter {
   description: string;
   prompt: string;
   previewImageUrl: string;
+  category: string;
   accessCount: number;
   createdAt: string;
   updatedAt: string;
   creatorId: string;
   settings: any;
   type?: "single" | "merge";
-  category: string;
+  username?: string;
+}
+
+export interface Hairstyle {
+  id: string;
+  name: string;
+  description: string;
+  previewImageUrl: string;
+  gender: 'male' | 'female' | 'unisex';
   userId?: string;
   username?: string;
+  accessCount?: number;
+  createdAt?: string;
+  prompt?: string;
 }
 
 export interface User {
@@ -77,4 +89,8 @@ export type ViewState =
   | { view: "profile"; user?: User }
   | { view: "feed" }
   | { view: "search" }
-  | { view: "initialAuth" }; // Added initialAuth to ViewState
+  | { view: "search" }
+  | { view: "initialAuth" }
+  | { view: "hairstyles" }
+  | { view: "createHairstyle"; editingHairstyle?: Hairstyle }
+  | { view: "applyHairstyle"; hairstyle: Hairstyle };

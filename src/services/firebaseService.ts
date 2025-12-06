@@ -1,23 +1,24 @@
 import { db, storage } from '../lib/firebase';
-import { 
-    collection, 
-    getDocs, 
-    getDoc, 
-    doc, 
-    addDoc, 
-    deleteDoc, 
-    updateDoc, 
-    increment, 
-    serverTimestamp, 
-    query, 
-    orderBy, 
-    limit 
+import {
+    collection,
+    getDocs,
+    getDoc,
+    doc,
+    addDoc,
+    deleteDoc,
+    updateDoc,
+    increment,
+    serverTimestamp,
+    query,
+    orderBy,
+    limit
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
-import { Filter, Outfit, Post } from '../types';
+import { Filter, Outfit, Post, Hairstyle } from '../types';
 
 const FILTERS_COLLECTION = 'filters';
 const OUTFITS_COLLECTION = 'outfits';
+const HAIRSTYLES_COLLECTION = 'hairstyles';
 const POSTS_COLLECTION = 'posts';
 
 /**
@@ -79,13 +80,13 @@ export const saveImage = async (imageB64: string, destination: 'saved' | 'shared
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 8);
         const imagePath = `${destination}/${userId}/${timestamp}-${randomId}.png`;
-        
+
         const storageRef = ref(storage, imagePath);
-        
+
         await uploadString(storageRef, imageB64, 'data_url');
-        
+
         const downloadUrl = await getDownloadURL(storageRef);
-        
+
         return downloadUrl;
     } catch (error) {
         console.error('Error saving image to storage:', error);
@@ -174,6 +175,80 @@ export const incrementOutfitAccessCount = async (outfitId: string): Promise<void
     } catch (error) {
         console.error('Error incrementing outfit access count:', error);
         // Non-critical, so we don't re-throw
+    }
+};
+
+/**
+ * Fetches all hairstyles from Firestore.
+ */
+export const getHairstyles = async (): Promise<Hairstyle[]> => {
+    try {
+        const q = query(collection(db, HAIRSTYLES_COLLECTION), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Hairstyle));
+    } catch (error) {
+        console.error('Error fetching hairstyles:', error);
+        throw error;
+    }
+};
+
+/**
+ * Saves a hairstyle to Firestore.
+ */
+/**
+ * Saves a hairstyle to Firestore.
+ */
+export const saveHairstyle = async (hairstyleData: Omit<Hairstyle, 'id'>): Promise<Hairstyle> => {
+    try {
+        const docRef = await addDoc(collection(db, HAIRSTYLES_COLLECTION), {
+            ...hairstyleData,
+            createdAt: serverTimestamp(),
+            accessCount: 0
+        });
+        return { id: docRef.id, ...hairstyleData, createdAt: new Date().toISOString(), accessCount: 0 };
+    } catch (err) {
+        console.error('❌ Error in saveHairstyle:', err);
+        throw err;
+    }
+};
+
+/**
+ * Increments the access count for a hairstyle.
+ */
+export const incrementHairstyleAccessCount = async (hairstyleId: string): Promise<void> => {
+    try {
+        const hairstyleRef = doc(db, HAIRSTYLES_COLLECTION, hairstyleId);
+        await updateDoc(hairstyleRef, { accessCount: increment(1) });
+    } catch (error) {
+        console.error('Error incrementing hairstyle access count:', error);
+        // Non-critical, so we don't re-throw
+    }
+};
+
+/**
+ * Deletes a hairstyle from Firestore.
+ */
+export const deleteHairstyle = async (hairstyleId: string): Promise<void> => {
+    try {
+        await deleteDoc(doc(db, HAIRSTYLES_COLLECTION, hairstyleId));
+    } catch (error) {
+        console.error('Error deleting hairstyle:', error);
+        throw error;
+    }
+};
+
+/**
+ * Updates a hairstyle in Firestore.
+ */
+export const updateHairstyle = async (hairstyleId: string, hairstyleData: Partial<Hairstyle>): Promise<Hairstyle> => {
+    try {
+        const hairstyleRef = doc(db, HAIRSTYLES_COLLECTION, hairstyleId);
+        await updateDoc(hairstyleRef, { ...hairstyleData, updatedAt: serverTimestamp() });
+        const updatedDoc = await getDoc(hairstyleRef);
+        return { id: updatedDoc.id, ...updatedDoc.data() } as Hairstyle;
+    } catch (error) {
+        console.error('Error updating hairstyle:', error);
+        throw error;
     }
 };
 

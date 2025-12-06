@@ -112,8 +112,8 @@ const CreateFilterView: React.FC<CreateFilterViewProps> = ({
         previewImageUrl: finalImageUrl,
         category: formData.category,
         type: 'single',
-        userId: user?.uid,
-        username: user?.email?.split('@')[0] || user?.email || 'anonymous',
+
+
         accessCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

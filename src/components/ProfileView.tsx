@@ -1,13 +1,11 @@
 import React, { useState, useCallback, ChangeEvent, useEffect } from 'react';
 import { User, Share, Outfit, Filter } from '../types';
-// import { updateUserProfile, uploadProfilePicture, fetchUserOutfits, fetchUserFilters, fetchUserSavedImages, deleteUserSavedImage } from '../services/userService';
+// import { updateUserProfile, uploadProfilePicture, fetchUserOutfits, fetchUserFilters, fetchUserImages } from '../services/userService';
 import { fetchUserOutfits, fetchUserFilters, fetchUserImages } from '../services/userService';
-import { getValidIdToken } from '../services/authService';
 import { Spinner } from './Spinner'; // Changed to named import
 import { DefaultUserIcon, TrashIcon } from './icons';
 import OutfitCard from './OutfitCard';
 import FilterCard from './FilterCard';
-import ConfirmationDialog from './ConfirmationDialog';
 import PostView from './PostView';
 
 interface ProfileViewProps {
@@ -20,9 +18,9 @@ interface ProfileViewProps {
 const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewState, onCreateYourOwn }) => {
   const [displayName, setDisplayName] = useState(user.displayName || '');
   const [newProfilePic, setNewProfilePic] = useState<File | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [images, setImages] = useState<Share[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [filters, setFilters] = useState<Filter[]>([]);
@@ -31,7 +29,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
   const [isLoadingOutfits, setIsLoadingOutfits] = useState(true);
   const [isLoadingFilters, setIsLoadingFilters] = useState(true);
 
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<Share | null>(null);
   const [activeTab, setActiveTab] = useState('outfits');
 
@@ -42,7 +39,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
   };
 
   const closeModal = () => {
-      setSelectedImage(null);
+    setSelectedImage(null);
   }
 
   const loadUserData = useCallback(async () => {
@@ -69,7 +66,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
       setIsLoadingOutfits(false);
       setIsLoadingFilters(false);
     }
-  }, [user.uid, isOwner]);
+  }, [user.uid]);
 
   useEffect(() => {
     loadUserData();
@@ -86,7 +83,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
     // setError(null);
     // try {
     //   const idToken = await getValidIdToken();
-    //   if (!idToken) throw new Error('Session expired');
+    //   if (!idToken) throw new Error('Session expired'); 
 
     //   let photoURL = user.photoURL;
     //   if (newProfilePic) {
@@ -94,7 +91,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
     //   }
 
     //   await updateUserProfile(user.uid, { displayName, photoURL }, idToken);
-      
+
     //   setViewState({ view: 'marketplace' });
     // } catch (err) {
     //   console.error(err);
@@ -103,26 +100,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
     //   setIsSaving(false);
     // }
     console.warn("Profile update functionality is temporarily disabled.");
-  }, [user, displayName, newProfilePic, setViewState]);
+  }, []);
 
-  const handleDeleteImage = async (imageId: string) => {
-    // try {
-    //   const idToken = await getValidIdToken();
-    //   if (!idToken) throw new Error('Session expired');
-    //   await deleteUserSavedImage(imageId, idToken);
-    //   setImages(images.filter(image => image.id !== imageId));
-    // } catch (err: any) {
-    //   setError(`Failed to delete image: ${err.message}`);
-    // }
-    console.warn('Delete functionality is temporarily disabled.');
-    setShowDeleteConfirm(null);
-  };
 
-  const onImageDelete = (imageId: string) => {
-    setImages(images.filter(image => image.id !== imageId));
-  };
 
-  const isSaveDisabled = 
+  const isSaveDisabled =
     (displayName === (user.displayName || '') && !newProfilePic) || isSaving;
 
   const getSafeImageUrl = (url: string | undefined): string | undefined => {
@@ -137,11 +119,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
 
   const renderTabs = () => (
     <div className="mb-8 border-b border-border-color dark:border-dark-border-color">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            <button onClick={() => setActiveTab('outfits')} className={`${activeTab === 'outfits' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Outfits</button>
-            <button onClick={() => setActiveTab('filters')} className={`${activeTab === 'filters' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Filters</button>
-            <button onClick={() => setActiveTab('images')} className={`${activeTab === 'images' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Images</button>
-        </nav>
+      <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+        <button onClick={() => setActiveTab('outfits')} className={`${activeTab === 'outfits' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Outfits</button>
+        <button onClick={() => setActiveTab('filters')} className={`${activeTab === 'filters' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Filters</button>
+        <button onClick={() => setActiveTab('images')} className={`${activeTab === 'images' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Images</button>
+      </nav>
     </div>
   );
 
@@ -151,11 +133,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
         return (
           <div>
             {(isLoadingImages || isLoadingOutfits) ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : outfits.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {outfits.map((outfit) => (
-                        <OutfitCard key={outfit.id} outfit={outfit} onSelect={() => setViewState({view: 'applyOutfit', outfit: outfit})} />
-                    ))}
-                </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {outfits.map((outfit) => (
+                  <OutfitCard key={outfit.id} outfit={outfit} onSelect={() => setViewState({ view: 'applyOutfit', outfit: outfit })} />
+                ))}
+              </div>
             ) : <p className="text-content-200 dark:text-dark-content-200 text-center py-10">This user hasn&apos;t created any outfits yet.</p>}
           </div>
         );
@@ -163,11 +145,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
         return (
           <div>
             {isLoadingFilters ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : filters.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {filters.map((filter) => (
-                        <FilterCard key={filter.id} filter={filter} onSelect={() => setViewState({view: 'apply', filter: filter})} onEdit={() => setViewState({ view: 'edit', filter: filter })} user={currentUser} onDelete={async () => {}} />
-                    ))}
-                </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {filters.map((filter) => (
+                  <FilterCard key={filter.id} filter={filter} onSelect={() => setViewState({ view: 'apply', filter: filter })} onEdit={() => setViewState({ view: 'edit', filter: filter })} user={currentUser} onDelete={async () => { }} />
+                ))}
+              </div>
             ) : <p className="text-content-200 dark:text-dark-content-200 text-center py-10">This user hasn&apos;t created any filters yet.</p>}
           </div>
         );
@@ -175,25 +157,25 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
         return (
           <div>
             {isLoadingImages ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : images.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {images.map((image) => {
-                      const imageUrl = getSafeImageUrl(image.imageUrl || image.image || image.url);
-                      if (!imageUrl) return null;
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {images.map((image) => {
+                  const imageUrl = getSafeImageUrl(image.imageUrl || image.image || image.url);
+                  if (!imageUrl) return null;
 
-                      return (
-                        <div key={image.id} className="relative group rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow cursor-pointer" onClick={() => handleImageClick(image)}>
-                            <img src={imageUrl} alt="User generated content" className="w-full h-auto object-cover"/>
-                            {isOwner && (
-                              <div className="absolute top-2 right-2">
-                                  <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(image.id); }} className="p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
-                                      <TrashIcon className="h-5 w-5" />
-                                  </button>
-                              </div>
-                            )}
+                  return (
+                    <div key={image.id} className="relative group rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow cursor-pointer" onClick={() => handleImageClick(image)}>
+                      <img src={imageUrl} alt="User generated content" className="w-full h-auto object-cover" />
+                      {isOwner && (
+                        <div className="absolute top-2 right-2">
+                          <button onClick={(e) => { e.stopPropagation(); console.warn("Delete disabled"); }} className="p-2 rounded-full bg-black bg-opacity-50 text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
                         </div>
-                      )
-                    })}
-                </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             ) : <p className="text-content-200 dark:text-dark-content-200 text-center py-10">This user hasn&apos;t saved any images yet.</p>}
           </div>
         );
@@ -204,25 +186,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 bg-base-200 dark:bg-dark-base-200 rounded-lg shadow-lg">
-      {showDeleteConfirm && (
-        <ConfirmationDialog
-          title="Delete Image"
-          message="Are you sure you want to permanently delete this image? This action cannot be undone."
-          onConfirm={() => {
-              handleDeleteImage(showDeleteConfirm);
-              closeModal();
-          }}
-          onCancel={() => setShowDeleteConfirm(null)}
-        />
-      )}
 
       {selectedImage && (
-        <PostView 
-            selectedImage={selectedImage} 
-            onClose={closeModal} 
-            isOwner={isOwner} 
-            onDelete={onImageDelete} 
-            onCreateYourOwn={onCreateYourOwn}
+        <PostView
+          selectedImage={selectedImage}
+          onClose={closeModal}
+          isOwner={isOwner}
+          onCreateYourOwn={onCreateYourOwn}
         />
       )}
 

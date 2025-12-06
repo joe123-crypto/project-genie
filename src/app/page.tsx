@@ -3,18 +3,21 @@
 import { useState, useCallback, useEffect } from "react";
 import dynamic from 'next/dynamic';
 import { Capacitor } from '@capacitor/core';
-import { Filter, ViewState, User, Outfit } from "../types";
+import { Filter, ViewState, User, Outfit, Hairstyle } from "../types";
 import CreateMenu from "../components/CreateMenu";
 import Marketplace from "../components/Marketplace";
 import ApplyFilterView from "../components/ApplyFilterView";
 import ApplyOutfitView from "../components/ApplyOutfitView";
+import CreateHairstyleView from "../components/CreateHairstyleView";
+import ApplyHairstyleView from "../components/ApplyHairstyleView";
+import HairstylesView from "../components/HairstylesView";
 import OutfitsView from "../components/OutfitsView";
 import StudioView from "../components/CreateFilterView";
 import AuthView from "../components/AuthView"; // Keep existing AuthView for later access if needed
 import SharedImageView from "../components/SharedImageView";
 import WelcomeModal from "../components/WelcomeModal";
 import { SunIcon, MoonIcon, WhatsAppIcon, SearchIcon } from "../components/icons";
-import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById } from "../services/firebaseService";
+import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById, getHairstyles, incrementHairstyleAccessCount, deleteHairstyle, updateHairstyle } from "../services/firebaseService";
 import { deleteUser } from "../services/userService";
 import { getAuthUser, signOut } from "../services/authService";
 import { Spinner } from "../components/Spinner"; // Corrected import for Spinner
@@ -34,6 +37,7 @@ const CreateOutfitView = dynamic(() => import('../components/CreateOutfitView'),
 export default function Home() {
   const [filters, setFilters] = useState<Filter[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
+  const [hairstyles, setHairstyles] = useState<Hairstyle[]>([]);
   const [viewState, setViewState] = useState<ViewState>({ view: "initialAuth" });
   const [isLoading, setIsLoading] = useState<boolean>(true); // Combined loading state
   const [user, setUser] = useState<User | null>(null);
@@ -90,9 +94,11 @@ export default function Home() {
 
         const [data, currentUser] = await Promise.all([dataPromise, userPromise]);
         const [fetchedFilters, fetchedOutfits] = data;
+        const fetchedHairstyles = await getHairstyles();
 
         setFilters(fetchedFilters);
         setOutfits(fetchedOutfits);
+        setHairstyles(fetchedHairstyles);
 
         if (currentUser) {
           setUser(currentUser);
@@ -165,6 +171,11 @@ export default function Home() {
     []
   );
 
+  const addHairstyle = useCallback(
+    (newHairstyle: Hairstyle) => setHairstyles(prev => [newHairstyle, ...prev]),
+    []
+  );
+
   const handleDeleteFilter = useCallback(
     async (filterId: string) => {
       if (!user || user.email !== "munemojoseph332@gmail.com")
@@ -226,6 +237,52 @@ export default function Home() {
       );
     },
     []
+  );
+
+  const handleSelectHairstyle = useCallback(
+    (hairstyle: Hairstyle) => {
+      setViewState({ view: "applyHairstyle", hairstyle });
+      incrementHairstyleAccessCount(hairstyle.id);
+      setHairstyles(prevHairstyles =>
+        prevHairstyles.map(h =>
+          h.id === hairstyle.id
+            ? { ...h, accessCount: (h.accessCount || 0) + 1 }
+            : h
+        )
+      );
+    },
+    []
+  );
+
+  const handleDeleteHairstyle = useCallback(
+    async (hairstyleId: string) => {
+      if (!user) throw new Error("Must be logged in");
+      try {
+        await deleteHairstyle(hairstyleId);
+        setHairstyles(prev => prev.filter(h => h.id !== hairstyleId));
+      }
+      catch (err) {
+        console.error(err);
+        throw err;
+      }
+    },
+    [user]
+  );
+
+  const handleUpdateHairstyle = useCallback(
+    async (hairstyleToUpdate: Hairstyle) => {
+      if (!user) throw new Error("Must be logged in");
+      try {
+        const { id, ...dataToUpdate } = hairstyleToUpdate;
+        const updatedHairstyle = await updateHairstyle(id, dataToUpdate);
+        setHairstyles(prev => prev.map(h => (h.id === id ? updatedHairstyle : h)));
+      }
+      catch (err) {
+        console.error(err);
+        throw err;
+      }
+    },
+    [user]
   );
 
   const handleCreateYourOwn = async (filterId: string) => {
@@ -297,17 +354,17 @@ export default function Home() {
     const isRightSwipe = distance < -minSwipeDistance;
 
     if (isLeftSwipe || isRightSwipe) {
-      const tabs = ["search", "marketplace", "outfits"];
+      const tabs = ["search", "marketplace", "outfits", "hairstyles"];
       const currentIndex = tabs.indexOf(viewState.view);
 
       if (currentIndex !== -1) {
         if (isLeftSwipe && currentIndex < tabs.length - 1) {
           setTransitionDirection("left");
-          const nextView = tabs[currentIndex + 1] as "search" | "marketplace" | "outfits" | "feed";
+          const nextView = tabs[currentIndex + 1] as "search" | "marketplace" | "outfits" | "hairstyles" | "feed";
           setViewState({ view: nextView });
         } else if (isRightSwipe && currentIndex > 0) {
           setTransitionDirection("right");
-          const prevView = tabs[currentIndex - 1] as "search" | "marketplace" | "outfits" | "feed";
+          const prevView = tabs[currentIndex - 1] as "search" | "marketplace" | "outfits" | "hairstyles" | "feed";
           setViewState({ view: prevView });
         }
       }
@@ -360,11 +417,20 @@ export default function Home() {
                   setViewState={setViewState}
                   user={user}
                   addFilter={addFilter}
+                  addHairstyle={addHairstyle}
                   onBack={() => setViewState({ view: "create" })}
                 />
               );
             case "createOutfit":
               return <CreateOutfitView setViewState={setViewState} user={user} addOutfit={addOutfit} />;
+            case "createHairstyle":
+              return <CreateHairstyleView
+                setViewState={setViewState}
+                user={user}
+                addHairstyle={addHairstyle}
+                hairstyleToEdit={viewState.editingHairstyle}
+                onUpdateHairstyle={handleUpdateHairstyle}
+              />;
             case "edit":
               return <StudioView setViewState={setViewState} user={user} filterToEdit={viewState.filter} onUpdateFilter={handleUpdateFilter} />;
             case "auth":
@@ -379,6 +445,21 @@ export default function Home() {
               return (
                 <ApplyOutfitView
                   outfit={viewState.outfit!}
+                  user={user}
+                />
+              );
+            case "hairstyles":
+              return <HairstylesView
+                hairstyles={hairstyles}
+                onSelectHairstyle={handleSelectHairstyle}
+                user={user}
+                onDeleteHairstyle={handleDeleteHairstyle}
+                onEditHairstyle={(h) => setViewState({ view: "createHairstyle", editingHairstyle: h })}
+              />;
+            case "applyHairstyle":
+              return (
+                <ApplyHairstyleView
+                  hairstyle={viewState.hairstyle!}
                   user={user}
                 />
               );
@@ -404,7 +485,7 @@ export default function Home() {
     );
   };
 
-  const showDashboard = user && (viewState.view === "marketplace" || viewState.view === "feed" || viewState.view === "outfits");
+  const showDashboard = user && (viewState.view === "marketplace" || viewState.view === "feed" || viewState.view === "outfits" || viewState.view === "hairstyles");
 
   // Show landing page on web for first-time visitors
   if (isWeb && showLandingPage) {
@@ -501,6 +582,15 @@ export default function Home() {
                   }`}
               >
                 Outfits
+              </button>
+              <button
+                onClick={() => setViewState({ view: "hairstyles" })}
+                className={`py-3 font-semibold transition-colors ${viewState.view === "hairstyles"
+                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+                  }`}
+              >
+                Hairstyles
               </button>
 
             </div>

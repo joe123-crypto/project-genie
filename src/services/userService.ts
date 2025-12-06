@@ -1,4 +1,4 @@
-import { User, Share, Outfit, Filter } from '../types';
+import { Share, Outfit, Filter } from '../types';
 import { auth, db } from '../lib/firebase';
 import { deleteUser as firebaseDeleteUser } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -8,18 +8,18 @@ import { collection, query, where, getDocs } from "firebase/firestore";
  * The associated user data in Firestore should be cleaned up via backend triggers or manually.
  */
 export const deleteUser = async (): Promise<void> => {
-  const user = auth.currentUser;
-  if (!user) {
-    throw new Error("No user is currently signed in.");
-  }
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error("No user is currently signed in.");
+    }
 
-  try {
-    await firebaseDeleteUser(user);
-  } catch (error) {
-    console.error("Error deleting user:", error);
-    // You might want to re-authenticate the user here if the token is expired
-    throw error;
-  }
+    try {
+        await firebaseDeleteUser(user);
+    } catch (error) {
+        console.error("Error deleting user:", error);
+        // You might want to re-authenticate the user here if the token is expired
+        throw error;
+    }
 };
 
 /**

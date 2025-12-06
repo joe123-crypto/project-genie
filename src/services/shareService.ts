@@ -27,14 +27,14 @@ export interface ShareResult {
 
 // Specific type for the response from the toggleLike API
 interface ToggleLikeApiResponse {
-    message: string;
-    share: Share;
+  message: string;
+  share: Share;
 }
 
 // Specific type for the error response from the toggleLike API
 interface ToggleLikeApiError {
-    error: string;
-    details?: string;
+  error: string;
+  details?: string;
 }
 
 
@@ -65,23 +65,23 @@ export const getSharedImage = async (shareId: string): Promise<SharedImage> => {
 // Helper function to generate filter URL for sharing
 export const getFilterUrl = (filterId: string): string => {
   if (typeof window === 'undefined') return '';
-  
+
   // On native platforms, use production URL instead of file:// or capacitor://
   const isNative = Capacitor.isNativePlatform();
   let baseUrl: string;
-  
+
   if (isNative) {
     // Use production URL for native platforms
-    baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL 
+    baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
       ? process.env.NEXT_PUBLIC_API_BASE_URL.replace(/\/+$/, '')
-      : (process.env.NEXT_PUBLIC_VERCEL_URL 
-          ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-          : 'https://project-genie-sigma.vercel.app');
+      : (process.env.NEXT_PUBLIC_VERCEL_URL
+        ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+        : 'https://project-genie-sigma.vercel.app');
   } else {
     // Use current origin for web
     baseUrl = window.location.origin;
   }
-  
+
   return `${baseUrl}/?view=apply&filterId=${filterId}`;
 };
 
@@ -118,11 +118,11 @@ export const shareImage = async (
 
   try {
     console.log('[Share] Starting share process...');
-    
+
     // 1. Convert base64ImageDataUrl to proper format if needed and downscale it
     let imageDataUrl = base64ImageDataUrl;
     console.log('[Share] Image format:', imageDataUrl.startsWith('data:') ? 'data URL' : 'HTTP URL');
-    
+
     // If it's already a data URL, use it directly
     // If it's an HTTP URL, fetch it and convert to data URL
     if (!imageDataUrl.startsWith('data:')) {
@@ -155,36 +155,36 @@ export const shareImage = async (
       downscaledBase64 = await downscale(imageDataUrl, 1024, 'png', 1.0);
       console.log('[Share] Image downscaled to PNG successfully');
     }
-    
-    const downscaledDataUrl = downscaledBase64.startsWith('data:') 
-      ? downscaledBase64 
+
+    const downscaledDataUrl = downscaledBase64.startsWith('data:')
+      ? downscaledBase64
       : `data:image/webp;base64,${downscaledBase64}`;
 
     // 3. Upload downscaled image to R2 using /api/save-image endpoint
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 8);
     const directoryName = `${timestamp}-${randomId}`;
-    
+
     console.log('[Share] Uploading image to R2...');
     const uploadResponse = await fetch(`${baseUrl}/api/save-image`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        image: downscaledDataUrl, 
+      body: JSON.stringify({
+        image: downscaledDataUrl,
         destination: 'shared',
         directoryName: directoryName
       }),
     });
 
     console.log('[Share] Upload response status:', uploadResponse.status);
-    
+
     if (!uploadResponse.ok) {
       let errorText = 'Failed to upload image';
       try {
         const errorData = await uploadResponse.json();
         errorText = errorData.error || `Upload failed with status ${uploadResponse.status}`;
         console.error('[Share] Upload error:', errorData);
-      } catch (parseError) {
+      } catch {
         const text = await uploadResponse.text().catch(() => 'Unknown error');
         console.error('[Share] Upload error response:', text);
         errorText = `Upload failed: ${text.substring(0, 200)}`;
@@ -194,7 +194,7 @@ export const shareImage = async (
 
     const uploadData = await uploadResponse.json();
     console.log('[Share] Upload response data:', uploadData);
-    
+
     const fileUrl = uploadData.url;
     if (!fileUrl) {
       console.error('[Share] No URL in upload response:', uploadData);
@@ -219,12 +219,12 @@ export const shareImage = async (
     });
 
     console.log('[Share] Share API response status:', response.status);
-    
+
     let data: ShareApiResponse;
     try {
       data = await response.json();
       console.log('[Share] Share API response data:', data);
-    } catch (parseError) {
+    } catch {
       const text = await response.text().catch(() => 'Unknown error');
       console.error('[Share] Failed to parse share API response:', text);
       throw new Error(`Failed to parse share response: ${text.substring(0, 200)}`);
@@ -233,7 +233,7 @@ export const shareImage = async (
     if (!response.ok) {
       throw new Error(data.error ?? `Share API failed with status ${response.status}`);
     }
-    
+
     if (!data.shareUrl) {
       console.error('[Share] No shareUrl in response:', data);
       throw new Error('No shareUrl returned from share API');
@@ -255,64 +255,64 @@ export const shareImage = async (
 
 
 export const fetchPublicFeed = async (): Promise<Share[]> => {
-    const baseUrl = getApiBaseUrlRuntime();
-    try {
-        const response = await fetch(`${baseUrl}/api/shares/public`);
-        if (!response.ok) {
-            // Try to parse the error details from the API response
-            const data: ShareApiResponse = await response.json().catch(() => ({ error: 'Failed to fetch public feed. The API response was not valid JSON.' }));
-            // Construct a more informative error message
-            const errorMessage = `${data.error}${data.details ? `: ${data.details}` : ''}`;
-            throw new Error(errorMessage);
-        }
-        const result = await response.json();
-        return result.shares || [];
-    } catch (error) {
-        console.error('Error fetching public feed:', error);
-        throw error;
+  const baseUrl = getApiBaseUrlRuntime();
+  try {
+    const response = await fetch(`${baseUrl}/api/shares/public`);
+    if (!response.ok) {
+      // Try to parse the error details from the API response
+      const data: ShareApiResponse = await response.json().catch(() => ({ error: 'Failed to fetch public feed. The API response was not valid JSON.' }));
+      // Construct a more informative error message
+      const errorMessage = `${data.error}${data.details ? `: ${data.details}` : ''}`;
+      throw new Error(errorMessage);
     }
+    const result = await response.json();
+    return result.shares || [];
+  } catch (error) {
+    console.error('Error fetching public feed:', error);
+    throw error;
+  }
 };
 
 export const fetchUser = async (userId: string): Promise<User> => {
-    const baseUrl = getApiBaseUrlRuntime();
-    try {
-        const response = await fetch(`${baseUrl}/api/user/profile?userId=${userId}`);
-        if (!response.ok) {
-            const data: ShareApiResponse = await response.json().catch(() => ({ error: `Failed to fetch user ${userId}` }));
-            const errorMessage = `${data.error}${data.details ? `: ${data.details}` : ''}`;
-            throw new Error(errorMessage);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error(`Error fetching user ${userId}:`, error);
-        throw error;
+  const baseUrl = getApiBaseUrlRuntime();
+  try {
+    const response = await fetch(`${baseUrl}/api/user/profile?userId=${userId}`);
+    if (!response.ok) {
+      const data: ShareApiResponse = await response.json().catch(() => ({ error: `Failed to fetch user ${userId}` }));
+      const errorMessage = `${data.error}${data.details ? `: ${data.details}` : ''}`;
+      throw new Error(errorMessage);
     }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching user ${userId}:`, error);
+    throw error;
+  }
 };
 
 
 export const toggleLike = async (postId: string, idToken: string): Promise<Share> => {
-    const baseUrl = getApiBaseUrlRuntime();
-    const response = await fetch(`${baseUrl}/api/shares/like`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ postId }),
-    });
+  const baseUrl = getApiBaseUrlRuntime();
+  const response = await fetch(`${baseUrl}/api/shares/like`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ postId }),
+  });
 
-    if (!response.ok) {
-        const errorData: ToggleLikeApiError = await response.json();
-        const errorMessage = `${errorData.error}${errorData.details ? `: ${errorData.details}` : ''}`;
-        throw new Error(errorMessage || 'Failed to toggle like');
-    }
+  if (!response.ok) {
+    const errorData: ToggleLikeApiError = await response.json();
+    const errorMessage = `${errorData.error}${errorData.details ? `: ${errorData.details}` : ''}`;
+    throw new Error(errorMessage || 'Failed to toggle like');
+  }
 
-    const data: ToggleLikeApiResponse = await response.json();
-    if (!data.share) {
-        throw new Error("API did not return a share object after toggling like.");
-    }
+  const data: ToggleLikeApiResponse = await response.json();
+  if (!data.share) {
+    throw new Error("API did not return a share object after toggling like.");
+  }
 
-    return data.share;
+  return data.share;
 };
 
 export const postToFeed = async (shareId: string): Promise<void> => {
@@ -335,19 +335,19 @@ export const postToFeed = async (shareId: string): Promise<void> => {
 };
 
 export const fetchFilter = async (filterId: string, idToken: string): Promise<Filter> => {
-    const baseUrl = getApiBaseUrlRuntime();
-    const response = await fetch(`${baseUrl}/api/filters/${filterId}`, {
-        headers: {
-            'Authorization': `Bearer ${idToken}`,
-        },
-    });
+  const baseUrl = getApiBaseUrlRuntime();
+  const response = await fetch(`${baseUrl}/api/filters/${filterId}`, {
+    headers: {
+      'Authorization': `Bearer ${idToken}`,
+    },
+  });
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = `${errorData.error}${errorData.details ? `: ${errorData.details}` : ''}`;
-        throw new Error(errorMessage || 'Failed to fetch filter');
-    }
+  if (!response.ok) {
+    const errorData = await response.json();
+    const errorMessage = `${errorData.error}${errorData.details ? `: ${errorData.details}` : ''}`;
+    throw new Error(errorMessage || 'Failed to fetch filter');
+  }
 
-    const data = await response.json();
-    return data.filter;
+  const data = await response.json();
+  return data.filter;
 };

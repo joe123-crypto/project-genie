@@ -39,13 +39,14 @@ export const toggleLike = async (postId: string): Promise<Share> => {
         postData.likes = likes.filter(uid => uid !== user.uid);
         postData.likeCount = (postData.likeCount || 1) - 1;
     } else {
+        await likePost(postId, user.uid);
         if (!postData.likes) {
             postData.likes = [];
         }
         postData.likes.push(user.uid);
         postData.likeCount = (postData.likeCount || 0) + 1;
     }
-    
+
     // Return the locally updated post data to provide immediate feedback to the UI.
     return postData;
 };

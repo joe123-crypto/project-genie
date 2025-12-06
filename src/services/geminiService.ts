@@ -118,7 +118,7 @@ export const generateImage = async (prompt: string, destination?: string): Promi
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.error || "Failed to generate image");
     }
@@ -129,10 +129,10 @@ export const generateImage = async (prompt: string, destination?: string): Promi
     if (data.transformedImage) {
       return data.transformedImage;
     }
-    if (data.imageUrl){
+    if (data.imageUrl) {
       return data.imageUrl;
     }
- 
+
     console.error("No image in response:", data);
     throw new Error("No image returned from backend");
   } catch (error) {
@@ -159,7 +159,7 @@ export const generateText = async (prompt: string): Promise<string> => {
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.error || "Failed to generate text");
     }
@@ -171,6 +171,43 @@ export const generateText = async (prompt: string): Promise<string> => {
     return data.text;
   } catch (error) {
     console.error("Error generating text:", error);
+    throw error;
+  }
+};
+
+/**
+ * Generates a creative name for a hairstyle based on an image using Gemini.
+ * @param imageBase64 - The base64 string of the hairstyle image.
+ * @returns A promise that resolves to the generated name.
+ */
+export const generateNameFromImage = async (imageBase64: string): Promise<string> => {
+  const baseUrl = getApiBaseUrlRuntime();
+  const targetUrl = `${baseUrl}/api/gemini`;
+  try {
+    const response = await fetch(targetUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt: "Generate a short, creative, and catchy name (max 3-4 words) for this hairstyle. Return ONLY the name, no quotes.",
+        images: [imageBase64]
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to generate name");
+    }
+
+    if (!data.text) {
+      throw new Error("No text returned from backend");
+    }
+
+    return data.text.replace(/^["']|["']$/g, '').trim(); // Remove quotes if any
+  } catch (error) {
+    console.error("Error generating name:", error);
     throw error;
   }
 };
@@ -189,7 +226,7 @@ export const improvePrompt = async (prompt: string): Promise<string> => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         prompt: `Understand what the user needs and improve this prompt to be more detailed. Do not exaggerate beyond what the user wants, only make it more naunce so that the model understands what the user wants: ${prompt}. Return only the improved prompt, no other text.
                  Example
 
@@ -200,7 +237,7 @@ export const improvePrompt = async (prompt: string): Promise<string> => {
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.error || "Failed to improve prompt");
     }
@@ -223,7 +260,7 @@ export const improvePrompt = async (prompt: string): Promise<string> => {
  * @returns A promise that resolves to the merged base64 image URL.
  */
 export const mergeImages = async (
-  imageInputs: (File | string) [],
+  imageInputs: (File | string)[],
   prompt: string,
   save?: string
 ): Promise<string> => {
@@ -274,7 +311,7 @@ ${prompt}
       }
       return input;
     });
-      
+
     // Convert both. Images to safe base64 strings and downscale them
     const [imageBase64A, imageBase64B] = await Promise.all([
       downscale(processedInputs[0], 1024, "webp", 0.8),
@@ -323,19 +360,116 @@ ${prompt}
 };
 
 
+
+/**
+ * Merges a hairstyle from a source image onto a target person's image.
+ * 
+ * @param targetImage - The image of the person (User photo)
+ * @param hairstyleImage - The source image of the hairstyle.
+ * @param prompt - Additional prompt context.
+ * @returns Promise<string> - URL or base64 of the result.
+ */
+export const mergeHairstyle = async (
+  targetImage: string,
+  hairstyleImage: string,
+  prompt: string,
+  save?: string
+): Promise<string> => {
+  // We follow the user's specific request for image order:
+  // 1. Hairstyle Image (Source)
+  // 2. User Image (Target)
+  const imageInputs = [hairstyleImage, targetImage];
+
+  const hairstylePrompt = `
+<SYSTEM>
+You are a professional hair stylist and AI visual editor.
+
+Task: Transfer the hairstyle from the first image to the person in the second image.
+
+Input Images:
+1. First Image: The Source Hairstyle. (Ignore the face/person here).
+2. Second Image: The Target Person.
+
+Instructions:
+1. Identify the hairstyle in the first image. Copy it **exactly as it is**.
+2. Apply this hairstyle to the person in the second image.
+3. **Fill in any gaps** where the new hairstyle might not cover the old head shape, or where the original hair was different.
+4. **Completely ignore** the person/face in the first image. Only extract the hair.
+5. Keep the face, expression, skin tone, and features of the person in the second image **exactly the same**. Do not alter their identity.
+6. The result should look like a natural photograph of the person from the second image wearing the hair from the first image.
+
+${prompt}
+</SYSTEM>
+`;
+
+  const baseUrl = getApiBaseUrlRuntime();
+  const targetUrl = `${baseUrl}/api/nanobanana`;
+
+  try {
+    const processedInputs = imageInputs.map(input => {
+      if (typeof input === 'string' && input.startsWith('http')) {
+        const url = new URL(input);
+        url.searchParams.set('t', Date.now().toString());
+        return url.toString();
+      }
+      return input;
+    });
+
+    const [imageBase64A, imageBase64B] = await Promise.all([
+      downscale(processedInputs[0], 1024, "webp", 0.8),
+      downscale(processedInputs[1], 1024, "webp", 0.8),
+    ]);
+
+    const response = await fetch(targetUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        textPrompt: hairstylePrompt,
+        images: [
+          { mediaType: 'image/webp', data: imageBase64A },
+          { mediaType: 'image/webp', data: imageBase64B },
+        ],
+        save,
+      }),
+    });
+
+    if (!response.ok) {
+      let errorText;
+      try {
+        const errorData = await response.json();
+        errorText = errorData.error || `Request failed with status ${response.status}`;
+      } catch {
+        errorText = await response.text().catch(() => `Request failed with status ${response.status}`);
+      }
+      throw new Error(errorText || "Failed to merge hairstyle");
+    }
+
+    const data = await response.json();
+
+    if (data.imageBase64) return `data:image/png;base64,${data.imageBase64}`;
+    if (data.transformedImage) return data.transformedImage;
+    if (data.imageUrl) return data.imageUrl;
+
+    throw new Error("No merged image returned from backend");
+  } catch (error) {
+    console.error("Error merging hairstyle:", error);
+    throw error;
+  }
+};
+
 // Alias functions for backward compatibility
 export const generateImageFromPrompt = generateImage;
-export const applyFilter = (base64ImageDataUrl: string, prompt: string) => 
+export const applyFilter = (base64ImageDataUrl: string, prompt: string) =>
   applyImageFilter([base64ImageDataUrl], prompt);
 export const mergeImagesWithFilter = mergeImages;
 export const createImageFromPrompt = generateImage;
 export const createTextFromPrompt = generateText;
-export const applyFilterToImage = (base64ImageDataUrl: string, prompt: string) => 
+export const applyFilterToImage = (base64ImageDataUrl: string, prompt: string) =>
   applyImageFilter([base64ImageDataUrl], prompt);
 export const mergeImagesWithFilterEffect = mergeImages;
-export const filterImage = (base64ImageDataUrl: string, prompt: string) => 
+export const filterImage = (base64ImageDataUrl: string, prompt: string) =>
   applyImageFilter([base64ImageDataUrl], prompt);
 export const mergeImagesWithFilterPrompt = mergeImages;
-export const applyFilterToSingleImage = (base64ImageDataUrl: string, prompt: string) => 
+export const applyFilterToSingleImage = (base64ImageDataUrl: string, prompt: string) =>
   applyImageFilter([base64ImageDataUrl], prompt);
 export const mergeMultipleImages = mergeImages;
