@@ -36,7 +36,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
         <div className="min-h-screen relative overflow-hidden">
             {/* Animated gradient background */}
             <div className="fixed inset-0 z-0">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-pink-600 dark:from-purple-900 dark:via-blue-900 dark:to-pink-900 animate-gradient-shift" />
+                <div className="absolute inset-0 bg-gray-100 dark:bg-gray-900" />
                 <div className="absolute inset-0 backdrop-blur-3xl opacity-60" />
             </div>
 
@@ -81,11 +81,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                             <span className="bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">Genaie</span>
                         </h1>
 
-                        <p className="text-xl sm:text-2xl text-white/90 mb-4 max-w-3xl mx-auto animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                        <p className="text-xl sm:text-2xl text-black/90 mb-4 max-w-3xl mx-auto animate-fade-in" style={{ animationDelay: '0.2s' }}>
                             Transform Your Photos with AI Magic
                         </p>
 
-                        <p className="text-lg text-white/80 mb-12 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.3s' }}>
+                        <p className="text-lg text-black/80 mb-12 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.3s' }}>
                             Create stunning filters, design unique outfits, and share your creations with a vibrant community.
                             Powered by cutting-edge AI technology to bring your creative visions to life.
                         </p>
@@ -100,7 +100,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                             </button>
                             <button
                                 onClick={onSignIn}
-                                className="px-8 py-4 bg-white/10 backdrop-blur-md text-white border-2 border-white/30 rounded-full font-bold text-lg hover:bg-white/20 transition-all duration-300 transform hover:scale-105"
+                                className="px-8 py-4 bg-white/10 backdrop-blur-md text-black/30 border-2 border-white/60 rounded-full font-bold text-lg hover:bg-white/20 transition-all duration-300 transform hover:scale-105"
                             >
                                 Sign In / Sign Up
                             </button>
@@ -121,7 +121,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
 
                 {/* Features Section */}
                 <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-                    <h2 className="text-4xl font-bold text-white text-center mb-16">
+                    <h2 className="text-4xl font-bold text-black/90 text-center mb-16">
                         Unleash Your <span className="bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">Creativity</span>
                     </h2>
 
@@ -129,36 +129,36 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                         {/* Feature 1 */}
                         <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 transform hover:scale-105">
                             <div className="text-4xl mb-4">🎨</div>
-                            <h3 className="text-xl font-bold text-white mb-2">Custom Filters</h3>
-                            <p className="text-white/80">Design and apply unique AI-powered filters to transform your photos instantly.</p>
+                            <h3 className="text-xl font-bold text-black/90 mb-2">Custom Filters</h3>
+                            <p className="text-black/80">Design and apply unique AI-powered filters to transform your photos instantly.</p>
                         </div>
 
                         {/* Feature 2 */}
                         <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 transform hover:scale-105">
                             <div className="text-4xl mb-4">👔</div>
-                            <h3 className="text-xl font-bold text-white mb-2">Outfit Design</h3>
-                            <p className="text-white/80">Create stunning outfits and visualize how they look with AI assistance.</p>
+                            <h3 className="text-xl font-bold text-black/90 mb-2">Outfit Design</h3>
+                            <p className="text-black/80">Create stunning outfits and visualize how they look with AI assistance.</p>
                         </div>
 
                         {/* Feature 3 */}
                         <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 transform hover:scale-105">
                             <div className="text-4xl mb-4">🌟</div>
-                            <h3 className="text-xl font-bold text-white mb-2">Community Sharing</h3>
-                            <p className="text-white/80">Share your creations and discover amazing content from other creators.</p>
+                            <h3 className="text-xl font-bold text-black/90 mb-2">Community Sharing</h3>
+                            <p className="text-black/80">Share your creations and discover amazing content from other creators.</p>
                         </div>
 
                         {/* Feature 4 */}
                         <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 transform hover:scale-105">
                             <div className="text-4xl mb-4">🤖</div>
-                            <h3 className="text-xl font-bold text-white mb-2">AI-Powered</h3>
-                            <p className="text-white/80">Leverage cutting-edge AI technology for breathtaking transformations.</p>
+                            <h3 className="text-xl font-bold text-black/90 mb-2">AI-Powered</h3>
+                            <p className="text-black/80">Leverage cutting-edge AI technology for breathtaking transformations.</p>
                         </div>
                     </div>
                 </section>
 
                 {/* Showcase Section */}
                 <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 pb-32">
-                    <h2 className="text-4xl font-bold text-white text-center mb-16">
+                    <h2 className="text-4xl font-bold text-black/60 text-center mb-16">
                         See It In <span className="bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">Action</span>
                     </h2>
 

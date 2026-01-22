@@ -42,6 +42,20 @@ export interface Hairstyle {
   prompt?: string;
 }
 
+export interface VideoTemplate {
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+  previewImageUrl: string; // Cover image for the template
+  category: string;
+  accessCount: number;
+  createdAt: string;
+  updatedAt: string;
+  creatorId: string;
+  username?: string;
+}
+
 export interface User {
   uid: string;
   email: string;
@@ -93,4 +107,7 @@ export type ViewState =
   | { view: "initialAuth" }
   | { view: "hairstyles" }
   | { view: "createHairstyle"; editingHairstyle?: Hairstyle }
-  | { view: "applyHairstyle"; hairstyle: Hairstyle };
+  | { view: "applyHairstyle"; hairstyle: Hairstyle }
+  | { view: "videos" }
+  | { view: "createVideo"; editingVideo?: VideoTemplate }
+  | { view: "applyVideo"; videoTemplate: VideoTemplate };

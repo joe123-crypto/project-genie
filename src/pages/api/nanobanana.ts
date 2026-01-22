@@ -113,8 +113,17 @@ export default async function handler(
   }
 
   try {
+    // Determine which model to use based on whether input images are provided
+    // Text-to-Image (no images): google/imagen-4.0-ultra-generate-001
+    // Image-to-Image (with images): google/gemini-3-pro-image
+    const hasInputImages = images && images.length > 0;
+    // Use Gemini 3 Pro Image for all - it supports both text-to-image and image-to-image
+    const model = "google/gemini-3-pro-image";
+
+    console.log(`[SERVER] Using model: ${model} (Input images: ${hasInputImages ? images?.length : 0})`);
+
     const result = await generateText({
-      model: "google/gemini-3-pro-image",
+      model,
       providerOptions: {
         google: {
           responseModalities: ["IMAGE"],

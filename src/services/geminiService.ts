@@ -114,7 +114,7 @@ export const generateImage = async (prompt: string, destination?: string): Promi
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ textPrompt: prompt, destination: destination }),
+      body: JSON.stringify({ textPrompt: prompt, save: destination }),
     });
 
     const data = await response.json();

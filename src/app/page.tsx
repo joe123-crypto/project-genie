@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import dynamic from 'next/dynamic';
 import { Capacitor } from '@capacitor/core';
-import { Filter, ViewState, User, Outfit, Hairstyle } from "../types";
+import { Filter, ViewState, User, Outfit, Hairstyle, VideoTemplate } from "../types";
 import CreateMenu from "../components/CreateMenu";
 import Marketplace from "../components/Marketplace";
 import ApplyFilterView from "../components/ApplyFilterView";
@@ -12,12 +12,15 @@ import CreateHairstyleView from "../components/CreateHairstyleView";
 import ApplyHairstyleView from "../components/ApplyHairstyleView";
 import HairstylesView from "../components/HairstylesView";
 import OutfitsView from "../components/OutfitsView";
+import VideosView from "../components/VideosView";
+import CreateVideoView from "../components/CreateVideoView";
+import ApplyVideoView from "../components/ApplyVideoView";
 import StudioView from "../components/CreateFilterView";
 import AuthView from "../components/AuthView"; // Keep existing AuthView for later access if needed
 import SharedImageView from "../components/SharedImageView";
 import WelcomeModal from "../components/WelcomeModal";
 import { SunIcon, MoonIcon, WhatsAppIcon, SearchIcon } from "../components/icons";
-import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById, getHairstyles, incrementHairstyleAccessCount, deleteHairstyle, updateHairstyle } from "../services/firebaseService";
+import { getFilters, deleteFilter, incrementFilterAccessCount, updateFilter, getOutfits, incrementOutfitAccessCount, getFilterById, getHairstyles, incrementHairstyleAccessCount, deleteHairstyle, updateHairstyle, getVideoTemplates, incrementVideoAccessCount } from "../services/firebaseService";
 import { deleteUser } from "../services/userService";
 import { getAuthUser, signOut } from "../services/authService";
 import { Spinner } from "../components/Spinner"; // Corrected import for Spinner
@@ -38,6 +41,7 @@ export default function Home() {
   const [filters, setFilters] = useState<Filter[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [hairstyles, setHairstyles] = useState<Hairstyle[]>([]);
+  const [videoTemplates, setVideoTemplates] = useState<VideoTemplate[]>([]);
   const [viewState, setViewState] = useState<ViewState>({ view: "initialAuth" });
   const [isLoading, setIsLoading] = useState<boolean>(true); // Combined loading state
   const [user, setUser] = useState<User | null>(null);
@@ -95,10 +99,12 @@ export default function Home() {
         const [data, currentUser] = await Promise.all([dataPromise, userPromise]);
         const [fetchedFilters, fetchedOutfits] = data;
         const fetchedHairstyles = await getHairstyles();
+        const fetchedVideoTemplates = await getVideoTemplates();
 
         setFilters(fetchedFilters);
         setOutfits(fetchedOutfits);
         setHairstyles(fetchedHairstyles);
+        setVideoTemplates(fetchedVideoTemplates);
 
         if (currentUser) {
           setUser(currentUser);
@@ -283,6 +289,21 @@ export default function Home() {
       }
     },
     [user]
+  );
+
+  const handleSelectVideo = useCallback(
+    (videoTemplate: VideoTemplate) => {
+      setViewState({ view: "applyVideo", videoTemplate });
+      incrementVideoAccessCount(videoTemplate.id);
+      setVideoTemplates(prevVideos =>
+        prevVideos.map(v =>
+          v.id === videoTemplate.id
+            ? { ...v, accessCount: (v.accessCount || 0) + 1 }
+            : v
+        )
+      );
+    },
+    []
   );
 
   const handleCreateYourOwn = async (filterId: string) => {
@@ -477,6 +498,12 @@ export default function Home() {
                   onEditFilter={(f: Filter) => setViewState({ view: "edit", filter: f })}
                 />
               );
+            case "videos":
+              return <VideosView videos={videoTemplates} onSelectVideo={handleSelectVideo} user={user} />;
+            case "createVideo":
+              return <CreateVideoView setViewState={setViewState} user={user} />;
+            case "applyVideo":
+              return <ApplyVideoView videoTemplate={viewState.videoTemplate!} setViewState={setViewState} user={user} />;
             default:
               return null;
           }
@@ -591,6 +618,15 @@ export default function Home() {
                   }`}
               >
                 Hairstyles
+              </button>
+              <button
+                onClick={() => setViewState({ view: "videos" })}
+                className={`py-3 font-semibold transition-colors ${viewState.view === "videos"
+                  ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                  : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+                  }`}
+              >
+                Videos
               </button>
 
             </div>

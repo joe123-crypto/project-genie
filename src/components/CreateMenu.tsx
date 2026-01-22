@@ -4,6 +4,7 @@ import { SparklesIcon } from "./icons";
 import CreateFilterView from "./CreateFilterView";
 import CreateOutfitView from "./CreateOutfitView";
 import CreateHairstyleView from "./CreateHairstyleView";
+import CreateVideoView from "./CreateVideoView";
 import { ViewState, User, Filter, Hairstyle } from "../types";
 import { commonClasses } from "../utils/theme";
 
@@ -16,7 +17,7 @@ interface CreateMenuProps {
 }
 
 const CreateMenu: React.FC<CreateMenuProps> = ({ setViewState, user, addFilter, addHairstyle }) => {
-  const [mode, setMode] = useState<"menu" | "filter" | "studio" | "outfit" | "hairstyle">("menu");
+  const [mode, setMode] = useState<"menu" | "filter" | "studio" | "outfit" | "hairstyle" | "video">("menu");
 
   // Decide what to render
   if (mode === "filter") {
@@ -29,6 +30,10 @@ const CreateMenu: React.FC<CreateMenuProps> = ({ setViewState, user, addFilter, 
 
   if (mode === "hairstyle") {
     return <CreateHairstyleView setViewState={setViewState} user={user} addHairstyle={addHairstyle} onBack={() => setMode("menu")} />;
+  }
+
+  if (mode === "video") {
+    return <CreateVideoView setViewState={setViewState} user={user} onBack={() => setMode("menu")} />;
   }
 
   if (mode === "studio") {
@@ -145,6 +150,22 @@ const CreateMenu: React.FC<CreateMenuProps> = ({ setViewState, user, addFilter, 
           <h3 className={`text-xl ${commonClasses.text.heading} mb-3`}>Create Hairstyle</h3>
           <p className={`${commonClasses.text.body} text-center text-sm leading-relaxed`}>
             Create a new hairstyle with AI assistance.
+          </p>
+        </button>
+
+        {/* Create Video Card */}
+        <button
+          onClick={() => setMode("video")}
+          className="group relative flex flex-col items-center p-8 bg-base-100/50 dark:bg-dark-base-100/50 backdrop-blur-sm rounded-2xl border border-border-color dark:border-dark-border-color hover:border-brand-primary dark:hover:border-dark-brand-primary transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+        >
+          <div className="h-20 w-20 bg-gradient-to-br from-indigo-500/10 to-cyan-500/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+            <svg className="h-10 w-10 text-brand-primary dark:text-dark-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.818v6.364a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h3 className={`text-xl ${commonClasses.text.heading} mb-3`}>Create Video</h3>
+          <p className={`${commonClasses.text.body} text-center text-sm leading-relaxed`}>
+            Create a video template with AI-powered video generation.
           </p>
         </button>
       </div>

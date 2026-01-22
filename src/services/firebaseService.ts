@@ -306,3 +306,78 @@ export const unlikePost = async (postId: string, userId: string): Promise<void> 
         throw error;
     }
 };
+
+const VIDEO_TEMPLATES_COLLECTION = 'video_templates';
+import { VideoTemplate } from '../types';
+
+/**
+ * Fetches all video templates from Firestore.
+ */
+export const getVideoTemplates = async (): Promise<VideoTemplate[]> => {
+    try {
+        const q = query(collection(db, VIDEO_TEMPLATES_COLLECTION), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VideoTemplate));
+    } catch (error) {
+        console.error('Error fetching video templates:', error);
+        throw error;
+    }
+};
+
+/**
+ * Saves a video template to Firestore.
+ */
+export const saveVideoTemplate = async (templateData: Omit<VideoTemplate, 'id'>): Promise<VideoTemplate> => {
+    try {
+        const docRef = await addDoc(collection(db, VIDEO_TEMPLATES_COLLECTION), {
+            ...templateData,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            accessCount: 0
+        });
+        return { id: docRef.id, ...templateData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), accessCount: 0 };
+    } catch (err) {
+        console.error('❌ Error in saveVideoTemplate:', err);
+        throw err;
+    }
+};
+
+/**
+ * Deletes a video template from Firestore.
+ */
+export const deleteVideoTemplate = async (templateId: string): Promise<void> => {
+    try {
+        await deleteDoc(doc(db, VIDEO_TEMPLATES_COLLECTION, templateId));
+    } catch (error) {
+        console.error('Error deleting video template:', error);
+        throw error;
+    }
+};
+
+/**
+ * Updates a video template in Firestore.
+ */
+export const updateVideoTemplate = async (templateId: string, templateData: Partial<VideoTemplate>): Promise<VideoTemplate> => {
+    try {
+        const templateRef = doc(db, VIDEO_TEMPLATES_COLLECTION, templateId);
+        await updateDoc(templateRef, { ...templateData, updatedAt: serverTimestamp() });
+        const updatedDoc = await getDoc(templateRef);
+        return { id: updatedDoc.id, ...updatedDoc.data() } as VideoTemplate;
+    } catch (error) {
+        console.error('Error updating video template:', error);
+        throw error;
+    }
+};
+
+/**
+ * Increments the access count for a video template.
+ */
+export const incrementVideoAccessCount = async (templateId: string): Promise<void> => {
+    try {
+        const templateRef = doc(db, VIDEO_TEMPLATES_COLLECTION, templateId);
+        await updateDoc(templateRef, { accessCount: increment(1) });
+    } catch (error) {
+        console.error('Error incrementing video template access count:', error);
+        // Non-critical
+    }
+};
