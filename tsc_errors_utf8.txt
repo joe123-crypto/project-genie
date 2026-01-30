@@ -1,0 +1,31 @@
+﻿.next/dev/types/validator.ts(53,39): error TS2307: Cannot find module '../../../src/app/[username]/createmenu/filterStudio/page.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(107,39): error TS2307: Cannot find module '../../../src/app/[username]/createmenu/filterTemplate/route.js' or its corresponding type declarations.
+.next/dev/types/validator.ts(117,31): error TS2559: Type 'typeof import("C:/Users/Joe/StudioProjects/project-genie/src/app/[username]/createmenu/hairstyleTemplate/route")' has no properties in common with type 'RouteHandlerConfig<"/[username]/createmenu/hairstyleTemplate">'.
+.next/dev/types/validator.ts(126,31): error TS2559: Type 'typeof import("C:/Users/Joe/StudioProjects/project-genie/src/app/[username]/createmenu/outfitTemplate/route")' has no properties in common with type 'RouteHandlerConfig<"/[username]/createmenu/outfitTemplate">'.
+.next/dev/types/validator.ts(135,31): error TS2559: Type 'typeof import("C:/Users/Joe/StudioProjects/project-genie/src/app/[username]/createmenu/videoTemplate/route")' has no properties in common with type 'RouteHandlerConfig<"/[username]/createmenu/videoTemplate">'.
+.next/types/validator.ts(108,31): error TS2559: Type 'typeof import("C:/Users/Joe/StudioProjects/project-genie/src/app/[username]/createmenu/hairstyleTemplate/route")' has no properties in common with type 'RouteHandlerConfig<"/[username]/createmenu/hairstyleTemplate">'.
+.next/types/validator.ts(117,31): error TS2559: Type 'typeof import("C:/Users/Joe/StudioProjects/project-genie/src/app/[username]/createmenu/outfitTemplate/route")' has no properties in common with type 'RouteHandlerConfig<"/[username]/createmenu/outfitTemplate">'.
+.next/types/validator.ts(126,31): error TS2559: Type 'typeof import("C:/Users/Joe/StudioProjects/project-genie/src/app/[username]/createmenu/templateTemplate/route")' has no properties in common with type 'RouteHandlerConfig<"/[username]/createmenu/templateTemplate">'.
+.next/types/validator.ts(135,31): error TS2559: Type 'typeof import("C:/Users/Joe/StudioProjects/project-genie/src/app/[username]/createmenu/videoTemplate/route")' has no properties in common with type 'RouteHandlerConfig<"/[username]/createmenu/videoTemplate">'.
+src/app/[username]/createmenu/hairstyleTemplate/route.tsx(3,44): error TS2307: Cannot find module '../types' or its corresponding type declarations.
+src/app/[username]/createmenu/hairstyleTemplate/route.tsx(4,57): error TS2307: Cannot find module './icons' or its corresponding type declarations.
+src/app/[username]/createmenu/hairstyleTemplate/route.tsx(5,25): error TS2307: Cannot find module './Spinner' or its corresponding type declarations.
+src/app/[username]/createmenu/hairstyleTemplate/route.tsx(6,69): error TS2307: Cannot find module '../utils/fileUtils' or its corresponding type declarations.
+src/app/[username]/createmenu/hairstyleTemplate/route.tsx(7,31): error TS2307: Cannot find module '../services/firebaseService' or its corresponding type declarations.
+src/app/[username]/createmenu/hairstyleTemplate/route.tsx(8,53): error TS2307: Cannot find module '../services/geminiService' or its corresponding type declarations.
+src/app/[username]/createmenu/hairstyleTemplate/route.tsx(9,31): error TS2307: Cannot find module '../utils/theme' or its corresponding type declarations.
+src/app/[username]/createmenu/outfitTemplate/route.tsx(4,43): error TS2307: Cannot find module '../../../icons' or its corresponding type declarations.
+src/app/[username]/createmenu/templateTemplate/route.tsx(5,25): error TS2724: '"@/services/geminiService"' has no exported member named 'generateImageFromPrompt'. Did you mean 'createImageFromPrompt'?
+src/app/[username]/createmenu/videoTemplate/route.tsx(2,48): error TS2307: Cannot find module '../types' or its corresponding type declarations.
+src/app/[username]/createmenu/videoTemplate/route.tsx(3,45): error TS2307: Cannot find module './icons' or its corresponding type declarations.
+src/app/[username]/createmenu/videoTemplate/route.tsx(4,25): error TS2307: Cannot find module './Spinner' or its corresponding type declarations.
+src/app/[username]/createmenu/videoTemplate/route.tsx(5,56): error TS2307: Cannot find module '../services/geminiService' or its corresponding type declarations.
+src/app/[username]/createmenu/videoTemplate/route.tsx(6,69): error TS2307: Cannot find module '../utils/fileUtils' or its corresponding type declarations.
+src/app/[username]/createmenu/videoTemplate/route.tsx(7,35): error TS2307: Cannot find module '../services/firebaseService' or its corresponding type declarations.
+src/app/[username]/createmenu/videoTemplate/route.tsx(8,31): error TS2307: Cannot find module '../utils/theme' or its corresponding type declarations.
+src/app/[username]/dashboard/page.tsx(101,23): error TS7034: Variable 'fetchedHairstyles' implicitly has type 'any[]' in some locations where its type cannot be determined.
+src/app/[username]/dashboard/page.tsx(102,23): error TS7034: Variable 'fetchedVideoTemplates' implicitly has type 'any[]' in some locations where its type cannot be determined.
+src/app/[username]/dashboard/page.tsx(106,31): error TS7005: Variable 'fetchedHairstyles' implicitly has an 'any[]' type.
+src/app/[username]/dashboard/page.tsx(107,35): error TS7005: Variable 'fetchedVideoTemplates' implicitly has an 'any[]' type.
+src/app/[username]/dashboard/page.tsx(119,75): error TS2339: Property 'id' does not exist on type 'never'.
+src/services/authService.ts(49,9): error TS2739: Type 'User' is missing the following properties from type 'User': idToken, expiresAt

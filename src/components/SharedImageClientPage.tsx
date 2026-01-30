@@ -8,7 +8,7 @@ import { Spinner } from '@/components/Spinner';
 // Define the shape of the data we expect
 interface SharedImage {
   imageUrl: string;
-  filterName: string;
+  templateName: string;
   username?: string;
 }
 
@@ -68,13 +68,13 @@ export default function SharedImageClientPage({ id }: { id: string }) {
     <div className="max-w-2xl mx-auto animate-fade-in text-center">
       <div className="bg-base-200 dark:bg-dark-base-200 p-4 sm:p-6 rounded-lg shadow-xl">
         <h2 className="text-2xl sm:text-3xl font-bold text-content-100 dark:text-dark-content-100">
-          Image created with &quot;{shareData.filterName}&quot; filter
+          Image created with &quot;{shareData.templateName || (shareData as any).filterName}&quot; template
         </h2>
         {shareData.username && (
           <p className="text-content-200 dark:text-dark-content-200 mt-2">Shared by {shareData.username}</p>
         )}
         <div className="my-6 w-full aspect-square bg-base-300 dark:bg-dark-base-300 rounded-lg flex items-center justify-center overflow-hidden">
-          <img src={shareData.imageUrl} alt={`Image created with ${shareData.filterName} filter`} className="object-contain w-full h-full" />
+          <img src={shareData.imageUrl} alt={`Image created with ${shareData.templateName || (shareData as any).filterName} template`} className="object-contain w-full h-full" />
         </div>
       </div>
     </div>

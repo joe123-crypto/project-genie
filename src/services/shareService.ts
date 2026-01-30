@@ -1,12 +1,12 @@
-import { Filter, User, Share } from '../types';
+import { Template, User, Share } from '../types';
 import { getApiBaseUrlRuntime } from '../utils/api';
 import { downscale } from '../utils/downscale';
 import { Capacitor } from '@capacitor/core';
 
 interface SharedImage {
   imageUrl: string;
-  filterName: string;
-  filterId?: string;   // ✅ added filterId support
+  templateName: string;
+  templateId?: string;   // ✅ added templateId support
   username?: string;
   [key: string]: unknown;
 }
@@ -22,7 +22,7 @@ interface ShareApiResponse {
 export interface ShareResult {
   status: 'shared' | 'modal';
   shareUrl: string;
-  filterUrl?: string; // URL to the filter that created the image
+  templateUrl?: string; // URL to the template that created the image
 }
 
 // Specific type for the response from the toggleLike API
@@ -62,8 +62,8 @@ export const getSharedImage = async (shareId: string): Promise<SharedImage> => {
   }
 };
 
-// Helper function to generate filter URL for sharing
-export const getFilterUrl = (filterId: string): string => {
+// Helper function to generate template URL for sharing
+export const getTemplateUrl = (templateId: string): string => {
   if (typeof window === 'undefined') return '';
 
   // On native platforms, use production URL instead of file:// or capacitor://
@@ -82,19 +82,19 @@ export const getFilterUrl = (filterId: string): string => {
     baseUrl = window.location.origin;
   }
 
-  return `${baseUrl}/?view=apply&filterId=${filterId}`;
+  return `${baseUrl}/?view=apply&templateId=${templateId}`;
 };
 
 export const shareImage = async (
   base64ImageDataUrl: string,
-  filter: Filter,
+  template: Template,
   user: User | null
 ): Promise<ShareResult> => {
   const baseUrl = getApiBaseUrlRuntime();
   const appUrl = window.location.origin;
-  const filterUrl = getFilterUrl(filter.id);
-  const shareText = `Check out this image I created with the '${filter?.name ?? ""}' filter on Genie! Create your own here: ${filterUrl}`;
-  const filename = `filtered-${Date.now()}.png`;
+  const templateUrl = getTemplateUrl(template.id);
+  const shareText = `Check out this image I created with the '${template?.name ?? ""}' template on Genie! Create your own here: ${templateUrl}`;
+  const filename = `templated-${Date.now()}.png`;
 
   if (!isWindows() && navigator.share && navigator.canShare) {
     try {
@@ -104,7 +104,7 @@ export const shareImage = async (
 
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({
-          title: "Filtered with Genie",
+          title: "Templated with Genie",
           text: shareText,
           url: appUrl,
           files: [file],
@@ -206,8 +206,8 @@ export const shareImage = async (
     // 4. Send fileUrl to /api/share
     const payload = {
       imageUrl: fileUrl, // Use the public URL from R2
-      filterName: filter.name,
-      filterId: filter.id,
+      templateName: template.name,
+      templateId: template.id,
       username: user?.email ?? null,
     };
 
@@ -241,8 +241,8 @@ export const shareImage = async (
 
     console.log('[Share] Share created successfully:', data.shareUrl);
 
-    // Include both the shared image URL and the filter URL for convenience
-    return { status: 'modal', shareUrl: data.shareUrl, filterUrl };
+    // Include both the shared image URL and the template URL for convenience
+    return { status: 'modal', shareUrl: data.shareUrl, templateUrl };
   } catch (error: unknown) {
     console.error('❌ Error sharing image:', error);
     if (error instanceof Error) {
@@ -334,9 +334,9 @@ export const postToFeed = async (shareId: string): Promise<void> => {
   }
 };
 
-export const fetchFilter = async (filterId: string, idToken: string): Promise<Filter> => {
+export const fetchTemplate = async (templateId: string, idToken: string): Promise<Template> => {
   const baseUrl = getApiBaseUrlRuntime();
-  const response = await fetch(`${baseUrl}/api/filters/${filterId}`, {
+  const response = await fetch(`${baseUrl}/api/templates/${templateId}`, {
     headers: {
       'Authorization': `Bearer ${idToken}`,
     },
@@ -345,9 +345,9 @@ export const fetchFilter = async (filterId: string, idToken: string): Promise<Fi
   if (!response.ok) {
     const errorData = await response.json();
     const errorMessage = `${errorData.error}${errorData.details ? `: ${errorData.details}` : ''}`;
-    throw new Error(errorMessage || 'Failed to fetch filter');
+    throw new Error(errorMessage || 'Failed to fetch template');
   }
 
   const data = await response.json();
-  return data.filter;
+  return data.template;
 };

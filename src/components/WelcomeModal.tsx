@@ -31,12 +31,12 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
 
         {/* Title */}
         <h3 className={`text-2xl ${commonClasses.text.heading} mb-3`}>
-          Create your own filters
+          Create your own templates
         </h3>
 
         {/* Description */}
         <p className={`${commonClasses.text.body} mb-6`}>
-          You dont have to just use them, you can create filters that other people can use too
+          You dont have to just use them, you can create templates that other people can use too
         </p>
 
         {/* Action Button */}

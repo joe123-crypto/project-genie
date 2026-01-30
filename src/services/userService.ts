@@ -1,4 +1,4 @@
-import { Share, Outfit, Filter } from '../types';
+import { Share, Outfit, Template } from '../types';
 import { auth, db } from '../lib/firebase';
 import { deleteUser as firebaseDeleteUser } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -23,17 +23,17 @@ export const deleteUser = async (): Promise<void> => {
 };
 
 /**
- * Fetches a user's created filters.
+ * Fetches a user's created templates.
  * @param uid The user's ID.
- * @returns A promise that resolves to an array of Filter objects.
+ * @returns A promise that resolves to an array of Template objects.
  */
-export const fetchUserFilters = async (uid: string): Promise<Filter[]> => {
+export const fetchUserTemplates = async (uid: string): Promise<Template[]> => {
     try {
         const q = query(collection(db, "filters"), where("authorId", "==", uid));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Filter));
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Template));
     } catch (error) {
-        console.error('Error fetching user filters:', error);
+        console.error('Error fetching user templates:', error);
         throw error;
     }
 };

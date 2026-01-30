@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 
 interface LandingPageProps {
@@ -86,18 +87,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                         </p>
 
                         <p className="text-lg text-black/80 mb-12 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.3s' }}>
-                            Create stunning filters, design unique outfits, and share your creations with a vibrant community.
+                            Create stunning templates, design unique outfits, and share your creations with a vibrant community.
                             Powered by cutting-edge AI technology to bring your creative visions to life.
                         </p>
 
                         {/* CTA Buttons */}
                         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in" style={{ animationDelay: '0.4s' }}>
-                            <button
-                                onClick={onGetStarted}
+                            <Link
+                                href="/login"
+                                //onClick={onGetStarted}
                                 className="px-8 py-4 bg-white text-purple-600 rounded-full font-bold text-lg hover:bg-purple-50 transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-purple-500/50"
                             >
                                 Get Started
-                            </button>
+                            </Link>
                             <button
                                 onClick={onSignIn}
                                 className="px-8 py-4 bg-white/10 backdrop-blur-md text-black/30 border-2 border-white/60 rounded-full font-bold text-lg hover:bg-white/20 transition-all duration-300 transform hover:scale-105"
@@ -129,8 +131,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                         {/* Feature 1 */}
                         <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300 transform hover:scale-105">
                             <div className="text-4xl mb-4">🎨</div>
-                            <h3 className="text-xl font-bold text-black/90 mb-2">Custom Filters</h3>
-                            <p className="text-black/80">Design and apply unique AI-powered filters to transform your photos instantly.</p>
+                            <h3 className="text-xl font-bold text-black/90 mb-2">Custom Templates</h3>
+                            <p className="text-black/80">Design and apply unique AI-powered templates to transform your photos instantly.</p>
                         </div>
 
                         {/* Feature 2 */}
@@ -167,11 +169,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                         <div className="group relative overflow-hidden rounded-3xl aspect-square">
                             <img
                                 src="/showcase-filter-1.png"
-                                alt="Filter showcase"
+                                alt="Template showcase"
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-purple-900/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
-                                <p className="text-white font-bold text-lg">Stunning Filters</p>
+                                <p className="text-white font-bold text-lg">Stunning Templates</p>
                             </div>
                         </div>
 

@@ -11,19 +11,19 @@ const NotificationManager: React.FC = () => {
         // We use a slightly delayed timestamp to avoid picking up existing items if the clock is slightly off
         const startTime = new Date();
 
-        // Listen for new filters
-        const filtersQuery = query(
+        // Listen for new templates
+        const templatesQuery = query(
             collection(db, 'filters'),
             where('createdAt', '>', Timestamp.fromDate(startTime))
         );
 
-        const unsubscribeFilters = onSnapshot(filtersQuery, (snapshot) => {
+        const unsubscribeTemplates = onSnapshot(templatesQuery, (snapshot) => {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
                     const data = change.doc.data();
                     scheduleNotification(
-                        'New Filter Available!',
-                        `Check out the new "${data.name}" filter!`,
+                        'New Template Available!',
+                        `Check out the new "${data.name}" template!`,
                         'lamp',
                         data.previewImageUrl
                     );
@@ -51,7 +51,7 @@ const NotificationManager: React.FC = () => {
         });
 
         return () => {
-            unsubscribeFilters();
+            unsubscribeTemplates();
             unsubscribeOutfits();
         };
     }, []);

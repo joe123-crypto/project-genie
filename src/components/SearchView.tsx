@@ -1,39 +1,39 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, Outfit, User } from '../types';
-import FilterCard from './FilterCard';
+import { Template, Outfit, User } from '../types';
+import TemplateCard from './TemplateCard';
 import OutfitCard from './OutfitCard';
 
 
 interface SearchViewProps {
-    filters: Filter[];
+    templates: Template[];
     outfits: Outfit[];
-    onSelectFilter: (filter: Filter) => void;
+    onSelectTemplate: (template: Template) => void;
     onSelectOutfit: (outfit: Outfit) => void;
     user: User | null;
-    onDeleteFilter: (filterId: string) => Promise<void>;
-    onEditFilter: (filter: Filter) => void;
+    onDeleteTemplate: (templateId: string) => Promise<void>;
+    onEditTemplate: (template: Template) => void;
 }
 
 const SearchView: React.FC<SearchViewProps> = ({
-    filters,
+    templates,
     outfits,
-    onSelectFilter,
+    onSelectTemplate,
     onSelectOutfit,
     user,
-    onDeleteFilter,
-    onEditFilter
+    onDeleteTemplate,
+    onEditTemplate
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState<'all' | 'filters' | 'outfits'>('all');
+    const [activeTab, setActiveTab] = useState<'all' | 'templates' | 'outfits'>('all');
 
-    const { filteredFilters, filteredOutfits } = useMemo(() => {
+    const { filteredTemplates, filteredOutfits } = useMemo(() => {
         if (!searchTerm.trim()) {
-            return { filteredFilters: [], filteredOutfits: [] };
+            return { filteredTemplates: [], filteredOutfits: [] };
         }
 
         const term = searchTerm.toLowerCase();
 
-        const f = filters.filter(item =>
+        const t = templates.filter(item =>
             (item.name || '').toLowerCase().includes(term) ||
             (item.description || '').toLowerCase().includes(term) ||
             (item.prompt || '').toLowerCase().includes(term) ||
@@ -49,12 +49,12 @@ const SearchView: React.FC<SearchViewProps> = ({
             (item.username && item.username.toLowerCase().includes(term))
         );
 
-        return { filteredFilters: f, filteredOutfits: o };
-    }, [searchTerm, filters, outfits]);
+        return { filteredTemplates: t, filteredOutfits: o };
+    }, [searchTerm, templates, outfits]);
 
-    const showFilters = activeTab === 'all' || activeTab === 'filters';
+    const showTemplates = activeTab === 'all' || activeTab === 'templates';
     const showOutfits = activeTab === 'all' || activeTab === 'outfits';
-    const hasResults = filteredFilters.length > 0 || filteredOutfits.length > 0;
+    const hasResults = filteredTemplates.length > 0 || filteredOutfits.length > 0;
 
     return (
         <div className="animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -84,16 +84,16 @@ const SearchView: React.FC<SearchViewProps> = ({
                                 : 'bg-gray-100 dark:bg-gray-800 text-content-200 dark:text-dark-content-200 hover:bg-gray-200 dark:hover:bg-gray-700'
                                 }`}
                         >
-                            All Results ({filteredFilters.length + filteredOutfits.length})
+                            All Results ({filteredTemplates.length + filteredOutfits.length})
                         </button>
                         <button
-                            onClick={() => setActiveTab('filters')}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'filters'
+                            onClick={() => setActiveTab('templates')}
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'templates'
                                 ? 'bg-brand-primary text-white'
                                 : 'bg-gray-100 dark:bg-gray-800 text-content-200 dark:text-dark-content-200 hover:bg-gray-200 dark:hover:bg-gray-700'
                                 }`}
                         >
-                            Filters ({filteredFilters.length})
+                            Templates ({filteredTemplates.length})
                         </button>
                         <button
                             onClick={() => setActiveTab('outfits')}
@@ -123,24 +123,24 @@ const SearchView: React.FC<SearchViewProps> = ({
                 </div>
             ) : (
                 <div className="space-y-12">
-                    {showFilters && filteredFilters.length > 0 && (
+                    {showTemplates && filteredTemplates.length > 0 && (
                         <section>
                             <h3 className="text-xl font-bold text-content-100 dark:text-dark-content-100 mb-6 flex items-center gap-2">
-                                Filters
+                                Templates
                                 <span className="text-sm font-normal text-content-300 dark:text-dark-content-300 bg-base-200 dark:bg-dark-base-200 px-2 py-0.5 rounded-full">
-                                    {filteredFilters.length}
+                                    {filteredTemplates.length}
                                 </span>
                             </h3>
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
-                                {filteredFilters.map((filter) => (
-                                    <FilterCard
-                                        key={filter.id}
-                                        filter={filter}
-                                        onSelect={() => onSelectFilter(filter)}
+                                {filteredTemplates.map((template) => (
+                                    <TemplateCard
+                                        key={template.id}
+                                        template={template}
+                                        onSelect={() => onSelectTemplate(template)}
                                         aspectRatio="aspect-[3/4]"
                                         user={user}
-                                        onDelete={onDeleteFilter}
-                                        onEdit={onEditFilter}
+                                        onDelete={onDeleteTemplate}
+                                        onEdit={onEditTemplate}
                                     />
                                 ))}
                             </div>

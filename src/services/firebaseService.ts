@@ -14,60 +14,60 @@ import {
     limit
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
-import { Filter, Outfit, Post, Hairstyle } from '../types';
+import { Outfit, Post, Hairstyle, Template } from '../types';
 
-const FILTERS_COLLECTION = 'filters';
+const TEMPLATES_COLLECTION = 'filters';
 const OUTFITS_COLLECTION = 'outfits';
 const HAIRSTYLES_COLLECTION = 'hairstyles';
 const POSTS_COLLECTION = 'posts';
 
 /**
- * Fetches all filters from Firestore.
+ * Fetches all templates from Firestore.
  */
-export const getFilters = async (): Promise<Filter[]> => {
+export const getTemplates = async (): Promise<Template[]> => {
     try {
-        const q = query(collection(db, FILTERS_COLLECTION), orderBy("createdAt", "desc"));
+        const q = query(collection(db, TEMPLATES_COLLECTION), orderBy("createdAt", "desc"));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Filter));
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Template));
     } catch (error) {
-        console.error('Error fetching filters:', error);
+        console.error('Error fetching templates:', error);
         throw error;
     }
 };
 
 /**
- * Fetches a single filter by its ID from Firestore.
+ * Fetches a single template by its ID from Firestore.
  */
-export const getFilterById = async (id: string): Promise<Filter | null> => {
+export const getTemplateById = async (id: string): Promise<Template | null> => {
     try {
-        const docRef = doc(db, FILTERS_COLLECTION, id);
+        const docRef = doc(db, TEMPLATES_COLLECTION, id);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-            return { id: docSnap.id, ...docSnap.data() } as Filter;
+            return { id: docSnap.id, ...docSnap.data() } as Template;
         } else {
-            console.warn(`Filter with id ${id} not found.`);
+            console.warn(`Template with id ${id} not found.`);
             return null;
         }
     } catch (error) {
-        console.error(`Error fetching filter with id ${id}:`, error);
+        console.error(`Error fetching template with id ${id}:`, error);
         throw error;
     }
 };
 
 /**
- * Saves a filter to Firestore.
+ * Saves a template to Firestore.
  */
-export const saveFilter = async (filter: Omit<Filter, 'id'>): Promise<Filter> => {
+export const saveTemplate = async (template: Omit<Template, 'id'>): Promise<Template> => {
     try {
-        const docRef = await addDoc(collection(db, FILTERS_COLLECTION), {
-            ...filter,
+        const docRef = await addDoc(collection(db, TEMPLATES_COLLECTION), {
+            ...template,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             accessCount: 0
         });
-        return { id: docRef.id, ...filter, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), accessCount: 0 };
+        return { id: docRef.id, ...template, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), accessCount: 0 };
     } catch (error) {
-        console.error('Error saving filter:', error);
+        console.error('Error saving template:', error);
         throw error;
     }
 };
@@ -95,41 +95,41 @@ export const saveImage = async (imageB64: string, destination: 'saved' | 'shared
 };
 
 /**
- * Deletes a filter from Firestore.
+ * Deletes a template from Firestore.
  */
-export const deleteFilter = async (filterId: string): Promise<void> => {
+export const deleteTemplate = async (templateId: string): Promise<void> => {
     try {
-        await deleteDoc(doc(db, FILTERS_COLLECTION, filterId));
+        await deleteDoc(doc(db, TEMPLATES_COLLECTION, templateId));
     } catch (error) {
-        console.error('Error deleting filter:', error);
+        console.error('Error deleting template:', error);
         throw error;
     }
 };
 
 /**
- * Updates a filter in Firestore.
+ * Updates a template in Firestore.
  */
-export const updateFilter = async (filterId: string, filterData: Partial<Filter>): Promise<Filter> => {
+export const updateTemplate = async (templateId: string, templateData: Partial<Template>): Promise<Template> => {
     try {
-        const filterRef = doc(db, FILTERS_COLLECTION, filterId);
-        await updateDoc(filterRef, { ...filterData, updatedAt: serverTimestamp() });
-        const updatedDoc = await getDoc(filterRef);
-        return { id: updatedDoc.id, ...updatedDoc.data() } as Filter;
+        const templateRef = doc(db, TEMPLATES_COLLECTION, templateId);
+        await updateDoc(templateRef, { ...templateData, updatedAt: serverTimestamp() });
+        const updatedDoc = await getDoc(templateRef);
+        return { id: updatedDoc.id, ...updatedDoc.data() } as Template;
     } catch (error) {
-        console.error('Error updating filter:', error);
+        console.error('Error updating template:', error);
         throw error;
     }
 };
 
 /**
- * Increments the access count for a filter.
+ * Increments the access count for a template.
  */
-export const incrementFilterAccessCount = async (filterId: string): Promise<void> => {
+export const incrementTemplateAccessCount = async (templateId: string): Promise<void> => {
     try {
-        const filterRef = doc(db, FILTERS_COLLECTION, filterId);
-        await updateDoc(filterRef, { accessCount: increment(1) });
+        const templateRef = doc(db, TEMPLATES_COLLECTION, templateId);
+        await updateDoc(templateRef, { accessCount: increment(1) });
     } catch (error) {
-        console.error('Error incrementing filter access count:', error);
+        console.error('Error incrementing template access count:', error);
         // Non-critical, so we don't re-throw
     }
 };

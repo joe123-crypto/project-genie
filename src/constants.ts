@@ -1,4 +1,4 @@
 
-import { Filter } from './types';
+import { Template } from './types';
 
-export const INITIAL_FILTERS: Filter[] = [];
+export const INITIAL_TEMPLATES: Template[] = [];

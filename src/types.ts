@@ -13,7 +13,7 @@ export interface Outfit {
   createdAt?: string;
 }
 
-export interface Filter {
+export interface Template {
   id: string;
   name: string;
   description: string;
@@ -71,11 +71,11 @@ export interface Share {
   id: string;
   imageUrl: string;
   originalImageUrl?: string;
-  filteredImageUrl?: string;
+  templatedImageUrl?: string;
   userId?: string;
   username?: string;
-  filterId: string;
-  filterName: string;
+  templateId: string;
+  templateName: string;
   createdAt: string;
   authorId?: string;
   prompt?: string;
@@ -91,11 +91,11 @@ export type Post = Share;
 
 export type ViewState =
   | { view: "marketplace" }
-  | { view: "apply"; filter: Filter }
+  | { view: "apply"; template: Template }
   | { view: "create" }
-  | { view: "createFilter" }
+  | { view: "createTemplate" }
   | { view: "createOutfit" }
-  | { view: "edit"; filter: Filter }
+  | { view: "edit"; template: Template }
   | { view: "auth" }
   | { view: "shared"; shareId: string }
   | { view: "outfits" }

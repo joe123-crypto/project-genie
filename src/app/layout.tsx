@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Outfit } from "next/font/google"
 import NotificationManager from "../components/NotificationManager"
 import UpdateChecker from "../components/UpdateChecker"
+import { AuthProvider } from '@/context/AuthContext';
 
 import "./globals.css?v=2"
 
@@ -12,11 +13,11 @@ const outfit = Outfit({
 })
 
 export const metadata: Metadata = {
-  title: "GenAIe - AI Filter Generator",
-  description: "Create and share amazing AI-powered filters with GenAIe.",
+  title: "GenAIe - AI Template Generator",
+  description: "Create and share amazing AI-powered templates with GenAIe.",
   openGraph: {
-    title: "GenAIe - AI Filter Generator",
-    description: "Create and share amazing AI-powered filters with GenAIe.",
+    title: "GenAIe - AI Template Generator",
+    description: "Create and share amazing AI-powered templates with GenAIe.",
     url: "https://project-genie-sigma.vercel.app",
     siteName: "GenAIe",
     images: [
@@ -32,8 +33,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "GenAIe - AI Filter Generator",
-    description: "Create and share amazing AI-powered filters with GenAIe.",
+    title: "GenAIe - AI Template Generator",
+    description: "Create and share amazing AI-powered templates with GenAIe.",
     images: ["https://project-genie-sigma.vercel.app/lamp.png"],
   },
   icons: {
@@ -49,7 +50,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${outfit.variable} font-sans`}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <Analytics />
         <NotificationManager />
         <UpdateChecker />

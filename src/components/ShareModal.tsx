@@ -5,35 +5,35 @@ interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   imageUrl: string;       // 👈 preview image (R2 link or base64)
-  filterName: string;
+  templateName: string;
   shareUrl?: string;       // 👈 canonical share link (/shared/:id)
-  filterUrl?: string;      // 👈 URL to the filter that created the image
+  templateUrl?: string;      // 👈 URL to the template that created the image
 }
 
 const ShareModal: React.FC<ShareModalProps> = ({
   isOpen,
   onClose,
   imageUrl,
-  filterName,
+  templateName,
   shareUrl,
-  filterUrl,
+  templateUrl,
 }) => {
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
-  // Use filter URL if available, otherwise fall back to share URL or image URL
-  const primaryUrl = filterUrl || shareUrl || imageUrl;
-  const shareText = filterUrl 
-    ? `Check out this image I created with the "${filterName}" filter! Try it yourself: ${filterUrl}`
-    : `Check out this image I created with the "${filterName}" filter!`;
+  // Use template URL if available, otherwise fall back to share URL or image URL
+  const primaryUrl = templateUrl || shareUrl || imageUrl;
+  const shareText = templateUrl
+    ? `Check out this image I created with the "${templateName}" template! Try it yourself: ${templateUrl}`
+    : `Check out this image I created with the "${templateName}" template!`;
   const encodedText = encodeURIComponent(shareText);
   const encodedUrl = encodeURIComponent(primaryUrl);
 
-  const handleCopyFilterLink = async () => {
-    if (filterUrl) {
+  const handleCopyTemplateLink = async () => {
+    if (templateUrl) {
       try {
-        await navigator.clipboard.writeText(filterUrl);
+        await navigator.clipboard.writeText(templateUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch (err) {
@@ -86,30 +86,29 @@ const ShareModal: React.FC<ShareModalProps> = ({
         {/* Preview */}
         <img
           src={imageUrl}
-          alt={`Image with ${filterName} filter applied`}
+          alt={`Image with ${templateName} template applied`}
           className="w-full aspect-square object-contain rounded-lg mb-4 bg-base-300 dark:bg-dark-base-300"
         />
 
-        {/* Filter Link (if available) */}
-        {filterUrl && (
+        {/* Template Link (if available) */}
+        {templateUrl && (
           <div className="mb-4 p-3 bg-base-100 dark:bg-dark-base-100 rounded-lg border border-border-color dark:border-dark-border-color">
             <p className="text-sm text-content-200 dark:text-dark-content-200 mb-2">
-              Try this filter yourself:
+              Try this template yourself:
             </p>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 readOnly
-                value={filterUrl}
+                value={templateUrl}
                 className="flex-1 px-3 py-2 text-xs bg-base-200 dark:bg-dark-base-200 text-content-100 dark:text-dark-content-100 rounded border border-border-color dark:border-dark-border-color font-mono truncate"
               />
               <button
-                onClick={handleCopyFilterLink}
-                className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${
-                  copied
+                onClick={handleCopyTemplateLink}
+                className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${copied
                     ? 'bg-green-500 hover:bg-green-600 text-white'
                     : 'bg-brand-primary hover:bg-brand-secondary text-white'
-                }`}
+                  }`}
               >
                 {copied ? 'Copied!' : 'Copy'}
               </button>
@@ -155,7 +154,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
             <FacebookIcon />
             Share to Facebook
           </a>
-           <a
+          <a
             href={instagramUrl}
             target="_blank"
             rel="noopener noreferrer"

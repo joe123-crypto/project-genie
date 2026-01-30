@@ -1,18 +1,17 @@
 import React, { useState, useCallback, ChangeEvent, useEffect } from 'react';
-import { User, Share, Outfit, Filter } from '../types';
-// import { updateUserProfile, uploadProfilePicture, fetchUserOutfits, fetchUserFilters, fetchUserImages } from '../services/userService';
-import { fetchUserOutfits, fetchUserFilters, fetchUserImages } from '../services/userService';
+import { User, Share, Outfit, Template } from '../types';
+// import { updateUserProfile, uploadProfilePicture, fetchUserOutfits, fetchUserTemplates, fetchUserImages } from '../services/userService';
+import { fetchUserOutfits, fetchUserTemplates, fetchUserImages } from '../services/userService';
 import { Spinner } from './Spinner'; // Changed to named import
 import { DefaultUserIcon, TrashIcon } from './icons';
 import OutfitCard from './OutfitCard';
-import FilterCard from './FilterCard';
-import PostView from './PostView';
+import TemplateCard from './TemplateCard';
 
 interface ProfileViewProps {
   user: User;
   currentUser: User | null;
   setViewState: (view: any) => void;
-  onCreateYourOwn: (filterId: string) => void;
+  onCreateYourOwn: (templateId: string) => void;
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewState, onCreateYourOwn }) => {
@@ -23,11 +22,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
 
   const [images, setImages] = useState<Share[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
-  const [filters, setFilters] = useState<Filter[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
 
   const [isLoadingImages, setIsLoadingImages] = useState(true);
   const [isLoadingOutfits, setIsLoadingOutfits] = useState(true);
-  const [isLoadingFilters, setIsLoadingFilters] = useState(true);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
 
   const [selectedImage, setSelectedImage] = useState<Share | null>(null);
   const [activeTab, setActiveTab] = useState('outfits');
@@ -48,15 +47,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
         throw new Error('User UID is not available or is invalid');
       }
 
-      const [userImages, userOutfits, userFilters] = await Promise.all([
+      const [userImages, userOutfits, userTemplates] = await Promise.all([
         fetchUserImages(user.uid),
         fetchUserOutfits(user.uid),
-        fetchUserFilters(user.uid)
+        fetchUserTemplates(user.uid)
       ]);
 
       setImages(userImages);
       setOutfits(userOutfits);
-      setFilters(userFilters);
+      setTemplates(userTemplates);
 
     } catch (err: any) {
       console.error(err);
@@ -64,7 +63,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
     } finally {
       setIsLoadingImages(false);
       setIsLoadingOutfits(false);
-      setIsLoadingFilters(false);
+      setIsLoadingTemplates(false);
     }
   }, [user.uid]);
 
@@ -121,7 +120,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
     <div className="mb-8 border-b border-border-color dark:border-dark-border-color">
       <nav className="-mb-px flex space-x-8" aria-label="Tabs">
         <button onClick={() => setActiveTab('outfits')} className={`${activeTab === 'outfits' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Outfits</button>
-        <button onClick={() => setActiveTab('filters')} className={`${activeTab === 'filters' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Filters</button>
+        <button onClick={() => setActiveTab('templates')} className={`${activeTab === 'templates' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Templates</button>
         <button onClick={() => setActiveTab('images')} className={`${activeTab === 'images' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Images</button>
       </nav>
     </div>
@@ -141,16 +140,16 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
             ) : <p className="text-content-200 dark:text-dark-content-200 text-center py-10">This user hasn&apos;t created any outfits yet.</p>}
           </div>
         );
-      case 'filters':
+      case 'templates':
         return (
           <div>
-            {isLoadingFilters ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : filters.length > 0 ? (
+            {isLoadingTemplates ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : templates.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {filters.map((filter) => (
-                  <FilterCard key={filter.id} filter={filter} onSelect={() => setViewState({ view: 'apply', filter: filter })} onEdit={() => setViewState({ view: 'edit', filter: filter })} user={currentUser} onDelete={async () => { }} />
+                {templates.map((template) => (
+                  <TemplateCard key={template.id} template={template} onSelect={() => setViewState({ view: 'apply', template: template })} onEdit={() => setViewState({ view: 'edit', template: template })} user={currentUser} onDelete={async () => { }} />
                 ))}
               </div>
-            ) : <p className="text-content-200 dark:text-dark-content-200 text-center py-10">This user hasn&apos;t created any filters yet.</p>}
+            ) : <p className="text-content-200 dark:text-dark-content-200 text-center py-10">This user hasn&apos;t created any templates yet.</p>}
           </div>
         );
       case 'images':
@@ -186,15 +185,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 bg-base-200 dark:bg-dark-base-200 rounded-lg shadow-lg">
-
-      {selectedImage && (
-        <PostView
-          selectedImage={selectedImage}
-          onClose={closeModal}
-          isOwner={isOwner}
-          onCreateYourOwn={onCreateYourOwn}
-        />
-      )}
 
       <h2 className="text-2xl sm:text-3xl font-bold font-heading mb-6 text-center text-content-100 dark:text-dark-content-100">
         {isOwner ? 'Your Profile' : `${user.displayName || 'Anonymous'}'s Profile`}

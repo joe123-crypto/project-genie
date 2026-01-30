@@ -1,15 +1,17 @@
 import { User } from '../types';
 import { auth } from '../lib/firebase';
 import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithPopup,
-  onAuthStateChanged,
-  updateProfile,
-  signOut as firebaseSignOut, // Renamed to avoid conflict
-  getIdToken
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup,
+    onAuthStateChanged,
+    updateProfile,
+    signOut as firebaseSignOut, // Renamed to avoid conflict
+    getIdToken
 } from 'firebase/auth';
+
+
 
 const USER_SESSION_KEY = "genieUser";
 
@@ -20,7 +22,7 @@ export const signUp = async (email: string, password: string, username: string):
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(userCredential.user, { displayName: username });
-        
+
         const user = await mapFirebaseUserToAppUser(userCredential.user);
         saveUserSession(user);
         return user;
@@ -36,9 +38,18 @@ export const signUp = async (email: string, password: string, username: string):
 export const signIn = async (email: string, password: string): Promise<User> => {
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = await mapFirebaseUserToAppUser(userCredential.user);
-        saveUserSession(user);
-        return user;
+        const appUser = await mapFirebaseUserToAppUser(userCredential.user);
+
+        await fetch('/api/auth/session', {
+            method: "POST",
+            body: JSON.stringify({
+                token: appUser.idToken,
+                username: appUser.username || appUser.email.split('@')[0]
+            }),
+        });
+
+        saveUserSession(appUser);
+        return appUser;
     } catch (error) {
         console.error('Error signing in:', error);
         throw error;
@@ -98,6 +109,10 @@ export const getValidIdToken = async (): Promise<string | null> => {
 export const signOut = async (): Promise<void> => {
     await firebaseSignOut(auth);
     localStorage.removeItem(USER_SESSION_KEY);
+    await fetch('/api/auth/session', {
+        method: "DELETE",
+    });
+
 };
 
 const mapFirebaseUserToAppUser = async (firebaseUser: any): Promise<User> => {

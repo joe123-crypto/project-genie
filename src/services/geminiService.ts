@@ -2,15 +2,15 @@ import { downscale } from "../utils/downscale";
 import { getApiBaseUrlRuntime } from "../utils/api";
 
 /**
- * Applies a filter to a single image using a prompt.
+ * Applies a template to a single image using a prompt.
  * Supports both PNG and WebP via downscale().
  *
  * @param inputs - One or more image sources (File, base64, or URL)
- * @param prompt - The text prompt describing the filter or effect
+ * @param prompt - The text prompt describing the template or effect
  * @param save - Optional flag indicating whether to persist result
- * @returns Promise<string> - URL or base64 of the filtered image
+ * @returns Promise<string> - URL or base64 of the templated image
  */
-export const applyImageFilter = async (
+export const applyImageTemplate = async (
   inputs: (File | string)[],
   prompt: string,
   save?: string
@@ -31,14 +31,14 @@ export const applyImageFilter = async (
   const imageBase64 = await downscale(first, 1024, "webp", 0.8);
   const mediaType = "image/webp";
   // ✅ Send request to backend
-  const applyFilterPrompt = `
+  const applyTemplatePrompt = `
 <SYSTEM>
 You are a professional visual editor and AI image retoucher.
 
 You must follow these principles unless explicitly told otherwise in the user\'s instructions below.
 
 1. Purpose:
-   - Apply visual filters or artistic effects to the provided image
+   - Apply visual templates or artistic effects to the provided image
      without changing the identity,or emotional expression
      of any person in it.
 
@@ -60,7 +60,7 @@ Output requirements:
 </SYSTEM>
 
 <USER>
-Apply the following filter or style effect to the provided image, following all system rules above:
+Apply the following template or style effect to the provided image, following all system rules above:
 
 ${prompt}
 </USER>
@@ -73,7 +73,7 @@ ${prompt}
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      textPrompt: applyFilterPrompt,
+      textPrompt: applyTemplatePrompt,
       images: [
         {
           mediaType,
@@ -87,7 +87,7 @@ ${prompt}
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || "Failed to apply filter");
+    throw new Error(data.error || "Failed to apply template");
   }
 
   // ✅ Handle various possible backend responses
@@ -295,7 +295,7 @@ Never:
 
 Output a **realistic, high-quality image** where the person retains their exact face and expression, but now appears genuinely dressed in the new outfit.
 
---- Additional visual style guidance from the outfit filter:
+--- Additional visual style guidance from the outfit template:
 ${prompt}
 `;
 
@@ -358,8 +358,6 @@ ${prompt}
     throw error;
   }
 };
-
-
 
 /**
  * Merges a hairstyle from a source image onto a target person's image.
@@ -459,17 +457,17 @@ ${prompt}
 
 // Alias functions for backward compatibility
 export const generateImageFromPrompt = generateImage;
-export const applyFilter = (base64ImageDataUrl: string, prompt: string) =>
-  applyImageFilter([base64ImageDataUrl], prompt);
-export const mergeImagesWithFilter = mergeImages;
+export const applyTemplate = (base64ImageDataUrl: string, prompt: string) =>
+  applyImageTemplate([base64ImageDataUrl], prompt);
+export const mergeImagesWithTemplate = mergeImages;
 export const createImageFromPrompt = generateImage;
 export const createTextFromPrompt = generateText;
-export const applyFilterToImage = (base64ImageDataUrl: string, prompt: string) =>
-  applyImageFilter([base64ImageDataUrl], prompt);
-export const mergeImagesWithFilterEffect = mergeImages;
-export const filterImage = (base64ImageDataUrl: string, prompt: string) =>
-  applyImageFilter([base64ImageDataUrl], prompt);
-export const mergeImagesWithFilterPrompt = mergeImages;
-export const applyFilterToSingleImage = (base64ImageDataUrl: string, prompt: string) =>
-  applyImageFilter([base64ImageDataUrl], prompt);
+export const applyTemplateToImage = (base64ImageDataUrl: string, prompt: string) =>
+  applyImageTemplate([base64ImageDataUrl], prompt);
+export const mergeImagesWithTemplateEffect = mergeImages;
+export const templateImage = (base64ImageDataUrl: string, prompt: string) =>
+  applyImageTemplate([base64ImageDataUrl], prompt);
+export const mergeImagesWithTemplatePrompt = mergeImages;
+export const applyTemplateToSingleImage = (base64ImageDataUrl: string, prompt: string) =>
+  applyImageTemplate([base64ImageDataUrl], prompt);
 export const mergeMultipleImages = mergeImages;

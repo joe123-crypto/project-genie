@@ -4,7 +4,7 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { saveAs } from 'file-saver';
 import { mergeImages } from '../services/geminiService';
-import { shareImage, ShareResult, getFilterUrl } from '../services/shareService';
+import { shareImage, ShareResult, getTemplateUrl } from '../services/shareService';
 import { downscale } from '../utils/downscale';
 import { getApiBaseUrlRuntime } from '../utils/api';
 import { Outfit, User } from '../types';
@@ -30,7 +30,7 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
   const [isSharing, setIsSharing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const [filterUrl, setFilterUrl] = useState<string | null>(null);
+  const [templateUrl, setTemplateUrl] = useState<string | null>(null);
 
   useEffect(() => {
     setIsNative(Capacitor.isNativePlatform());
@@ -65,11 +65,11 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
     setGeneratedImage(null);
     setGeneratedImageFilename(null);
     try {
-      const result = await mergeImages([uploadedImage, outfit.previewImageUrl], outfit.prompt, "filtered");
+      const result = await mergeImages([uploadedImage, outfit.previewImageUrl], outfit.prompt, "templated");
       setGeneratedImage(result);
 
       if (result && result.includes('r2.dev')) {
-        const keyStart = result.indexOf("filtered/");
+        const keyStart = result.indexOf("templated/");
         if (keyStart !== -1) {
           const key = result.substring(keyStart);
           setGeneratedImageFilename(key);
@@ -80,7 +80,7 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
       } else {
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 8);
-        setGeneratedImageFilename(`filtered-${timestamp}-${randomId}.png`);
+        setGeneratedImageFilename(`templated-${timestamp}-${randomId}.png`);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred during generation.');
@@ -169,8 +169,8 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
 
     try {
       if (isNative) {
-        const generatedFilterUrl = getFilterUrl(outfit.id);
-        setFilterUrl(generatedFilterUrl);
+        const generatedTemplateUrl = getTemplateUrl(outfit.id);
+        setTemplateUrl(generatedTemplateUrl);
 
         let base64Data: string;
         if (generatedImage.startsWith('data:')) {
@@ -197,7 +197,7 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
           directory: Directory.Cache,
         });
 
-        const shareText = `🎨 Check out this outfit I created with "${outfit.name}" on Genie!\n\n✨ Try it yourself:\n${generatedFilterUrl}\n\nCreate amazing images with AI! 🚀`;
+        const shareText = `🎨 Check out this outfit I created with "${outfit.name}" on Genie!\n\n✨ Try it yourself:\n${generatedTemplateUrl}\n\nCreate amazing images with AI! 🚀`;
 
         await Share.share({
           title: `Try "${outfit.name}" on Genie`,
@@ -210,8 +210,8 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
         // Web share
         const result: ShareResult = await shareImage(generatedImage, outfit as any, user);
         setShareUrl(result.shareUrl);
-        if (result.filterUrl) {
-          setFilterUrl(result.filterUrl);
+        if (result.templateUrl) {
+          setTemplateUrl(result.templateUrl);
         }
         if (result.status === 'modal') {
           setIsShareModalOpen(true);
@@ -387,9 +387,9 @@ const ApplyOutfitView: React.FC<ApplyOutfitViewProps> = ({ outfit, user }) => {
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
           imageUrl={generatedImage}
-          filterName={outfit.name}
+          templateName={outfit.name}
           shareUrl={shareUrl || undefined}
-          filterUrl={filterUrl || undefined}
+          templateUrl={templateUrl || undefined}
         />
       )}
     </div>

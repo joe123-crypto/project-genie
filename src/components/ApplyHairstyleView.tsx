@@ -5,7 +5,7 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { saveAs } from 'file-saver';
 import { mergeHairstyle } from '../services/geminiService';
-import { shareImage, ShareResult, getFilterUrl } from '../services/shareService';
+import { shareImage, ShareResult, getTemplateUrl } from '../services/shareService';
 import { downscale } from '../utils/downscale';
 import { getApiBaseUrlRuntime } from '../utils/api';
 import { Hairstyle, User } from '../types';
@@ -31,7 +31,7 @@ const ApplyHairstyleView: React.FC<ApplyHairstyleViewProps> = ({ hairstyle, user
     const [isSharing, setIsSharing] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [shareUrl, setShareUrl] = useState<string | null>(null);
-    const [filterUrl, setFilterUrl] = useState<string | null>(null);
+    const [templateUrl, setTemplateUrl] = useState<string | null>(null);
 
     useEffect(() => {
         setIsNative(Capacitor.isNativePlatform());
@@ -71,11 +71,11 @@ const ApplyHairstyleView: React.FC<ApplyHairstyleViewProps> = ({ hairstyle, user
             const prompt = `hairstyle: ${hairstyle.name} (${hairstyle.gender})`;
             // Changed to mergeHairstyle: Arg 1 = User Photo (Target), Arg 2 = Hairstyle (Source)
             // The service function internally swaps them to [Source, Target] order as per user prompt logic.
-            const result = await mergeHairstyle(uploadedImage, hairstyle.previewImageUrl, prompt, "filtered");
+            const result = await mergeHairstyle(uploadedImage, hairstyle.previewImageUrl, prompt, "templated");
             setGeneratedImage(result);
 
             if (result && result.includes('r2.dev')) {
-                const keyStart = result.indexOf("filtered/");
+                const keyStart = result.indexOf("templated/");
                 if (keyStart !== -1) {
                     const key = result.substring(keyStart);
                     setGeneratedImageFilename(key);
@@ -86,7 +86,7 @@ const ApplyHairstyleView: React.FC<ApplyHairstyleViewProps> = ({ hairstyle, user
             } else {
                 const timestamp = Date.now();
                 const randomId = Math.random().toString(36).substring(2, 8);
-                setGeneratedImageFilename(`filtered-${timestamp}-${randomId}.png`);
+                setGeneratedImageFilename(`templated-${timestamp}-${randomId}.png`);
             }
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'An unknown error occurred during generation.');
@@ -173,12 +173,12 @@ const ApplyHairstyleView: React.FC<ApplyHairstyleViewProps> = ({ hairstyle, user
 
         try {
             if (isNative) {
-                // Re-using filter URL logic but passing hairstyle ID. 
-                // Note: generic getFilterUrl might expect filter ID. 
+                // Re-using template URL logic but passing hairstyle ID. 
+                // Note: generic getTemplateUrl might expect template ID. 
                 // We'll use the same structure for now or need a getHairstyleUrl.
                 // For now, let's assume it works or just share the image.
-                const generatedFilterUrl = getFilterUrl(hairstyle.id);
-                setFilterUrl(generatedFilterUrl);
+                const generatedTemplateUrl = getTemplateUrl(hairstyle.id);
+                setTemplateUrl(generatedTemplateUrl);
 
                 let base64Data: string;
                 if (generatedImage.startsWith('data:')) {
@@ -205,7 +205,7 @@ const ApplyHairstyleView: React.FC<ApplyHairstyleViewProps> = ({ hairstyle, user
                     directory: Directory.Cache,
                 });
 
-                const shareText = `🎨 Check out this hairstyle I created with "${hairstyle.name}" on Genie!\n\n✨ Try it yourself:\n${generatedFilterUrl}\n\nCreate amazing images with AI! 🚀`;
+                const shareText = `🎨 Check out this hairstyle I created with "${hairstyle.name}" on Genie!\n\n✨ Try it yourself:\n${generatedTemplateUrl}\n\nCreate amazing images with AI! 🚀`;
 
                 await Share.share({
                     title: `Try "${hairstyle.name}" on Genie`,
@@ -219,8 +219,8 @@ const ApplyHairstyleView: React.FC<ApplyHairstyleViewProps> = ({ hairstyle, user
                 // shareImage expects Filter or Outfit. We cast Hairstyle to any or update the type.
                 const result: ShareResult = await shareImage(generatedImage, hairstyle as any, user);
                 setShareUrl(result.shareUrl);
-                if (result.filterUrl) {
-                    setFilterUrl(result.filterUrl);
+                if (result.templateUrl) {
+                    setTemplateUrl(result.templateUrl);
                 }
                 if (result.status === 'modal') {
                     setIsShareModalOpen(true);
@@ -396,9 +396,9 @@ const ApplyHairstyleView: React.FC<ApplyHairstyleViewProps> = ({ hairstyle, user
                     isOpen={isShareModalOpen}
                     onClose={() => setIsShareModalOpen(false)}
                     imageUrl={generatedImage}
-                    filterName={hairstyle.name}
+                    templateName={hairstyle.name}
                     shareUrl={shareUrl || undefined}
-                    filterUrl={filterUrl || undefined}
+                    templateUrl={templateUrl || undefined}
                 />
             )}
         </div>
