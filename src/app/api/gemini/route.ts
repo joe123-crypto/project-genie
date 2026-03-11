@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { corsHeaders } from '@/lib/cors';
 import { generateText } from "ai";
+import { isCiSmokeTestMode, SMOKE_IMAGE_DATA_URL, smokeJson } from "@/lib/ciSmoke";
 
 interface GeminiRequestBody {
   prompt: string;
@@ -47,6 +48,13 @@ export async function POST(req: Request) {
 
   if (!prompt || !prompt.trim()) {
     return NextResponse.json({ error: "Prompt is required" }, { status: 400, headers: corsHeaders });
+  }
+
+  if (isCiSmokeTestMode()) {
+    if (images?.length || /image|generate|create|draw|paint/i.test(prompt)) {
+      return smokeJson({ imageUrl: SMOKE_IMAGE_DATA_URL }, 200, corsHeaders);
+    }
+    return smokeJson({ text: "Smoke Gemini response" }, 200, corsHeaders);
   }
 
   try {

@@ -7,10 +7,6 @@ export default function SharedImagePage() {
   const [id, setId] = useState<string | null>(null);
 
   useEffect(() => {
-    // For Capacitor/static export, we need to extract the ID from the URL
-    // Since static export can't handle dynamic routes, we use query parameters
-    // or extract from the full URL pathname
-    
     if (typeof window === 'undefined') return;
 
     // Method 1: Try query parameter (e.g., /shared?id=abc123)
@@ -22,7 +18,6 @@ export default function SharedImagePage() {
     }
 
     // Method 2: Extract from pathname (e.g., /shared/abc123)
-    // This works for client-side navigation in Capacitor apps
     const pathname = window.location.pathname;
     const match = pathname.match(/\/shared\/([^/]+)/);
     if (match && match[1]) {
@@ -57,4 +52,3 @@ export default function SharedImagePage() {
 
   return <SharedImageClientPage id={id} />;
 }
-

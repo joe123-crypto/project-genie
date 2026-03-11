@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
+import { isCiSmokeTestMode, smokeJson, smokeVideoTask } from "@/lib/ciSmoke";
 
 export async function GET(req: Request) {
     const taskId = new URL(req.url).searchParams.get('id');
 
     if (!taskId || typeof taskId !== "string") {
         return NextResponse.json({ error: "taskId is required" }, { status: 400 });
+    }
+
+    if (isCiSmokeTestMode()) {
+        return smokeJson(smokeVideoTask(req, taskId), 200);
     }
 
     const apiKey = process.env.POLLO_AI_API_KEY;

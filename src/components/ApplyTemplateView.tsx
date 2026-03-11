@@ -1,28 +1,22 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
-import { Share } from '@capacitor/share';
-import { Filesystem, Directory } from '@capacitor/filesystem';
+import React, { useState, useCallback } from 'react';
 import { saveAs } from 'file-saver';
 import { applyImageTemplate } from '../services/geminiService';
-import { shareImage, ShareResult, getTemplateUrl } from '../services/shareService';
+import { shareImage, ShareResult } from '../services/shareService';
 import { downscale } from '../utils/downscale';
 import { getApiBaseUrlRuntime } from '../utils/api';
-import { getTemplateById } from '../services/firebaseService';
 import { Template, User, ViewState } from '../types';
 import { UploadIcon, ShareIcon, DownloadIcon } from './icons';
 import ShareModal from './ShareModal';
-import FileSaver from '../plugins/file-saver'; // Use the new plugin
 
 interface ApplyTemplateViewProps {
-  template?: Template;
+  template: Template | null;
   templateId?: string;
   setViewState: (state: ViewState) => void;
   user: User | null;
 }
 
-const ApplyTemplateView: React.FC<ApplyTemplateViewProps> = ({ template: initialTemplate, templateId, setViewState, user }) => {
-  const [template, setTemplate] = useState<Template | null>(initialTemplate || null);
-  const [loadingTemplate, setLoadingTemplate] = useState<boolean>(!!templateId && !initialTemplate);
+const ApplyTemplateView: React.FC<ApplyTemplateViewProps> = ({ template, templateId, setViewState, user }) => {
+  //const [template, setTemplate] = useState<Template | null>(initialTemplate || null);
   const [uploadedImage1, setUploadedImage1] = useState<string | null>(null);
   const [uploadedImage2, setUploadedImage2] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -38,36 +32,11 @@ const ApplyTemplateView: React.FC<ApplyTemplateViewProps> = ({ template: initial
 
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [templateUrl, setTemplateUrl] = useState<string | null>(null);
-  const [isNative, setIsNative] = useState(false);
-
-  useEffect(() => {
-    setIsNative(Capacitor.isNativePlatform());
-  }, []);
-
+  // Check if we are still waiting for the template to load from context
+  const isTemplateLoading = !!templateId && (!template || template.id !== templateId);
   const templateType = template?.type ?? 'single';
   const templatePrompt = template?.prompt ?? '';
-
-  useEffect(() => {
-    const fetchTemplate = async () => {
-      if (templateId && !template) {
-        setLoadingTemplate(true);
-        try {
-          const fetchedTemplate = await getTemplateById(templateId);
-          if (fetchedTemplate) {
-            setTemplate(fetchedTemplate);
-          } else {
-            throw new Error("Template not found");
-          }
-        } catch (err) {
-          console.error("❌ Error fetching template:", err);
-          setError(err instanceof Error ? err.message : "Could not fetch template");
-        } finally {
-          setLoadingTemplate(false);
-        }
-      }
-    };
-    fetchTemplate();
-  }, [templateId, template]);
+  //console.log("template in apply template view:", template);
 
   const handleApplyTemplate = useCallback(async () => {
     setError(null);
@@ -88,7 +57,7 @@ const ApplyTemplateView: React.FC<ApplyTemplateViewProps> = ({ template: initial
 
     try {
       const combinedPrompt = personalPrompt ? `${templatePrompt}\n${personalPrompt}` : templatePrompt;
-      const result = await applyImageTemplate(imagesToProcess, combinedPrompt, isNative ? undefined : "templated");
+      const result = await applyImageTemplate(imagesToProcess, combinedPrompt, 'templated');
       setGeneratedImage(result);
 
       // Generate a simple filename for all cases, now handled by native plugin if needed
@@ -101,7 +70,7 @@ const ApplyTemplateView: React.FC<ApplyTemplateViewProps> = ({ template: initial
     } finally {
       setIsLoading(false);
     }
-  }, [uploadedImage1, uploadedImage2, templatePrompt, templateType, personalPrompt, isNative]);
+  }, [uploadedImage1, uploadedImage2, templatePrompt, templateType, personalPrompt]);
 
   const fetchImageAsBase64 = async (url: string): Promise<string> => {
     const response = await fetch(url);
@@ -212,90 +181,32 @@ const ApplyTemplateView: React.FC<ApplyTemplateViewProps> = ({ template: initial
   }, [generatedImage, generatedImageFilename, user]);
 
   const handleShare = useCallback(async () => {
-    if (!generatedImage) return;
+    if (!generatedImage || !template) return;
 
     setIsSharing(true);
     setError(null);
 
     try {
-      if (isNative) {
-        // Generate template URL for sharing
-        if (!template) { console.error("No template given"); return; }
-        const generatedTemplateUrl = getTemplateUrl(template.id);
-        setTemplateUrl(generatedTemplateUrl);
+      let imageToShare = generatedImage;
 
-        // Convert image to base64 if needed (handle both data URLs and HTTP URLs)
-        let base64Data: string;
-        if (generatedImage.startsWith('data:')) {
-          base64Data = generatedImage.split(',')[1];
-        } else if (generatedImage.startsWith('http')) {
-          // Fetch HTTP URL and convert to base64
-          const response = await fetch(generatedImage);
-          const blob = await response.blob();
-          const dataUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-          base64Data = dataUrl.split(',')[1];
-        } else {
-          base64Data = generatedImage;
-        }
+      if (!imageToShare.startsWith('data:') && !imageToShare.startsWith('http')) {
+        imageToShare = await fetchImageAsBase64(imageToShare);
+      }
 
-        const fileName = `genie-share-${Date.now()}.png`;
-
-        // Write image file to cache directory so it can be shared
-        const result = await Filesystem.writeFile({
-          path: fileName,
-          data: base64Data,
-          directory: Directory.Cache,
-        });
-
-        // Create an inviting message with the template link
-        // The text will include the template link so both image and link are shared
-        const shareText = `🎨 Check out this image I created with the "${template.name}" template on Genie!\n\n✨ Try this template yourself:\n${generatedTemplateUrl}\n\nCreate amazing images with AI templates! 🚀`;
-
-        // On Android, use the file URI so the image is attached AND include the template link in the text
-        // This ensures both the image and the template link are shared together
-        await Share.share({
-          title: `Try the "${template.name}" Template on Genie`,
-          text: shareText, // Template link is included in the text
-          url: result.uri, // Use file URI so the image is attached to the share
-          dialogTitle: 'Share Image & Template',
-        });
-
-      } else {
-        // Use the generated image directly - shareImage can handle both data URLs and HTTP URLs
-        // No need to save to Firebase first, as shareImage will upload to R2 anyway
-        if (!template) { console.error("No template given"); return; }
-
-        // Ensure we have a usable image URL
-        let imageToShare = generatedImage;
-
-        // If the image is already a URL (from R2/Firebase), use it directly
-        // If it's a data URL, shareImage will handle it
-        // If it needs to be converted, convert it
-        if (!imageToShare.startsWith('data:') && !imageToShare.startsWith('http')) {
-          // This shouldn't happen, but convert to data URL just in case
-          imageToShare = await fetchImageAsBase64(imageToShare);
-        }
-
-        const result: ShareResult = await shareImage(imageToShare, template, user);
-        setShareUrl(result.shareUrl);
-        if (result.templateUrl) {
-          setTemplateUrl(result.templateUrl);
-        }
-        if (result.status === 'modal') {
-          setIsShareModalOpen(true);
-        }
+      const result: ShareResult = await shareImage(imageToShare, template, user);
+      setShareUrl(result.shareUrl);
+      if (result.templateUrl) {
+        setTemplateUrl(result.templateUrl);
+      }
+      if (result.status === 'modal') {
+        setIsShareModalOpen(true);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? `Sharing failed: ${err.message}` : 'Unknown error');
     } finally {
       setIsSharing(false);
     }
-  }, [generatedImage, template, user, isNative]);
+  }, [generatedImage, template, user]);
 
   const handleDownload = useCallback(async () => {
     if (!generatedImage) return;
@@ -304,63 +215,33 @@ const ApplyTemplateView: React.FC<ApplyTemplateViewProps> = ({ template: initial
     setError(null);
 
     try {
-      if (isNative) {
-        console.log('[Download] Starting download on native platform');
-        console.log('[Download] Generated image type:', generatedImage.startsWith('data:') ? 'data URL' : 'URL');
-        console.log('[Download] Generated image preview:', generatedImage.substring(0, 100));
+      let blob: Blob;
 
-        // Convert URL to data URL if needed (for Android download)
-        let dataUrl = generatedImage;
-        if (!generatedImage.startsWith('data:')) {
-          console.log('[Download] Fetching image from URL to convert to data URL...');
-          dataUrl = await fetchImageAsBase64(generatedImage);
-          console.log('[Download] Image converted to data URL, length:', dataUrl.length);
+      if (generatedImage.startsWith('data:')) {
+        const response = await fetch(generatedImage);
+        blob = await response.blob();
+      } else if (generatedImage.startsWith('http')) {
+        const response = await fetch(generatedImage);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.statusText}`);
         }
-
-        console.log('[Download] Calling FileSaver plugin...');
-        const result = await FileSaver.saveBase64ToDownloads({
-          dataUrl: dataUrl,
-        });
-        console.log('[Download] FileSaver plugin success:', result);
-        alert("Image saved to Downloads!");
-
+        blob = await response.blob();
       } else {
-        // Web download using file-saver
-        // Convert image to Blob if needed (saveAs requires Blob/File, not data URL or HTTP URL)
-        let blob: Blob;
-
-        if (generatedImage.startsWith('data:')) {
-          // Convert data URL to Blob
-          const response = await fetch(generatedImage);
-          blob = await response.blob();
-        } else if (generatedImage.startsWith('http')) {
-          // Fetch HTTP URL and convert to Blob
-          const response = await fetch(generatedImage);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch image: ${response.statusText}`);
-          }
-          blob = await response.blob();
-        } else {
-          // If it's already a Blob (unlikely), use it directly
-          throw new Error('Invalid image format for download');
-        }
-
-        // Generate filename with proper extension based on blob type
-        const timestamp = Date.now();
-        const randomId = Math.random().toString(36).substring(2, 8);
-        let filename = generatedImageFilename || `genie-${timestamp}-${randomId}`;
-
-        // Ensure filename has proper extension
-        if (!filename.includes('.')) {
-          // Determine extension from blob MIME type
-          const extension = blob.type.includes('webp') ? '.webp'
-            : blob.type.includes('jpeg') || blob.type.includes('jpg') ? '.jpg'
-              : '.png';
-          filename = `${filename}${extension}`;
-        }
-
-        saveAs(blob, filename);
+        throw new Error('Invalid image format for download');
       }
+
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 8);
+      let filename = generatedImageFilename || `genie-${timestamp}-${randomId}`;
+
+      if (!filename.includes('.')) {
+        const extension = blob.type.includes('webp') ? '.webp'
+          : blob.type.includes('jpeg') || blob.type.includes('jpg') ? '.jpg'
+            : '.png';
+        filename = `${filename}${extension}`;
+      }
+
+      saveAs(blob, filename);
     } catch (err) {
       console.error("[Download] Download error:", err);
       console.error("[Download] Error details:", JSON.stringify(err, Object.getOwnPropertyNames(err)));
@@ -368,13 +249,18 @@ const ApplyTemplateView: React.FC<ApplyTemplateViewProps> = ({ template: initial
     } finally {
       setIsDownloading(false);
     }
-  }, [generatedImage, generatedImageFilename, isNative]);
+  }, [generatedImage, generatedImageFilename]);
 
 
   const isApplyDisabled = isLoading || !uploadedImage1 || (templateType === 'merge' && !uploadedImage2);
 
-  if (loadingTemplate) {
-    return <div className="text-center mt-10">Loading template...</div>;
+  if (isTemplateLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center pt-20">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-primary"></div>
+        <p className="mt-4 text-lg">Loading template...</p>
+      </div>
+    );
   }
 
   if (!template) {
@@ -507,9 +393,9 @@ const ApplyTemplateView: React.FC<ApplyTemplateViewProps> = ({ template: initial
                 className="flex items-center gap-2 bg-base-200 hover:bg-base-300 dark:bg-dark-base-200 dark:hover:bg-dark-base-300 border border-border-color dark:border-dark-border-color text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg transition-colors text-center"
               >
                 <DownloadIcon />
-                {isNative ? (isDownloading ? 'Saving...' : 'Save') : (isDownloading ? 'Downloading...' : 'Download')}
+                {isDownloading ? 'Downloading...' : 'Download'}
               </button>
-              {!isNative && (
+              {user && (
                 <button
                   onClick={handleSave}
                   disabled={isSaving || isLoading || saveStatus === 'saved'}
@@ -549,7 +435,7 @@ const ApplyTemplateView: React.FC<ApplyTemplateViewProps> = ({ template: initial
         </button>
       </div>
 
-      {generatedImage && template && !isNative && (
+      {generatedImage && template && (
         <ShareModal
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}

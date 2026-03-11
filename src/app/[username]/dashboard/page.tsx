@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useEffect } from "react";
-import { Capacitor } from '@capacitor/core';
 import { useParams, useRouter } from 'next/navigation';
 import { Template, ViewState, User, Outfit, Hairstyle, VideoTemplate } from "@/types";
 import Marketplace from "@/components/Marketplace";
@@ -13,126 +12,33 @@ import OutfitsView from "@/components/OutfitsView";
 import VideosView from "@/components/VideosView";
 import ApplyVideoView from "@/components/ApplyVideoView";
 import SharedImageView from "@/components/SharedImageView";
-import WelcomeModal from "@/components/WelcomeModal";
 import { SunIcon, MoonIcon, WhatsAppIcon, SearchIcon } from "@/components/icons";
 import { getTemplates, deleteTemplate, incrementTemplateAccessCount, updateTemplate, getOutfits, incrementOutfitAccessCount, getTemplateById, getHairstyles, incrementHairstyleAccessCount, deleteHairstyle, updateHairstyle, getVideoTemplates, incrementVideoAccessCount } from "@/services/firebaseService";
-import { deleteUser } from "@/services/userService";
 import { Spinner } from "@/components/Spinner";
 import { commonClasses } from "@/utils/theme";
-import UserIcon from '@/components/UserIcon';
-import ConfirmationDialog from '@/components/ConfirmationDialog';
 import ProfileView from '@/components/ProfileView';
 import DashboardBar from '@/components/DashboardBar';
 import { fetchTemplateById } from "@/services/templateService";
-import { InitialAuthView } from "@/components/InitialAuthView";
 import SearchView from "@/components/SearchView";
-import Link from "next/link";
 import { useAuth } from '@/context/AuthContext';
+import { useTemplates } from '@/context/TemplateContext';
 
 export default function Page() {
-    const [templates, setTemplates] = useState<Template[]>([]);
+    const { user, logout, login, isLoading: authLoading } = useAuth();
+    //const [templates, setTemplates] = useState<Template[]>([]);
     const [outfits, setOutfits] = useState<Outfit[]>([]);
     const [hairstyles, setHairstyles] = useState<Hairstyle[]>([]);
-    const [videoTemplates, setVideoTemplates] = useState<VideoTemplate[]>([]);
+    //const [videoTemplates, setVideoTemplates] = useState<VideoTemplate[]>([]);
     const [viewState, setViewState] = useState<ViewState>({ view: "marketplace" });
-    const [isLoading, setIsLoading] = useState<boolean>(true); // Combined loading state
     const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(false);
-    const [isDark, setIsDark] = useState(false);
     const [showConfirmDialog, setShowConfirmDialog] = useState<boolean>(false);
-    const [isWeb, setIsWeb] = useState<boolean>(false);
     const params = useParams();
-    const { user, logout, login, isLoading: authLoading } = useAuth();
+    //const [isLoading, setIsLoading] = useState<boolean>(true);
     const router = useRouter();
 
-    // Check if running on web platform
-    useEffect(() => {
-        const platform = Capacitor.getPlatform();
-        const isWebPlatform = platform === 'web';
-        setIsWeb(isWebPlatform);
-    }, []);
-
-    // Load theme from localStorage
-    useEffect(() => {
-        const savedTheme = localStorage.getItem("theme");
-        const prefersDark =
-            savedTheme === "dark" ||
-            (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches);
-
-        if (prefersDark) {
-            document.documentElement.classList.add("dark");
-            setIsDark(true);
-        } else {
-            document.documentElement.classList.remove("dark");
-            setIsDark(false);
-        }
-    }, []);
-
-    const toggleTheme = () => {
-        const newIsDark = !isDark;
-        setIsDark(newIsDark);
-        localStorage.setItem("theme", newIsDark ? "dark" : "light");
-        document.documentElement.classList.toggle("dark", newIsDark);
-    };
-
-    const handleSignOut = async () => {
-        await logout();
-        router.replace('/login');
-    };
-
-    const handleSignInSuccess = (signedInUser: User) => {
-        login(signedInUser);
-        setIsWelcomeModalOpen(true);
-
-        router.push(`/${signedInUser.displayName ||
-            signedInUser.username}/dashboard`);
-    };
-
+    const { templates, videoTemplates,
+        isLoading, setTemplates, setVideoTemplates } = useTemplates();
     // Pre-fetch data and handle initial state
-    useEffect(() => {
-        const initialLoad = async () => {
-            setIsLoading(true);
-            try {
-                // Concurrently fetch data and check user session
-                const dataPromise = Promise.all([getTemplates(), getOutfits()]);
-
-                const [data] = await Promise.all([dataPromise]);
-                const [fetchedTemplates, fetchedOutfits] = data;
-                const fetchedHairstyles = await getHairstyles();
-                const fetchedVideoTemplates = await getVideoTemplates();
-
-                setTemplates(fetchedTemplates);
-                setOutfits(fetchedOutfits);
-                setHairstyles(fetchedHairstyles);
-                setVideoTemplates(fetchedVideoTemplates);
-
-                // Handle initial URL parameters
-                const urlParams = new URLSearchParams(window.location.search);
-                const view = urlParams.get("view");
-                const templateId = urlParams.get("templateId");
-                const shareId = urlParams.get("share");
-
-                if (shareId) {
-                    setViewState({ view: "shared", shareId });
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                } else if (view === "apply" && templateId) {
-                    const selectedTemplate = fetchedTemplates.find(t => t.id === templateId) || await getTemplateById(templateId);
-                    if (selectedTemplate) {
-                        setViewState({ view: "apply", template: selectedTemplate });
-                    } else {
-                        setViewState({ view: "marketplace" });
-                    }
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                }
-
-            } catch (err) {
-                console.error("Error during initial app load:", err);
-                setViewState({ view: "initialAuth" });
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        initialLoad();
-    }, []);
 
     const addTemplate = useCallback(
         (newTemplate: Template) => setTemplates(prev => [newTemplate, ...prev]),
@@ -184,17 +90,20 @@ export default function Page() {
 
     const handleSelectTemplate = useCallback(
         (template: Template) => {
-            setViewState({ view: "apply", template });
-            incrementTemplateAccessCount(template.id);
+            //setViewState({ view: "apply", template });
+            //console.log("template in dashboard", template);
+            router.push(`/${user?.displayName ||
+                user?.username}/dashboard/${template.id}`);
+            /*incrementTemplateAccessCount(template.id);
             setTemplates(prevTemplates =>
                 prevTemplates.map(t =>
                     t.id === template.id
                         ? { ...t, accessCount: (t.accessCount || 0) + 1 }
                         : t
                 )
-            );
+            );*/
         },
-        []
+        [user, router]
     );
 
     const handleSelectOutfit = useCallback(
@@ -272,7 +181,13 @@ export default function Page() {
         },
         []
     );
+    const handleSignInSuccess = (signedInUser: User) => {
+        login(signedInUser);
+        setIsWelcomeModalOpen(true);
 
+        router.push(`/${signedInUser.displayName ||
+            signedInUser.username}/dashboard`);
+    };
     const handleCreateYourOwn = async (templateId: string) => {
         try {
             const template = await fetchTemplateById(templateId);
@@ -281,23 +196,6 @@ export default function Page() {
         catch (error) {
             console.error('Error fetching template:', error);
             alert('Error fetching template. Please try again.');
-        }
-    };
-
-    const handleRemoveAccount = async () => {
-        setShowConfirmDialog(true);
-    };
-
-    const confirmRemoveAccount = async () => {
-        try {
-            await deleteUser();
-            handleSignOut();
-        }
-        catch (err) {
-            console.error(err);
-        }
-        finally {
-            setShowConfirmDialog(false);
         }
     };
 
@@ -342,7 +240,7 @@ export default function Page() {
     };
 
     const renderView = () => {
-        if (authLoading || (isLoading && user)) {
+        if (authLoading || (isLoading && user) || !(user)) {
             return (
                 <div className='flex flex-col items-center justify-center pt-20'>
                     <Spinner className="h-10 w-10 text-brand-primary" />
@@ -351,13 +249,6 @@ export default function Page() {
             );
         }
 
-        if (!user) {
-            return (
-                <div className="flex justify-center items-center h-screen">
-                    <InitialAuthView onSignInSuccess={handleSignInSuccess} />
-                </div>
-            );
-        }
         // If loading, and we either have a user or are not on the auth screen, show a spinner.
         if (isLoading && (user || viewState.view !== 'initialAuth')) {
             return (
@@ -369,8 +260,6 @@ export default function Page() {
                 </div>
             );
         }
-        // If not loading and the view is initialAuth, or if there's no user, show the auth view.
-
         const animationClass = transitionDirection === "left" ? "animate-slide-left" : transitionDirection === "right" ? "animate-slide-right" : "animate-fade-in";
 
         return (
@@ -387,10 +276,8 @@ export default function Page() {
                                     onEditTemplate={(t: Template) => setViewState({ view: "edit", template: t })}
                                 />
                             );
-                        case "apply":
-                            return <ApplyTemplateView template={viewState.template!} setViewState={setViewState} user={user} />;
-                        //case "auth":
-                        //    return <AuthView setViewState={setViewState} onSignInSuccess={handleSignInSuccess} />;
+                        /*case "apply":
+                            return <ApplyTemplateView template={viewState.template!} setViewState={setViewState} user={user} />;*/
                         case "shared":
                             return <SharedImageView shareId={viewState.shareId!} setViewState={setViewState} />;
                         case "profile":
@@ -452,122 +339,42 @@ export default function Page() {
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
         >
-            {/* Blurred background overlay */}
             {user && (
-                <div className="fixed inset-0 z-0 pointer-events-none">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-purple-50/20 to-pink-50/30 dark:from-blue-950/20 dark:via-purple-950/10 dark:to-pink-950/20" />
-                    <div className="absolute inset-0 backdrop-blur-3xl" />
+                <div className="max-w-7xl mx-auto mb-8">
+                    <div className="flex justify-center gap-8 border-b border-gray-200 dark:border-gray-700">
+                        <button
+                            onClick={() => setViewState({ view: "search" })}
+                            className={`py-3 px-4 transition-colors ${viewState.view === "search"
+                                ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                                : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+                                }`}
+                            aria-label="Search"
+                        >
+                            <SearchIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                            onClick={() => setViewState({ view: "marketplace" })}
+                            className={`py-3 font-semibold transition-colors ${viewState.view === "marketplace"
+                                ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                                : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+                                }`}
+                        >
+                            Templates
+                        </button>
+                        <button
+                            onClick={() => setViewState({ view: "videos" })}
+                            className={`py-3 font-semibold transition-colors ${viewState.view === "videos"
+                                ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
+                                : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
+                                }`}
+                        >
+                            Videos
+                        </button>
+                    </div>
                 </div>
             )}
 
-            <div className="flex-grow p-4 sm:p-6 md:p-8 pb-56 sm:pb-24 relative z-10">
-                {user && (
-                    <header className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
-                        <div
-                            className="flex items-center gap-3 cursor-pointer"
-                            onClick={() => setViewState({ view: "marketplace" })}
-                        >
-                            <img src="/lamp.png" alt="Genie Lamp" className="h-8 w-8" />
-                            <h1 className={`text-2xl sm:text-3xl ${commonClasses.text.heading}`}>
-                                GenAIe
-                            </h1>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <>
-                                <Link
-                                    href={`/${params.username}/createmenu`}
-                                    className={commonClasses.button.primary}
-                                >
-                                    Create
-                                </Link>
-                                <UserIcon
-                                    user={user}
-                                    onSignOut={handleSignOut}
-                                    onGoToProfile={() => setViewState({ view: "profile", user: user })}
-                                    onRemoveAccount={handleRemoveAccount}
-                                />
-                            </>
-                            <button
-                                className={commonClasses.button.icon}
-                                onClick={toggleTheme}
-                                aria-label="Toggle theme"
-                            >
-                                {isDark ? <SunIcon /> : <MoonIcon />}
-                            </button>
-                        </div>
-                    </header>
-                )}
-
-                {user && (
-                    <div className="max-w-7xl mx-auto mb-8">
-                        <div className="flex justify-center gap-8 border-b border-gray-200 dark:border-gray-700">
-                            <button
-                                onClick={() => setViewState({ view: "search" })}
-                                className={`py-3 px-4 transition-colors ${viewState.view === "search"
-                                    ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                                    : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-                                    }`}
-                                aria-label="Search"
-                            >
-                                <SearchIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                                onClick={() => setViewState({ view: "marketplace" })}
-                                className={`py-3 font-semibold transition-colors ${viewState.view === "marketplace"
-                                    ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                                    : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-                                    }`}
-                            >
-                                Templates
-                            </button>
-                            {/*<button
-                                onClick={() => setViewState({ view: "outfits" })}
-                                className={`py-3 font-semibold transition-colors ${viewState.view === "outfits"
-                                    ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                                    : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-                                    }`}
-                            >
-                                Outfits
-                            </button>*/}
-                            {/*<button
-                                onClick={() => setViewState({ view: "hairstyles" })}
-                                className={`py-3 font-semibold transition-colors ${viewState.view === "hairstyles"
-                                    ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                                    : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-                                    }`}
-                            >
-                                Hairstyles
-                            </button>*/}
-                            <button
-                                onClick={() => setViewState({ view: "videos" })}
-                                className={`py-3 font-semibold transition-colors ${viewState.view === "videos"
-                                    ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                                    : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-                                    }`}
-                            >
-                                Videos
-                            </button>
-
-                        </div>
-                    </div>
-                )}
-
-                {renderView()}
-            </div>
-
-            {isWelcomeModalOpen && (
-                <WelcomeModal
-                    isOpen={isWelcomeModalOpen}
-                    onClose={() => setIsWelcomeModalOpen(false)}
-                />
-            )}
-            {showConfirmDialog && (
-                <ConfirmationDialog
-                    message="Are you sure you want to remove your account? This action is irreversible."
-                    onConfirm={confirmRemoveAccount}
-                    onCancel={() => setShowConfirmDialog(false)}
-                />
-            )}
+            {renderView()}
 
             {showDashboard && (
                 <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none">

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { mergeImages } from '../../../services/geminiService';
+import { isCiSmokeTestMode, smokeAssetUrl, smokeJson } from '@/lib/ciSmoke';
 
 export async function POST(req: Request) {
     try {
@@ -10,6 +11,12 @@ export async function POST(req: Request) {
                 { error: 'Missing required fields: image, outfitImage, outfitPrompt' },
                 { status: 400 }
             );
+        }
+
+        if (isCiSmokeTestMode()) {
+            return smokeJson({
+                resultImageUrl: smokeAssetUrl(req, '/__smoke/applied-outfit.png')
+            }, 200);
         }
 
         // mergeImages takes an array of inputs and a prompt

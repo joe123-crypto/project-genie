@@ -1,0 +1,12 @@
+name: Pull Request Gate
+
+on:
+  pull_request:
+
+concurrency:
+  group: pr-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gate:
+    uses: ./.github/workflows/reusable-quality-gate.yml

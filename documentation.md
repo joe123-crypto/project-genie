@@ -99,7 +99,6 @@ Defines the core entities:
 ## Deployment & Infrastructure
 - **Hosting**: Vercel.
 - **Storage Configuration**: Environment variables are used for R2 endpoints and Firebase credentials.
-- **Native Support**: Capacitor is integrated for Android/iOS builds, with specific plugins handle file saving on mobile.
 ## File Structure (Comprehensive)
 
 ```mermaid
@@ -110,7 +109,6 @@ graph LR
         R --> CONFIG
         CONFIG --> ENV[.env.local]
         CONFIG --> FIREBASE_RC[.firebaserc]
-        CONFIG --> CAPACITOR[capacitor.config.json]
         CONFIG --> FB_JSON[firebase.json]
         CONFIG --> FS_RULES[firestore.rules]
         CONFIG --> PKG[package.json]
@@ -185,7 +183,6 @@ graph LR
     end
 
     subgraph External [External Folders]
-        R --> ANDROID[android/ - Capacitor]
         R --> FUNCTIONS[functions/ - FB Functions]
         R --> PUBLIC[public/ - Assets]
     end

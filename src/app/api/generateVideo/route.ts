@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
+import { isCiSmokeTestMode, smokeJson } from "@/lib/ciSmoke";
 
 export async function POST(req: Request) {
     const { images, prompt } = await req.json();
 
     if (!images || !images[0] || !prompt) {
         return NextResponse.json({ error: "Image URL and prompt are required" }, { status: 400 });
+    }
+
+    if (isCiSmokeTestMode()) {
+        return smokeJson({ taskId: "smoke-video-task-1", status: "processing" }, 200);
     }
 
     const apiKey = process.env.POLLO_AI_API_KEY;

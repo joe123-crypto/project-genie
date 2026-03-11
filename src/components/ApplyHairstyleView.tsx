@@ -1,17 +1,13 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
-import { Share } from '@capacitor/share';
-import { Filesystem, Directory } from '@capacitor/filesystem';
 import { saveAs } from 'file-saver';
 import { mergeHairstyle } from '../services/geminiService';
-import { shareImage, ShareResult, getTemplateUrl } from '../services/shareService';
+import { shareImage, ShareResult } from '../services/shareService';
 import { downscale } from '../utils/downscale';
 import { getApiBaseUrlRuntime } from '../utils/api';
 import { Hairstyle, User } from '../types';
 import { UploadIcon, ShareIcon, DownloadIcon } from './icons';
 import ShareModal from './ShareModal';
-import FileSaver from '../plugins/file-saver';
 
 interface ApplyHairstyleViewProps {
     hairstyle: Hairstyle;
@@ -27,15 +23,10 @@ const ApplyHairstyleView: React.FC<ApplyHairstyleViewProps> = ({ hairstyle, user
     const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
-    const [isNative, setIsNative] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [shareUrl, setShareUrl] = useState<string | null>(null);
     const [templateUrl, setTemplateUrl] = useState<string | null>(null);
-
-    useEffect(() => {
-        setIsNative(Capacitor.isNativePlatform());
-    }, []);
 
     useEffect(() => {
         if (saveStatus === 'saved') {
@@ -172,66 +163,20 @@ const ApplyHairstyleView: React.FC<ApplyHairstyleViewProps> = ({ hairstyle, user
         setError(null);
 
         try {
-            if (isNative) {
-                // Re-using template URL logic but passing hairstyle ID. 
-                // Note: generic getTemplateUrl might expect template ID. 
-                // We'll use the same structure for now or need a getHairstyleUrl.
-                // For now, let's assume it works or just share the image.
-                const generatedTemplateUrl = getTemplateUrl(hairstyle.id);
-                setTemplateUrl(generatedTemplateUrl);
-
-                let base64Data: string;
-                if (generatedImage.startsWith('data:')) {
-                    base64Data = generatedImage.split(',')[1];
-                } else if (generatedImage.startsWith('http')) {
-                    const response = await fetch(generatedImage);
-                    const blob = await response.blob();
-                    const dataUrl = await new Promise<string>((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result as string);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(blob);
-                    });
-                    base64Data = dataUrl.split(',')[1];
-                } else {
-                    base64Data = generatedImage;
-                }
-
-                const fileName = `genie-share-${Date.now()}.png`;
-
-                const result = await Filesystem.writeFile({
-                    path: fileName,
-                    data: base64Data,
-                    directory: Directory.Cache,
-                });
-
-                const shareText = `🎨 Check out this hairstyle I created with "${hairstyle.name}" on Genie!\n\n✨ Try it yourself:\n${generatedTemplateUrl}\n\nCreate amazing images with AI! 🚀`;
-
-                await Share.share({
-                    title: `Try "${hairstyle.name}" on Genie`,
-                    text: shareText,
-                    url: result.uri,
-                    dialogTitle: 'Share Hairstyle',
-                });
-
-            } else {
-                // Web share
-                // shareImage expects Filter or Outfit. We cast Hairstyle to any or update the type.
-                const result: ShareResult = await shareImage(generatedImage, hairstyle as any, user);
-                setShareUrl(result.shareUrl);
-                if (result.templateUrl) {
-                    setTemplateUrl(result.templateUrl);
-                }
-                if (result.status === 'modal') {
-                    setIsShareModalOpen(true);
-                }
+            const result: ShareResult = await shareImage(generatedImage, hairstyle as any, user);
+            setShareUrl(result.shareUrl);
+            if (result.templateUrl) {
+                setTemplateUrl(result.templateUrl);
+            }
+            if (result.status === 'modal') {
+                setIsShareModalOpen(true);
             }
         } catch (err: unknown) {
             setError(err instanceof Error ? `Sharing failed: ${err.message}` : 'Unknown error');
         } finally {
             setIsSharing(false);
         }
-    }, [generatedImage, hairstyle, user, isNative]);
+    }, [generatedImage, hairstyle, user]);
 
     const handleDownload = useCallback(async () => {
         if (!generatedImage) return;
@@ -240,51 +185,36 @@ const ApplyHairstyleView: React.FC<ApplyHairstyleViewProps> = ({ hairstyle, user
         setError(null);
 
         try {
-            if (isNative) {
-                let dataUrl = generatedImage;
-                if (!generatedImage.startsWith('data:')) {
-                    dataUrl = await fetchImageAsBase64(generatedImage);
-                }
-
-                const result = await FileSaver.saveBase64ToDownloads({
-                    dataUrl: dataUrl,
-                });
-                console.log('[Download] FileSaver plugin success:', result);
-                alert("Image saved to Downloads!");
-
+            let blob: Blob;
+            if (generatedImage.startsWith('data:')) {
+                const response = await fetch(generatedImage);
+                blob = await response.blob();
+            } else if (generatedImage.startsWith('http')) {
+                const response = await fetch(generatedImage);
+                blob = await response.blob();
             } else {
-                // Web download
-                let blob: Blob;
-                if (generatedImage.startsWith('data:')) {
-                    const response = await fetch(generatedImage);
-                    blob = await response.blob();
-                } else if (generatedImage.startsWith('http')) {
-                    const response = await fetch(generatedImage);
-                    blob = await response.blob();
-                } else {
-                    throw new Error('Invalid image format');
-                }
-
-                const timestamp = Date.now();
-                const randomId = Math.random().toString(36).substring(2, 8);
-                let filename = generatedImageFilename || `genie-hairstyle-${timestamp}-${randomId}`;
-
-                if (!filename.includes('.')) {
-                    const extension = blob.type.includes('webp') ? '.webp'
-                        : blob.type.includes('jpeg') || blob.type.includes('jpg') ? '.jpg'
-                            : '.png';
-                    filename = `${filename}${extension}`;
-                }
-
-                saveAs(blob, filename);
+                throw new Error('Invalid image format');
             }
+
+            const timestamp = Date.now();
+            const randomId = Math.random().toString(36).substring(2, 8);
+            let filename = generatedImageFilename || `genie-hairstyle-${timestamp}-${randomId}`;
+
+            if (!filename.includes('.')) {
+                const extension = blob.type.includes('webp') ? '.webp'
+                    : blob.type.includes('jpeg') || blob.type.includes('jpg') ? '.jpg'
+                        : '.png';
+                filename = `${filename}${extension}`;
+            }
+
+            saveAs(blob, filename);
         } catch (err) {
             console.error("[Download] Download error:", err);
             setError(err instanceof Error ? `Download failed: ${err.message}` : 'Download failed');
         } finally {
             setIsDownloading(false);
         }
-    }, [generatedImage, generatedImageFilename, isNative]);
+    }, [generatedImage, generatedImageFilename]);
 
     const isApplyDisabled = isLoading || !uploadedImage;
 
@@ -368,9 +298,9 @@ const ApplyHairstyleView: React.FC<ApplyHairstyleViewProps> = ({ hairstyle, user
                                 className="flex items-center gap-2 bg-base-300 hover:bg-base-400 dark:bg-dark-base-300 dark:hover:bg-dark-base-400 text-content-100 dark:text-dark-content-100 font-bold py-2 px-4 rounded-lg shadow disabled:opacity-50"
                             >
                                 <DownloadIcon />
-                                {isNative ? (isDownloading ? 'Saving...' : 'Save') : (isDownloading ? 'Downloading...' : 'Download')}
+                                {isDownloading ? 'Downloading...' : 'Download'}
                             </button>
-                            {!isNative && user && (
+                            {user && (
                                 <button
                                     onClick={handleSave}
                                     disabled={isSaving || saveStatus === 'saved'}

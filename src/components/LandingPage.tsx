@@ -1,5 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
+
+const walkthroughSteps = [
+    {
+        title: 'Create a template',
+        description: 'Show how a user picks a style and uploads a base image.',
+    },
+    {
+        title: 'Apply the look',
+        description: 'Preview the result, save it, and refine the prompt.',
+    },
+    {
+        title: 'Share the result',
+        description: 'End with publishing to the feed or sharing the final image.',
+    },
+];
 
 
 interface LandingPageProps {
@@ -10,37 +25,8 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDark, toggleTheme }) => {
-    const [apkUrl, setApkUrl] = useState<string | null>(null);
-
-    useEffect(() => {
-        const fetchLatestRelease = async () => {
-            const repo = process.env.NEXT_PUBLIC_GITHUB_REPO;
-            if (!repo) return;
-
-            try {
-                const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`);
-                if (res.ok) {
-                    const data = await res.json();
-                    const apkAsset = data.assets?.find((asset: any) => asset.name.endsWith('.apk'));
-                    if (apkAsset) {
-                        setApkUrl(apkAsset.browser_download_url);
-                    }
-                }
-            } catch (error) {
-                console.error("Failed to fetch latest release:", error);
-            }
-        };
-
-        fetchLatestRelease();
-    }, []);
     return (
         <div className="min-h-screen relative overflow-hidden">
-            {/* Animated gradient background */}
-            <div className="fixed inset-0 z-0">
-                <div className="absolute inset-0 bg-gray-100 dark:bg-gray-900" />
-                <div className="absolute inset-0 backdrop-blur-3xl opacity-60" />
-            </div>
-
             {/* Content */}
             <div className="relative z-10">
                 {/* Header with theme toggle */}
@@ -106,17 +92,100 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                             >
                                 Sign In / Sign Up
                             </button>
-                            {apkUrl && (
-                                <a
-                                    href={apkUrl}
-                                    className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full font-bold text-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-green-500/50 flex items-center gap-2"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                    </svg>
-                                    Download App
-                                </a>
-                            )}
+                        </div>
+
+                        <div className="mt-16 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+                            <div className="mx-auto max-w-6xl rounded-[2rem] border border-white/40 bg-white/10 p-4 shadow-[0_30px_120px_rgba(190,24,93,0.16)] backdrop-blur-xl">
+                                <div className="overflow-hidden rounded-[1.6rem] border border-white/20 bg-slate-950/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+                                    <div className="flex items-center justify-between gap-4 border-b border-white/10 bg-white/5 px-4 py-3 text-left sm:px-6">
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-3 w-3 rounded-full bg-rose-400" />
+                                            <span className="h-3 w-3 rounded-full bg-amber-300" />
+                                            <span className="h-3 w-3 rounded-full bg-emerald-400" />
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-[0.65rem] uppercase tracking-[0.35em] text-white/50">Product Walkthrough</p>
+                                            <p className="text-sm font-semibold text-white/80">Placeholder demo frame</p>
+                                        </div>
+                                        <div className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/60">
+                                            01:28
+                                        </div>
+                                    </div>
+
+                                    <div className="relative aspect-video overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(244,114,182,0.35),_transparent_35%),linear-gradient(135deg,_rgba(15,23,42,1),_rgba(30,41,59,0.94))]">
+                                        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:72px_72px] opacity-25" />
+
+                                        <div className="absolute left-5 top-5 rounded-full border border-fuchsia-300/35 bg-fuchsia-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-fuchsia-100">
+                                            Coming Soon
+                                        </div>
+
+                                        <div className="absolute inset-x-6 top-16 hidden gap-4 lg:grid lg:grid-cols-[1.2fr_0.8fr]">
+                                            <div className="rounded-[1.5rem] border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                                                <div className="flex items-center justify-between text-xs text-white/60">
+                                                    <span>Template Flow</span>
+                                                    <span>Scene 01</span>
+                                                </div>
+                                                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                                    <div className="h-24 rounded-2xl border border-white/10 bg-white/10" />
+                                                    <div className="h-24 rounded-2xl border border-white/10 bg-white/5" />
+                                                    <div className="h-24 rounded-2xl border border-white/10 bg-white/10" />
+                                                </div>
+                                            </div>
+                                            <div className="rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-4 backdrop-blur-sm">
+                                                <div className="h-full rounded-[1.1rem] border border-dashed border-fuchsia-200/35 bg-black/10 p-4 text-left">
+                                                    <p className="text-xs uppercase tracking-[0.25em] text-white/45">Narration cue</p>
+                                                    <p className="mt-3 text-lg font-semibold text-white">Walk viewers through the app in under 90 seconds.</p>
+                                                    <p className="mt-2 text-sm leading-6 text-white/70">
+                                                        Replace this placeholder with a real screen recording, voiceover, or animated promo clip.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+                                            <button
+                                                type="button"
+                                                className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/12 text-white shadow-[0_10px_40px_rgba(236,72,153,0.3)] backdrop-blur-md transition-transform duration-300 hover:scale-105"
+                                                aria-label="Video placeholder"
+                                            >
+                                                <svg className="ml-1 h-8 w-8" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                    <path d="M8 5.14v13.72c0 .72.77 1.17 1.39.82l10.24-5.86a.95.95 0 0 0 0-1.64L9.39 4.32A.95.95 0 0 0 8 5.14Z" />
+                                                </svg>
+                                            </button>
+
+                                            <p className="mt-6 text-xs font-semibold uppercase tracking-[0.38em] text-fuchsia-200/80">
+                                                App demo placeholder
+                                            </p>
+                                            <h3 className="mt-3 max-w-2xl text-2xl font-bold text-white sm:text-3xl">
+                                                Replace this frame with a short video that shows the Genie workflow end to end.
+                                            </h3>
+                                            <p className="mt-4 max-w-2xl text-sm leading-7 text-white/70 sm:text-base">
+                                                A clean walkthrough here should cover template selection, image generation, save/share actions, and the final result.
+                                            </p>
+                                        </div>
+
+                                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent px-5 pb-5 pt-24 sm:px-6">
+                                            <div className="h-1.5 rounded-full bg-white/10">
+                                                <div className="h-full w-[38%] rounded-full bg-gradient-to-r from-rose-400 via-fuchsia-300 to-white" />
+                                            </div>
+                                            <div className="mt-5 grid gap-3 text-left md:grid-cols-3">
+                                                {walkthroughSteps.map((step, index) => (
+                                                    <div
+                                                        key={step.title}
+                                                        className="rounded-2xl border border-white/10 bg-white/6 px-4 py-4 backdrop-blur-sm"
+                                                    >
+                                                        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/45">
+                                                            Step 0{index + 1}
+                                                        </p>
+                                                        <p className="mt-2 text-base font-semibold text-white">{step.title}</p>
+                                                        <p className="mt-2 text-sm leading-6 text-white/65">{step.description}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>

@@ -1,19 +1,7 @@
 /** @type {import('next').NextConfig} */
 
-// Determine if this is a build for Capacitor
-const isCapacitorBuild = process.env.BUILD_TARGET === 'capacitor';
-
-import { readFileSync } from 'fs';
-const packageJson = JSON.parse(readFileSync('./package.json', 'utf8'));
-
 const nextConfig = {
-  // Only add the 'export' output setting if we're building for Capacitor
-  output: isCapacitorBuild ? 'export' : undefined,
-
-  env: {
-    NEXT_PUBLIC_APP_VERSION: packageJson.version,
-    NEXT_PUBLIC_GITHUB_REPO: 'joe123-crypto/project-genie',
-  },
+  reactStrictMode: false,
 
   // Globally disable image optimization to prevent timeout errors.
   // The browser will load images directly from the source URL.
@@ -35,7 +23,7 @@ const nextConfig = {
     ],
   },
 
-  // Add CORS headers to allow requests from your Android app
+  // Add CORS headers to allow API access from external clients.
   async headers() {
     return [
       {

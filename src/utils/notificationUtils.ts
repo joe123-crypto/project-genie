@@ -1,43 +1,38 @@
-import { LocalNotifications } from '@capacitor/local-notifications';
-import { Capacitor } from '@capacitor/core';
-
 export const scheduleNotification = async (
     title: string,
     body: string,
-    largeIcon?: string,
+    _largeIcon?: string,
     attachmentUrl?: string
 ) => {
-    if (!Capacitor.isNativePlatform()) {
-        console.log('Notifications are only supported on native platforms.');
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+        console.log('Browser notifications are not supported in this environment.');
         return;
     }
 
     try {
-        const permStatus = await LocalNotifications.checkPermissions();
+        let permission = Notification.permission;
 
-        if (permStatus.display !== 'granted') {
-            const newStatus = await LocalNotifications.requestPermissions();
-            if (newStatus.display !== 'granted') {
-                console.warn('Notification permissions denied.');
-                return;
-            }
+        if (permission === 'default') {
+            permission = await Notification.requestPermission();
         }
 
-        await LocalNotifications.schedule({
-            notifications: [
-                {
-                    title,
-                    body,
-                    id: Math.floor(Math.random() * 100000),
-                    schedule: { at: new Date(Date.now() + 1000) }, // Schedule for 1 second later
-                    sound: undefined,
-                    attachments: attachmentUrl ? [{ id: 'image', url: attachmentUrl }] : undefined,
-                    largeIcon: largeIcon,
-                    actionTypeId: "",
-                    extra: null
-                }
-            ]
-        });
+        if (permission !== 'granted') {
+            console.warn('Notification permissions denied.');
+            return;
+        }
+
+        window.setTimeout(() => {
+            const notification = new Notification(title, {
+                body,
+                icon: attachmentUrl ?? '/lamp.png',
+            });
+
+            notification.onclick = () => {
+                window.focus();
+                notification.close();
+            };
+        }, 1000);
+
         console.log('Notification scheduled');
     } catch (error) {
         console.error('Failed to schedule notification:', error);

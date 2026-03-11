@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '../../../../lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { isCiSmokeTestMode, smokeJson } from '@/lib/ciSmoke';
 
 export async function POST(req: Request) {
-    const db = getDb();
     try {
         const { imageUrl, templateId, userId } = await req.json();
 
         if (!imageUrl || !templateId || !userId) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
+
+        if (isCiSmokeTestMode()) {
+            return smokeJson({ id: 'smoke-post-1' }, 201);
+        }
+
+        const db = getDb();
 
         const docRef = await db.collection('posts').add({
             imageUrl,

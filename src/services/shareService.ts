@@ -1,7 +1,6 @@
 import { Template, User, Share } from '../types';
 import { getApiBaseUrlRuntime } from '../utils/api';
 import { downscale } from '../utils/downscale';
-import { Capacitor } from '@capacitor/core';
 
 interface SharedImage {
   imageUrl: string;
@@ -65,24 +64,7 @@ export const getSharedImage = async (shareId: string): Promise<SharedImage> => {
 // Helper function to generate template URL for sharing
 export const getTemplateUrl = (templateId: string): string => {
   if (typeof window === 'undefined') return '';
-
-  // On native platforms, use production URL instead of file:// or capacitor://
-  const isNative = Capacitor.isNativePlatform();
-  let baseUrl: string;
-
-  if (isNative) {
-    // Use production URL for native platforms
-    baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
-      ? process.env.NEXT_PUBLIC_API_BASE_URL.replace(/\/+$/, '')
-      : (process.env.NEXT_PUBLIC_VERCEL_URL
-        ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-        : 'https://project-genie-sigma.vercel.app');
-  } else {
-    // Use current origin for web
-    baseUrl = window.location.origin;
-  }
-
-  return `${baseUrl}/?view=apply&templateId=${templateId}`;
+  return `${window.location.origin}/?view=apply&templateId=${templateId}`;
 };
 
 export const shareImage = async (

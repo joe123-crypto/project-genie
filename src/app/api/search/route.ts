@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getTemplates, getOutfits } from '../../../services/firebaseService';
 import { Template, Outfit } from '../../../types';
+import { isCiSmokeTestMode, smokeJson, smokeSearchResults } from '@/lib/ciSmoke';
 
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
         const q = searchParams.get('q') || '';
         const type = searchParams.get('type') || ''; // 'template' | 'outfit' | undefined (both)
+
+        if (isCiSmokeTestMode()) {
+            return smokeJson(smokeSearchResults(req, q, type), 200);
+        }
 
         const searchQuery = q.toLowerCase();
         const searchType = type;

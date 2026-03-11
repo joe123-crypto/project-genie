@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { isCiSmokeTestMode, smokeAssetUrl, smokeJson } from '@/lib/ciSmoke';
 
 // Configure S3 client
 const s3Client = new S3Client({
@@ -24,6 +25,12 @@ export async function POST(req: Request) {
 
         if (!image || !image.startsWith('data:image')) {
             return NextResponse.json({ error: 'Invalid image data' }, { status: 400 });
+        }
+
+        if (isCiSmokeTestMode()) {
+            return smokeJson({
+                url: smokeAssetUrl(req, `/${destination || 'saved'}/${directoryName || 'smoke-image'}.png`)
+            }, 200);
         }
 
         const base64Data = image.split(',')[1];

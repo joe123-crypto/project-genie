@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { saveTemplate } from '../../../services/firebaseService';
 import { Template } from '../../../types';
+import { isCiSmokeTestMode, smokeJson } from '@/lib/ciSmoke';
 
 export async function POST(req: Request) {
     try {
@@ -12,6 +13,13 @@ export async function POST(req: Request) {
                 { error: 'Missing required fields: name, prompt, previewImageUrl' },
                 { status: 400 }
             );
+        }
+
+        if (isCiSmokeTestMode()) {
+            return smokeJson({
+                id: 'smoke-template-created',
+                ...templateData,
+            }, 201);
         }
 
         const newTemplate = await saveTemplate(templateData);

@@ -90,7 +90,7 @@ export const themeColors = {
   
     // Container variants
     container: {
-      base: `${themeColors.base.light[100]} ${themeColors.base.dark[100]} ${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-sans`,
+      base: `${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-sans`,
       
       card: `${themeColors.base.light[200]} ${themeColors.base.dark[200]} p-6 rounded-lg shadow-md`,
     },

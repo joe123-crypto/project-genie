@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { generateText } from "ai";
 import { corsHeaders } from '@/lib/cors';
+import { isCiSmokeTestMode, SMOKE_IMAGE_DATA_URL, smokeAssetUrl, smokeJson } from "@/lib/ciSmoke";
+import { extractGeneratedImage } from "@/lib/generatedImage";
 import {
     S3Client,
     PutObjectCommand,
@@ -86,20 +88,12 @@ export const maxDuration = 30;
 export const bodyParser = {
     sizeLimit: "20mb",
 };
-/*export const config = {
-    maxDuration: 30,
-    api: {
-        bodyParser: {
-            sizeLimit: "20mb",
-        },
-    },
-};*/
 
 export async function POST(req: Request) {
     console.log(`[SERVER] Received request to /api/nanobanana.`);
     console.log(`[SERVER] Request Origin: ${req.headers.get('origin')}`);
 
-    const { textPrompt, images, save } = req.body as {
+    const { textPrompt, images, save } = await req.json() as {
         textPrompt?: string;
         images?: ImageInput[];
         save?: string;
@@ -107,6 +101,20 @@ export async function POST(req: Request) {
 
     if (!textPrompt) {
         return NextResponse.json({ error: "textPrompt required" }, { status: 400, headers: corsHeaders });
+    }
+
+    if (isCiSmokeTestMode()) {
+        if (save) {
+            return smokeJson({
+                imageUrl: smokeAssetUrl(req, `/${save}/smoke-generated.png`),
+                mimeType: "image/png",
+            }, 200, corsHeaders);
+        }
+
+        return smokeJson({
+            imageBase64: SMOKE_IMAGE_DATA_URL.split(",")[1],
+            mimeType: "image/png",
+        }, 200, corsHeaders);
     }
 
     const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.NEXT_PUBLIC_AI_GATEWAY_API_KEY;
@@ -120,7 +128,7 @@ export async function POST(req: Request) {
         // Image-to-Image (with images): google/gemini-3-pro-image
         const hasInputImages = images && images.length > 0;
         // Use Gemini 3 Pro Image for all - it supports both text-to-image and image-to-image
-        const model = "google/gemini-3-pro-image";
+        const model = "google/gemini-2.5-flash-image";
 
         console.log(`[SERVER] Using model: ${model} (Input images: ${hasInputImages ? images?.length : 0})`);
 
@@ -158,11 +166,9 @@ export async function POST(req: Request) {
             ],
         });
 
-        const firstStep: any = result.steps?.[0];
-        const filePart: any = firstStep?.content?.find((c: any) => c?.type === "file");
-        const generatedFile = filePart?.file ?? filePart;
+        const generatedImage = extractGeneratedImage(result);
 
-        if (!generatedFile?.base64Data) {
+        if (!generatedImage) {
             console.error("No file returned from Gemini:", result);
             return NextResponse.json(
                 { error: "No image returned from Gemini" },
@@ -170,14 +176,14 @@ export async function POST(req: Request) {
             );
         }
 
-        const { base64Data, mediaType = "image/png" } = filePart.file;
+        const { base64, mediaType } = generatedImage;
 
         // If a 'save' directory is specified, upload to R2 and return the URL
         if (save) {
             const filename = generateRandomFilename("png");
             const r2Url = await uploadPreviewToR2(
                 filename,
-                base64Data,
+                base64,
                 mediaType,
                 save,
             );
@@ -191,7 +197,7 @@ export async function POST(req: Request) {
         } else {
             // Otherwise, return the base64 data directly
             return NextResponse.json({
-                imageBase64: base64Data,
+                imageBase64: base64,
                 mimeType: mediaType,
             }, { status: 200, headers: corsHeaders });
         }

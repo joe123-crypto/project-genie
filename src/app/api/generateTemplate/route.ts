@@ -2,7 +2,9 @@
 import { NextResponse } from "next/server";
 import { corsHeaders } from "@/lib/cors";
 import { generateText } from "ai";
-import { firestoreAdmin } from "../../../lib/firestoreAdmin";
+import { getFirestoreAdmin } from "../../../lib/firestoreAdmin";
+import { isCiSmokeTestMode, smokeJson, smokeTemplate } from "@/lib/ciSmoke";
+import { extractGeneratedImage } from "@/lib/generatedImage";
 import { Template } from "../../../types";
 import {
   S3Client,
@@ -107,6 +109,17 @@ export const POST = async (req: Request) => {
     return NextResponse.json({ error: "Prompt is required" }, { status: 400, headers: corsHeaders });
   }
 
+  if (isCiSmokeTestMode()) {
+    return smokeJson(
+      {
+        ...smokeTemplate(req),
+        prompt,
+      },
+      200,
+      corsHeaders
+    );
+  }
+
   try {
     const apiKey = process.env.AI_GATEWAY_API_KEY;
 
@@ -153,11 +166,9 @@ export const POST = async (req: Request) => {
       ],
     });
 
-    const firstStep: any = imageResponse.steps?.[0];
-    const filePart: any = firstStep?.content?.find((c: any) => c?.type === "file");
-    const generatedFile = filePart?.file ?? filePart;
+    const generatedImage = extractGeneratedImage(imageResponse);
 
-    if (!generatedFile?.base64Data) {
+    if (!generatedImage) {
       console.error("No file returned from Gemini:", imageResponse);
       return NextResponse.json(
         { error: "No image returned from Gemini" },
@@ -165,12 +176,12 @@ export const POST = async (req: Request) => {
       );
     }
 
-    const { base64Data, mediaType = "image/png" } = generatedFile;
+    const { base64, mediaType } = generatedImage;
     const filename = generateRandomFilename("png");
 
     const r2Url = await uploadPreviewToR2(
       filename,
-      base64Data,
+      base64,
       mediaType,
     );
 
@@ -188,6 +199,7 @@ export const POST = async (req: Request) => {
       category,
     };
 
+    const firestoreAdmin = getFirestoreAdmin();
     const docRef = await firestoreAdmin.collection('filters').add(newTemplate);
     const savedTemplate = { id: docRef.id, ...newTemplate };
 

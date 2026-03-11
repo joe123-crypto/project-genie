@@ -1,8 +1,13 @@
 
 import { NextResponse } from "next/server";
 import { initializeFirebaseAdmin } from "../../../lib/firebaseAdmin";
+import { isCiSmokeTestMode, smokeJson, smokePost } from "@/lib/ciSmoke";
 
 export async function GET(req: Request) {
+  if (isCiSmokeTestMode()) {
+    return smokeJson([smokePost(req)], 200);
+  }
+
   try {
     const app = initializeFirebaseAdmin();
     const db = app.firestore();
@@ -56,9 +61,9 @@ export async function GET(req: Request) {
 
     const feed = await Promise.all(feedPromises);
 
-    NextResponse.json(feed, { status: 200 });
+    return NextResponse.json(feed, { status: 200 });
   } catch (error) {
     console.error("Error fetching public feed:", error);
-    NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

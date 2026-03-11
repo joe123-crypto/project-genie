@@ -1,16 +1,10 @@
 import { Analytics } from "@vercel/analytics/react"
 import type { Metadata } from "next"
-import { Outfit } from "next/font/google"
 import NotificationManager from "../components/NotificationManager"
-import UpdateChecker from "../components/UpdateChecker"
 import { AuthProvider } from '@/context/AuthContext';
+import { TemplateProvider } from '@/context/TemplateContext';
 
 import "./globals.css?v=2"
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  variable: "--font-outfit",
-})
 
 export const metadata: Metadata = {
   title: "GenAIe - AI Template Generator",
@@ -49,13 +43,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${outfit.variable} font-sans`}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-        <Analytics />
-        <NotificationManager />
-        <UpdateChecker />
+      <body className="font-sans min-h-screen relative">
+        <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
+          <div className="absolute inset-0 bg-gray-100 dark:bg-gray-900" />
+          <div className="absolute inset-0 opacity-60 backdrop-blur-3xl" />
+        </div>
+        <div className="relative z-10 min-h-screen">
+          <AuthProvider>
+            <TemplateProvider>
+              {children}
+            </TemplateProvider>
+          </AuthProvider>
+          <Analytics />
+          <NotificationManager />
+        </div>
       </body>
     </html>
   )

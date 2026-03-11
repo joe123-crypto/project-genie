@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { saveOutfit } from '../../../services/firebaseService';
 import { Outfit } from '../../../types';
+import { isCiSmokeTestMode, smokeJson } from '@/lib/ciSmoke';
 
 export async function POST(req: Request) {
     try {
@@ -9,6 +10,13 @@ export async function POST(req: Request) {
         // Basic validation
         if (!outfitData.name || !outfitData.prompt || !outfitData.previewImageUrl) {
             return NextResponse.json({ error: 'Missing required fields: name, prompt, previewImageUrl' }, { status: 400 });
+        }
+
+        if (isCiSmokeTestMode()) {
+            return smokeJson({
+                id: 'smoke-outfit-created',
+                ...outfitData,
+            }, 201);
         }
 
         const newOutfit = await saveOutfit(outfitData);

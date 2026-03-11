@@ -5,21 +5,17 @@
   "scripts": {
     "dev": "cross-env NODE_OPTIONS='--tls-min-v1.2' next dev",
     "build": "cross-env NODE_OPTIONS='--tls-min-v1.2' next build",
-    "build:android": "cross-env BUILD_TARGET=capacitor npm run build",
     "start": "cross-env NODE_OPTIONS='--tls-min-v1.2' next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "npx tsc --noEmit --incremental false",
+    "test:smoke": "node scripts/ci/smoke-test.mjs",
+    "test:smoke:wait": "node scripts/ci/wait-for-url.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.32",
     "@aws-sdk/client-s3": "^3.679.0",
     "@aws-sdk/node-http-handler": "^3.370.0",
     "@aws-sdk/s3-request-presigner": "^3.894.0",
-    "@capacitor-community/file-opener": "^7.0.1",
-    "@capacitor-community/http": "^1.4.1",
-    "@capacitor/core": "^6.1.0",
-    "@capacitor/filesystem": "^6.0.4",
-    "@capacitor/local-notifications": "^7.0.3",
-    "@capacitor/share": "^6.0.0",
     "@heroicons/react": "^2.2.0",
     "@types/file-saver": "^2.0.7",
     "@vercel/analytics": "^1.5.0",
@@ -37,9 +33,6 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@capacitor/android": "^6.1.0",
-    "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^6.1.0",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4.1.14",
     "@types/crypto-js": "^4.2.2",
