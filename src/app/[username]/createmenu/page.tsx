@@ -156,9 +156,11 @@ export default function Page() {
             Create a new hairstyle with AI assistance.
           </p>
         </button>
+        */}
 
-        <button
-          onClick={() => setMode("video")}
+        {/* Create Video Card */}
+        <Link
+          href={`/${params.username}/createmenu/videoTemplate`}
           className="group relative flex flex-col items-center p-8 bg-base-100/50 dark:bg-dark-base-100/50 backdrop-blur-sm rounded-2xl border border-border-color dark:border-dark-border-color hover:border-brand-primary dark:hover:border-dark-brand-primary transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
         >
           <div className="h-20 w-20 bg-gradient-to-br from-indigo-500/10 to-cyan-500/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
@@ -170,8 +172,7 @@ export default function Page() {
           <p className={`${commonClasses.text.body} text-center text-sm leading-relaxed`}>
             Create a video template with AI-powered video generation.
           </p>
-        </button>
-             */}
+        </Link>
       </div>
     </div>
   );

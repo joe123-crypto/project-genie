@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { corsHeaders } from "@/lib/cors";
 import { generateText } from "ai";
+import { gateway } from "@ai-sdk/gateway";
 import { getFirestoreAdmin } from "../../../lib/firestoreAdmin";
 import { isCiSmokeTestMode, smokeJson, smokeTemplate } from "@/lib/ciSmoke";
 import { extractGeneratedImage } from "@/lib/generatedImage";
@@ -95,13 +96,7 @@ export const POST = async (req: Request) => {
       { status: 500, headers: corsHeaders }
     );
   }
-  if (!process.env.AI_GATEWAY_API_KEY) {
-    console.error("AI_GATEWAY_API_KEY is not set in the environment variables.");
-    return NextResponse.json(
-      { error: "Server configuration error: AI API key is missing." },
-      { status: 500, headers: corsHeaders }
-    );
-  }
+  // AI Gateway authentication is handled automatically by @ai-sdk/gateway
 
   const { prompt } = await req.json();
 
@@ -121,11 +116,9 @@ export const POST = async (req: Request) => {
   }
 
   try {
-    const apiKey = process.env.AI_GATEWAY_API_KEY;
-
     // 1. Generate template name, description and category
     const nameDescAndCategoryResponse = await generateText({
-      model: "google/gemini-2.5-flash",
+      model: gateway("google/gemini-2.5-flash"),
       messages: [
         {
           role: "user",
@@ -151,10 +144,9 @@ export const POST = async (req: Request) => {
 
     // 2. Generate image preview
     const imageResponse = await generateText({
-      model: "google/gemini-2.5-flash-image-preview",
+      model: gateway("google/gemini-2.5-flash-image"),
       providerOptions: {
         google: {
-          apiKey,
           responseModalities: ["IMAGE"],
         },
       },

@@ -21,6 +21,9 @@ const ApplyVideoView: React.FC<ApplyVideoViewProps> = ({
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
     const [status, setStatus] = useState<string>('');
+    const [duration, setDuration] = useState<string>('5s');
+    const [aspectRatio, setAspectRatio] = useState<string>('16:9');
+    const [motion, setMotion] = useState<number>(5);
 
     // Handle image upload
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,102 +43,58 @@ const ApplyVideoView: React.FC<ApplyVideoViewProps> = ({
         }
     };
 
-    const pollStatus = async (taskId: string) => {
-        const baseUrl = getApiBaseUrlRuntime();
-        const pollInterval = 2000; // 2 seconds
-
-        const check = async () => {
-            try {
-                const res = await fetch(`${baseUrl}/api/check-video-status?taskId=${taskId}`);
-                if (!res.ok) throw new Error('Failed to check status');
-
-                const data = await res.json();
-                const generation = data.generations?.[0];
-
-                if (!generation) {
-                    setStatus('Checking status...');
-                    setTimeout(check, pollInterval);
-                    return;
-                }
-
-                if (generation.status === 'succeed') {
-                    setGeneratedVideoUrl(generation.url);
-                    setIsGenerating(false);
-                    setStatus('Completed!');
-                } else if (generation.status === 'failed') {
-                    setIsGenerating(false);
-                    setStatus(`Failed: ${generation.failMsg || 'Unknown error'}`);
-                    alert(`Video generation failed: ${generation.failMsg}`);
-                } else {
-                    setStatus(`Processing... (${generation.status})`);
-                    setTimeout(check, pollInterval);
-                }
-            } catch (e) {
-                console.error(e);
-                setStatus('Error checking status, retrying...');
-                setTimeout(check, pollInterval);
-            }
-        };
-
-        check();
-    };
-
     const handleGenerate = async () => {
         if (!selectedImage || !user) return;
 
         setIsGenerating(true);
-        setStatus('Uploading image...');
+        setStatus('Generating video...');
         setGeneratedVideoUrl(null);
 
         const baseUrl = getApiBaseUrlRuntime();
 
         try {
-            // Upload image to R2 instead of Firebase Storage
-            const uploadRes = await fetch(`${baseUrl}/api/nanobanana`, {
+            const res = await fetch(`${baseUrl}/api/generateVideo`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    textPrompt: 'Keep this image exactly as is.',
-                    images: [{ data: selectedImage, mediaType: 'image/webp' }],
-                    save: 'video_inputs'
-                })
-            });
-
-            const uploadData = await uploadRes.json();
-            if (!uploadRes.ok) throw new Error(uploadData.error || 'Failed to upload image');
-
-            const imageUrl = uploadData.imageUrl || uploadData.transformedImage;
-            if (!imageUrl) throw new Error('No URL returned from upload');
-
-            setStatus('Initiating video generation...');
-
-            const res = await fetch(`${baseUrl}/api/generate-video`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    images: [imageUrl],
                     prompt: videoTemplate.prompt,
+                    imageBase64: selectedImage,
+                    mediaType: 'image/webp',
+                    duration,
+                    aspectRatio,
+                    motion
                 }),
             });
 
             if (!res.ok) {
                 const errData = await res.json();
-                throw new Error(errData.error || 'Failed to start generation');
+                throw new Error(errData.error || 'Failed to generate video');
             }
 
             const data = await res.json();
-            const taskId = data.taskId;
 
-            if (!taskId) throw new Error('No taskId returned');
+            if (!data.videoBase64) {
+                throw new Error('No video data returned');
+            }
 
-            setStatus('Queued. Waiting for video...');
-            pollStatus(taskId);
+            // Convert base64 to a blob URL for playback
+            const mimeType = data.mimeType || 'video/mp4';
+            const byteCharacters = atob(data.videoBase64);
+            const byteNumbers = new Uint8Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const blob = new Blob([byteNumbers], { type: mimeType });
+            const blobUrl = URL.createObjectURL(blob);
 
+            setGeneratedVideoUrl(blobUrl);
+            setStatus('Completed!');
         } catch (e) {
             console.error(e);
             alert(`Error: ${(e as Error).message}`);
-            setIsGenerating(false);
             setStatus('');
+        } finally {
+            setIsGenerating(false);
         }
     };
 
@@ -149,8 +108,8 @@ const ApplyVideoView: React.FC<ApplyVideoViewProps> = ({
                 Back to Videos
             </button>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-6">
+            <div className="flex flex-col lg:flex-row gap-6 h-full lg:h-[700px]">
+                <div className="w-full lg:w-[35%] flex flex-col space-y-6">
                     <div className={commonClasses.container.card}>
                         <h2 className={`text-2xl ${commonClasses.text.heading} mb-2`}>
                             {videoTemplate.name}
@@ -207,7 +166,7 @@ const ApplyVideoView: React.FC<ApplyVideoViewProps> = ({
                     </div>
                 </div>
 
-                <div className="flex flex-col h-full">
+                <div className="w-full lg:w-[45%] flex flex-col h-full">
                     <div className={`flex-1 rounded-2xl overflow-hidden bg-black flex items-center justify-center relative shadow-2xl ${generatedVideoUrl ? 'border-none' : 'border border-border-color dark:border-dark-border-color'}`}>
                         {generatedVideoUrl ? (
                             <video src={generatedVideoUrl} controls autoPlay loop className="w-full h-full object-contain" />
@@ -238,13 +197,72 @@ const ApplyVideoView: React.FC<ApplyVideoViewProps> = ({
                                 href={generatedVideoUrl}
                                 download={`genie-video-${Date.now()}.mp4`}
                                 className={commonClasses.button.secondary}
-                                target="_blank"
-                                rel="noopener noreferrer"
                             >
                                 Download Video
                             </a>
                         </div>
                     )}
+                </div>
+
+                <div className="w-full lg:w-[20%] flex flex-col space-y-6">
+                    <div className={`${commonClasses.container.card} flex flex-col h-full`}>
+                        <h2 className={`text-lg ${commonClasses.text.heading} mb-4 flex items-center gap-2`}>
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Settings
+                        </h2>
+
+                        <div className="space-y-6 flex-1">
+                            <div>
+                                <label className="block text-sm font-medium mb-2 text-content-100 dark:text-dark-content-100">Video Duration</label>
+                                <select
+                                    className="w-full bg-base-100 dark:bg-dark-base-100 border border-border-color dark:border-dark-border-color rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-primary outline-none transition-shadow"
+                                    value={duration}
+                                    onChange={(e) => setDuration(e.target.value)}
+                                    disabled={isGenerating}
+                                >
+                                    <option value="5s">5 Seconds</option>
+                                    <option value="10s">10 Seconds</option>
+                                    <option value="15s">15 Seconds</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-2 text-content-100 dark:text-dark-content-100">Aspect Ratio</label>
+                                <select
+                                    className="w-full bg-base-100 dark:bg-dark-base-100 border border-border-color dark:border-dark-border-color rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-primary outline-none transition-shadow"
+                                    value={aspectRatio}
+                                    onChange={(e) => setAspectRatio(e.target.value)}
+                                    disabled={isGenerating}
+                                >
+                                    <option value="16:9">Landscape 16:9</option>
+                                    <option value="9:16">Portrait 9:16</option>
+                                    <option value="1:1">Square 1:1</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-sm font-medium text-content-100 dark:text-dark-content-100">Motion Scale</label>
+                                    <span className="text-xs font-semibold bg-base-200 dark:bg-dark-base-200 px-2 py-1 rounded-md">{motion}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="1" max="10" step="1"
+                                    className="w-full h-2 bg-neutral-200 dark:bg-dark-neutral-200 rounded-lg appearance-none cursor-pointer accent-brand-primary"
+                                    value={motion}
+                                    onChange={(e) => setMotion(parseInt(e.target.value))}
+                                    disabled={isGenerating}
+                                />
+                                <div className="flex justify-between mt-2 text-[10px] text-content-300 dark:text-dark-content-300 font-medium uppercase tracking-wider">
+                                    <span>Subtle</span>
+                                    <span>Dynamic</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

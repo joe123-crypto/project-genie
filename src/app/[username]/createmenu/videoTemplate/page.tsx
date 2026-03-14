@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { VideoTemplate, ViewState, User } from '../../../../types';
+import { useRouter, useParams } from 'next/navigation';
+import { useAuth } from '../../../../context/AuthContext';
+import { VideoTemplate } from '../../../../types';
 import { BackArrowIcon, SparklesIcon } from '../../../../components/icons';
 import { Spinner } from '../../../../components/Spinner';
 import { improvePrompt, generateImage } from '../../../../services/geminiService';
@@ -9,17 +11,11 @@ import { fileToBase64WithHEIFSupport, isSupportedImageFormat } from '../../../..
 import { saveVideoTemplate } from '../../../../services/firebaseService';
 import { commonClasses } from '../../../../utils/theme';
 
-interface CreateVideoViewProps {
-    setViewState: (viewState: ViewState) => void;
-    user: User | null;
-    onBack?: () => void;
-}
+const CreateVideoView = () => {
+    const router = useRouter();
+    const params = useParams();
+    const { user } = useAuth();
 
-const CreateVideoView: React.FC<CreateVideoViewProps> = ({
-    setViewState,
-    user,
-    onBack,
-}) => {
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -126,7 +122,7 @@ const CreateVideoView: React.FC<CreateVideoViewProps> = ({
             };
 
             await saveVideoTemplate(payload);
-            setViewState({ view: 'videos' });
+            router.push(`/${params.username}/dashboard`);
         } catch (e) {
             console.error('Failed to save video template', e);
             alert('Failed to save video template. Please try again.');
@@ -138,7 +134,7 @@ const CreateVideoView: React.FC<CreateVideoViewProps> = ({
     return (
         <div className="max-w-2xl mx-auto animate-fade-in">
             <button
-                onClick={() => (onBack ? onBack() : setViewState({ view: "create" }))}
+                onClick={() => router.back()}
                 className="flex items-center gap-2 text-content-200 dark:text-dark-content-200 hover:text-content-100 dark:hover:text-dark-content-100 mb-6 font-semibold transition-colors"
             >
                 <BackArrowIcon />

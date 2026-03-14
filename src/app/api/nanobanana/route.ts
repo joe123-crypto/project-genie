@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateText } from "ai";
+import { gateway } from "@ai-sdk/gateway";
 import { corsHeaders } from '@/lib/cors';
 import { isCiSmokeTestMode, SMOKE_IMAGE_DATA_URL, smokeAssetUrl, smokeJson } from "@/lib/ciSmoke";
 import { extractGeneratedImage } from "@/lib/generatedImage";
@@ -117,23 +118,14 @@ export async function POST(req: Request) {
         }, 200, corsHeaders);
     }
 
-    const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.NEXT_PUBLIC_AI_GATEWAY_API_KEY;
-    if (!apiKey) {
-        console.warn("Warning: AI_GATEWAY_API_KEY not found. AI Gateway requests may fail.");
-    }
-
     try {
-        // Determine which model to use based on whether input images are provided
-        // Text-to-Image (no images): google/imagen-4.0-ultra-generate-001
-        // Image-to-Image (with images): google/gemini-3-pro-image
         const hasInputImages = images && images.length > 0;
-        // Use Gemini 3 Pro Image for all - it supports both text-to-image and image-to-image
-        const model = "google/gemini-2.5-flash-image";
+        const modelId = "google/gemini-2.5-flash-image";
 
-        console.log(`[SERVER] Using model: ${model} (Input images: ${hasInputImages ? images?.length : 0})`);
+        console.log(`[SERVER] Using model: ${modelId} (Input images: ${hasInputImages ? images?.length : 0})`);
 
         const result = await generateText({
-            model,
+            model: gateway(modelId),
             providerOptions: {
                 google: {
                     responseModalities: ["IMAGE"],

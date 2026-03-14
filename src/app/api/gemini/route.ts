@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { corsHeaders } from '@/lib/cors';
 import { generateText } from "ai";
+import { gateway } from "@ai-sdk/gateway";
 import { isCiSmokeTestMode, SMOKE_IMAGE_DATA_URL, smokeJson } from "@/lib/ciSmoke";
 
 interface GeminiRequestBody {
@@ -58,9 +59,6 @@ export async function POST(req: Request) {
   }
 
   try {
-    const apiKey = process.env.AI_GATEWAY_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: "Server misconfiguration" }, { status: 500, headers: corsHeaders });
-
     const isImageRequest = images && images.length > 0;
     const isImageGeneration = !isImageRequest && prompt.toLowerCase().includes("image") ||
       !isImageRequest && (prompt.toLowerCase().includes("generate") ||
@@ -69,14 +67,13 @@ export async function POST(req: Request) {
         prompt.toLowerCase().includes("paint"));
 
     // Use image generation model for image requests or when prompt suggests image generation
-    const model = (isImageRequest || isImageGeneration) ? "google/gemini-3-pro-image" : "google/gemini-3-pro-image";
+    const modelId = (isImageRequest || isImageGeneration) ? "google/gemini-2.5-flash-image" : "google/gemini-2.5-flash";
     const responseModalities = (isImageRequest || isImageGeneration) ? ["IMAGE", "TEXT"] : ["TEXT"];
 
     const result = await generateText({
-      model,
+      model: gateway(modelId),
       providerOptions: {
         google: {
-          apiKey,
           responseModalities,
         },
       },
