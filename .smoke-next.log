@@ -1,0 +1,12 @@
+   ▲ Next.js 16.0.7
+   - Local:         http://127.0.0.1:3101
+   - Network:       http://127.0.0.1:3101
+
+ ✓ Starting...
+ ✓ Ready in 674ms
+[SERVER] Received request to /api/nanobanana.
+[SERVER] Request Origin: null
+[SERVER] Received request to /api/nanobanana.
+[SERVER] Request Origin: null
+[SERVER] Received request to /api/nanobanana.
+[SERVER] Request Origin: null
