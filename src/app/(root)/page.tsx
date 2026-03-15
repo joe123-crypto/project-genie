@@ -1,14 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import LandingPage from '@/components/LandingPage';
-import { User } from '@/types';
 
 export default function Page() {
-    const [showLandingPage, setShowLandingPage] = useState<boolean>(false);
-    const [showAuthview, setShowAuthview] = useState<boolean>(false);
+    const router = useRouter();
     const [isDark, setIsDark] = useState<boolean>(false);
-    const [user, setUser] = useState<User | null>(null);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem("theme");
@@ -33,18 +31,12 @@ export default function Page() {
 
     const handleLandingSignIn = useCallback(() => {
         sessionStorage.setItem('hasSeenLanding', 'true');
-        setShowLandingPage(false);
-        setShowAuthview(true);
-    }, [])
+        router.push('/login');
+    }, [router]);
     const handleGetStarted = useCallback(() => {
         sessionStorage.setItem("hasSeenLanding", "true");
-        setShowLandingPage(false);
-
-        if (!user) {
-            setShowAuthview(true);
-        }
-    }, []
-    )
+        router.push('/login');
+    }, [router]);
 
     return (
         <LandingPage

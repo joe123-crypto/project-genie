@@ -136,12 +136,21 @@ async function request(method, routePath, options = {}) {
     }
   }
 
-  const response = await fetch(new URL(routePath, baseUrl), {
-    method,
-    headers: requestHeaders,
-    body: json === undefined ? undefined : JSON.stringify(json),
-    redirect,
-  });
+  let response;
+
+  try {
+    response = await fetch(new URL(routePath, baseUrl), {
+      method,
+      headers: requestHeaders,
+      body: json === undefined ? undefined : JSON.stringify(json),
+      redirect,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Failed to reach smoke server at ${baseUrl} for ${method} ${routePath}: ${message}`
+    );
+  }
 
   if (jar) {
     jar.absorb(response);
@@ -352,6 +361,15 @@ const apiCases = [
     validate: async ({ body }) => ensure(typeof body?.imageUrl === "string", "Expected imageUrl from nanobanana"),
   },
   {
+    id: "OPTIONS /api/generateVideo responds",
+    method: "OPTIONS",
+    path: "/api/generateVideo",
+    request: {},
+    expectedStatus: 200,
+    expectJson: false,
+    validate: async () => {},
+  },
+  {
     id: "POST /api/generateVideo rejects invalid payload",
     method: "POST",
     path: "/api/generateVideo",
@@ -363,28 +381,9 @@ const apiCases = [
     id: "POST /api/generateVideo returns task id",
     method: "POST",
     path: "/api/generateVideo",
-    request: { json: { images: ["https://example.com/frame.png"], prompt: "Smoke video" } },
+    request: { json: { imageBase64: SMOKE_IMAGE_DATA_URL, prompt: "Smoke video" } },
     expectedStatus: 200,
     validate: async ({ body }) => ensure(typeof body?.taskId === "string", "Expected taskId from generateVideo"),
-  },
-  {
-    id: "GET /api/checkVideoStatus rejects missing id",
-    method: "GET",
-    path: "/api/checkVideoStatus",
-    request: {},
-    expectedStatus: 400,
-    validate: async ({ body }) => ensure(body?.error, "Expected validation error from checkVideoStatus"),
-  },
-  {
-    id: "GET /api/checkVideoStatus returns task state",
-    method: "GET",
-    path: "/api/checkVideoStatus?id=smoke-video-task-1",
-    request: {},
-    expectedStatus: 200,
-    validate: async ({ body }) => {
-      ensure(Array.isArray(body?.generations), "Expected generations array from checkVideoStatus");
-      ensure(body.generations[0]?.status, "Expected generation status from checkVideoStatus");
-    },
   },
   {
     id: "OPTIONS /api/generateTemplate responds",

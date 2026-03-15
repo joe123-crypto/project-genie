@@ -8,7 +8,8 @@
     "start": "cross-env NODE_OPTIONS='--tls-min-v1.2' next start",
     "lint": "eslint",
     "typecheck": "npx tsc --noEmit --incremental false",
-    "test:smoke": "node scripts/ci/smoke-test.mjs",
+    "test:smoke": "node scripts/ci/run-smoke.mjs",
+    "test:smoke:run": "node scripts/ci/smoke-test.mjs",
     "test:smoke:wait": "node scripts/ci/wait-for-url.mjs"
   },
   "dependencies": {
