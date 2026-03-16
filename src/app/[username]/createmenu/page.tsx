@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 //import { SparklesIcon } from "@/app/components/icons";
 /*import CreateTemplateView from "@app/components/CreateMenu/templateTemplate";
 import CreateOutfitView from "./templateTemplate/Outfit/CreateOutfitView";
@@ -103,6 +102,31 @@ export default function Page() {
           </p>
         </button>
 */}
+        <Link
+          href={`/${params.username}/createmenu/templateTemplate`}
+          className="group relative flex flex-col items-center p-8 bg-base-100/50 dark:bg-dark-base-100/50 backdrop-blur-sm rounded-2xl border border-border-color dark:border-dark-border-color hover:border-brand-primary dark:hover:border-dark-brand-primary transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+        >
+          <div className="h-20 w-20 bg-gradient-to-br from-rose-500/10 to-orange-500/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+            <svg
+              className="h-10 w-10 text-brand-primary dark:text-dark-brand-primary"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 8h10M7 12h8m-8 4h6M6 4h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z"
+              />
+            </svg>
+          </div>
+          <h3 className={`text-xl ${commonClasses.text.heading} mb-3`}>Template Builder</h3>
+          <p className={`${commonClasses.text.body} text-center text-sm leading-relaxed`}>
+            Create and save reusable image templates with custom prompts and preview art.
+          </p>
+        </Link>
+
         {/* Template Studio Card */}
         <Link
           href={`/${params.username}/createmenu/templateStudio`}
@@ -123,6 +147,9 @@ export default function Page() {
                 d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"
               />
             </svg>
+          </div>
+          <div className="mb-3 inline-flex rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">
+            Coming Soon
           </div>
           <h3 className={`text-xl ${commonClasses.text.heading} mb-3`}>Template Studio</h3>
           <p className={`${commonClasses.text.body} text-center text-sm leading-relaxed`}>

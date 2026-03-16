@@ -1,21 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { SparklesIcon, SendIcon } from './icons';
-import { ViewState, Template } from '../types';
+import { Template } from '../types';
 import { getValidIdToken } from '../services/authService';
 import { improvePrompt } from '../services/geminiService';
 import { getApiBaseUrlRuntime } from '../utils/api';
+import StatusBanner from './StatusBanner';
 
 interface DashboardProps {
-  setViewState: React.Dispatch<React.SetStateAction<ViewState>>;
   addTemplate: (template: Template) => void;
+  username: string;
 }
 
-const DashboardBar: React.FC<DashboardProps> = ({ setViewState, addTemplate }) => {
+const DashboardBar: React.FC<DashboardProps> = ({ addTemplate, username }) => {
   const [text, setText] = useState('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [feedback, setFeedback] = useState<{
+    kind: 'error' | 'success' | 'info';
+    message: string;
+  } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const containerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -28,6 +33,7 @@ const DashboardBar: React.FC<DashboardProps> = ({ setViewState, addTemplate }) =
     if (!text.trim()) return;
 
     setIsLoading(true);
+    setFeedback(null);
     try {
       const idToken = await getValidIdToken();
       if (!idToken) {
@@ -66,10 +72,17 @@ const DashboardBar: React.FC<DashboardProps> = ({ setViewState, addTemplate }) =
       const newTemplate: Template = await response.json();
       addTemplate(newTemplate);
       setText('');
-      setViewState({ view: 'apply', template: newTemplate });
+      setFeedback({
+        kind: 'success',
+        message: 'Template created. Opening it now so you can start applying it.',
+      });
+      router.push(`/${username}/dashboard/${newTemplate.id}`);
     } catch (error) {
       console.error('Error creating template:', error);
-      alert(`Error creating template: ${(error as Error).message}`);
+      setFeedback({
+        kind: 'error',
+        message: `Error creating template: ${(error as Error).message}`,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -78,12 +91,20 @@ const DashboardBar: React.FC<DashboardProps> = ({ setViewState, addTemplate }) =
   const handleImprovePrompt = async () => {
     if (!text.trim()) return;
     setIsLoading(true);
+    setFeedback(null);
     try {
       const improved = await improvePrompt(text);
       setText(improved);
+      setFeedback({
+        kind: 'success',
+        message: 'Prompt refined. Review it and send when you are ready.',
+      });
     } catch (error) {
       console.error('Error improving prompt:', error);
-      alert(`Error improving prompt: ${(error as Error).message}`);
+      setFeedback({
+        kind: 'error',
+        message: `Error improving prompt: ${(error as Error).message}`,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -91,8 +112,15 @@ const DashboardBar: React.FC<DashboardProps> = ({ setViewState, addTemplate }) =
 
   return (
     <div className="w-full max-w-2xl px-4 mx-auto">
+      {feedback ? (
+        <StatusBanner
+          kind={feedback.kind}
+          message={feedback.message}
+          className="mb-3"
+        />
+      ) : null}
+
       <div
-        ref={containerRef}
         className="bg-white/95 dark:bg-black/95 backdrop-blur-xl backdrop-saturate-150 rounded-3xl shadow-2xl border border-white/20 dark:border-white/10 p-3 flex items-end gap-2 transition-all duration-300 hover:shadow-brand-primary/10"
       >
         <div className="flex-1 pl-4 py-2">

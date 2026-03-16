@@ -2,24 +2,24 @@
 import { useAuth } from "@/context/AuthContext";
 import { commonClasses } from "@/utils/theme";
 import { useState, useEffect } from "react";
-import { SearchIcon, SunIcon, MoonIcon } from "@/components/icons";
+import { SunIcon, MoonIcon } from "@/components/icons";
 import Link from "next/link";
 import UserIcon from "@/components/UserIcon";
 import { useRouter } from "next/navigation";
-import { ViewState, User } from "@/types";
-import WelcomeModal from "@/components/WelcomeModal";
 import { useParams } from "next/navigation";
 import { deleteUser } from "@/services/userService";
 import ConfirmationDialog from '@/components/ConfirmationDialog';
+import { buildDashboardHref } from "@/utils/dashboard";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-    const { user, logout, login, isLoading: authLoading } = useAuth();
-    const [viewState, setViewState] = useState<ViewState>({ view: "marketplace" });
+    const { user, logout } = useAuth();
     const params = useParams();
     const [isDark, setIsDark] = useState(false);
     const router = useRouter();
-    const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const usernameParam = (Array.isArray(params.username)
+        ? params.username[0]
+        : params.username) || '';
 
     useEffect(() => {
         const savedTheme = localStorage.getItem("theme");
@@ -76,7 +76,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <header className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
                         <div
                             className="flex items-center gap-3 cursor-pointer"
-                            onClick={() => setViewState({ view: "marketplace" })}
+                            onClick={() => router.push(buildDashboardHref(usernameParam))}
                         >
                             <img src="/lamp.png" alt="Genie Lamp" className="h-8 w-8" />
                             <h1 className={`text-2xl sm:text-3xl ${commonClasses.text.heading}`}>
@@ -94,7 +94,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                 <UserIcon
                                     user={user}
                                     onSignOut={handleSignOut}
-                                    onGoToProfile={() => setViewState({ view: "profile", user: user })}
+                                    onGoToProfile={() => router.push(buildDashboardHref(usernameParam, "profile"))}
                                     onRemoveAccount={handleRemoveAccount}
                                 />
                             </>
@@ -109,13 +109,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     </header>
                 )}
             </div>
-
-            {isWelcomeModalOpen && (
-                <WelcomeModal
-                    isOpen={isWelcomeModalOpen}
-                    onClose={() => setIsWelcomeModalOpen(false)}
-                />
-            )}
 
             {showConfirmDialog && (
                 <ConfirmationDialog

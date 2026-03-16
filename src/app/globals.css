@@ -30,6 +30,10 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 .landing-display {
   font-family: var(--font-cormorant), Georgia, serif;
   font-weight: 600;

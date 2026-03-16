@@ -1,6 +1,12 @@
 import React from 'react';
 import Link from 'next/link';
 
+const navLinks = [
+    { label: 'Home', href: '#top' },
+    { label: 'How it works', href: '#how-it-works' },
+    { label: 'Gallery', href: '#gallery' },
+];
+
 const workflowCards = [
     {
         step: '01',
@@ -122,13 +128,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                     </Link>
 
                     <div className={`hidden items-center gap-2 rounded-full border px-2 py-2 backdrop-blur md:flex ${navSurface}`}>
-                        {['Home', 'Studio', 'Pricing', 'Gallery'].map((item) => (
+                        {navLinks.map((item) => (
                             <a
-                                key={item}
-                                href="#"
+                                key={item.label}
+                                href={item.href}
                                 className={`cursor-pointer rounded-full px-4 py-2 text-sm transition-all duration-200 ${isDark ? 'hover:bg-white/10 hover:text-white' : 'hover:bg-black/[0.04] hover:text-slate-950'}`}
                             >
-                                {item}
+                                {item.label}
                             </a>
                         ))}
                     </div>
@@ -161,7 +167,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                 </header>
 
                 <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col pt-10 sm:pt-14">
-                    <section className="relative text-center">
+                    <section id="top" className="relative text-center">
                         {floatingArt.map((art, index) => (
                             <FloatingAvatar key={`${art.className}-${index}`} className={art.className} image={art.image} tint={art.tint} />
                         ))}
@@ -211,7 +217,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                         </div>
                     </section>
 
-                    <section className="mt-24">
+                    <section id="how-it-works" className="mt-24 scroll-mt-24">
                         <div className="text-center">
                             <p className={`text-xs uppercase tracking-[0.35em] ${softText}`}>How it works</p>
                             <h2 className={`landing-display mt-4 text-3xl sm:text-4xl ${isDark ? 'text-white' : 'text-slate-950'}`}>
@@ -260,7 +266,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                         </div>
                     </section>
 
-                    <section className="mt-24">
+                    <section id="gallery" className="mt-24 scroll-mt-24">
                         <p className={`mb-8 text-xs uppercase tracking-[0.35em] ${softText}`}>Gallery preview</p>
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {galleryCards.map((card) => (

@@ -8,6 +8,20 @@ interface OutfitsViewProps {
 }
 
 const OutfitsView: React.FC<OutfitsViewProps> = ({ outfits, onSelectOutfit }) => {
+  if (outfits.length === 0) {
+    return (
+      <div className="animate-fade-in">
+        <div className="mx-4 mt-8 rounded-3xl bg-base-200 p-12 text-center shadow-sm dark:bg-dark-base-200">
+          <h3 className="text-2xl font-bold text-content-100 dark:text-dark-content-100">
+            No Outfits Yet!
+          </h3>
+          <p className="mt-2 mb-6 text-content-200 dark:text-dark-content-200">
+            Save the first outfit to start building this section.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const groupedOutfits = outfits.reduce((acc, outfit) => {
     const key = outfit.name || 'Others';
@@ -22,7 +36,7 @@ const OutfitsView: React.FC<OutfitsViewProps> = ({ outfits, onSelectOutfit }) =>
   const otherSection = groupedOutfits['Others'];
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in pb-20">
       {brandSections.map(brandName => (
         <section key={brandName} className="mb-8">
           <h3 className="text-2xl font-bold text-content-100 dark:text-dark-content-100 mb-4">{brandName}</h3>
