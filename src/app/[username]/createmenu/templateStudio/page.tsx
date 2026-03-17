@@ -9,8 +9,8 @@ export default function Page() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] animate-fade-in">
-      <div className="bg-base-200/50 dark:bg-dark-base-200/50 backdrop-blur-md p-8 rounded-2xl border border-border-color dark:border-dark-border-color text-center max-w-md mx-4">
-        <div className="h-16 w-16 bg-brand-primary/10 dark:bg-dark-brand-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+      <div className="bg-base-200-soft dark:bg-dark-base-200-soft backdrop-blur-md p-8 rounded-2xl border border-border-color dark:border-dark-border-color text-center max-w-md mx-4">
+        <div className="h-16 w-16 bg-brand-soft dark:bg-dark-brand-soft rounded-full flex items-center justify-center mx-auto mb-6">
           <svg
             className="h-8 w-8 text-brand-primary dark:text-dark-brand-primary"
             fill="none"

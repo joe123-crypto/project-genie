@@ -46,7 +46,7 @@ const HairstyleCard: React.FC<HairstyleCardProps> = ({
 
     return (
         <div
-            className={`group relative overflow-hidden rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl dark:shadow-none bg-base-200 dark:bg-dark-base-200`}
+            className="group relative cursor-pointer overflow-hidden rounded-[1.7rem] border border-border-color bg-base-100 shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_24px_54px_rgba(15,23,42,0.14)] dark:border-dark-border-color dark:bg-dark-base-100"
             onClick={onSelect}
         >
             <div className={`${aspectRatio} relative overflow-hidden bg-base-300 dark:bg-dark-base-300`}>

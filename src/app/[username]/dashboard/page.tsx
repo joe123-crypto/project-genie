@@ -1,266 +1,228 @@
 'use client';
 
-import { useState, useCallback, useEffect } from "react";
-import { useParams, useRouter } from 'next/navigation';
-import { Template, ViewState, User, Outfit, Hairstyle, VideoTemplate } from "@/types";
+import { useCallback, useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import {
+    Template,
+    VideoTemplate,
+    ViewState,
+} from "@/types";
 import Marketplace from "@/components/Marketplace";
-import ApplyTemplateView from "@/components/ApplyTemplateView";
-import ApplyOutfitView from "@/components/ApplyOutfitView";
-import ApplyHairstyleView from "@/components/ApplyHairstyleView";
-import HairstylesView from "@/components/HairstylesView";
-import OutfitsView from "@/components/OutfitsView";
 import VideosView from "@/components/VideosView";
 import ApplyVideoView from "@/components/ApplyVideoView";
 import SharedImageView from "@/components/SharedImageView";
-import { SunIcon, MoonIcon, WhatsAppIcon, SearchIcon } from "@/components/icons";
-import { getTemplates, deleteTemplate, incrementTemplateAccessCount, updateTemplate, getOutfits, incrementOutfitAccessCount, getTemplateById, getHairstyles, incrementHairstyleAccessCount, deleteHairstyle, updateHairstyle, getVideoTemplates, incrementVideoAccessCount } from "@/services/firebaseService";
+import { SearchIcon, WhatsAppIcon } from "@/components/icons";
+import {
+    deleteTemplate,
+    incrementTemplateAccessCount,
+    incrementVideoAccessCount,
+} from "@/services/firebaseService";
 import { Spinner } from "@/components/Spinner";
-import { commonClasses } from "@/utils/theme";
-import ProfileView from '@/components/ProfileView';
-import DashboardBar from '@/components/DashboardBar';
-import { fetchTemplateById } from "@/services/templateService";
+import { commonClasses, studioClasses } from "@/utils/theme";
+import ProfileView from "@/components/ProfileView";
+import DashboardBar from "@/components/DashboardBar";
 import SearchView from "@/components/SearchView";
-import { useAuth } from '@/context/AuthContext';
-import { useTemplates } from '@/context/TemplateContext';
+import { useAuth } from "@/context/AuthContext";
+import { useTemplates } from "@/context/TemplateContext";
+import {
+    buildDashboardHref,
+    DashboardTab,
+    getDashboardTab,
+    getDashboardTabFromView,
+} from "@/utils/dashboard";
+
+const dashboardNavItems: Array<{
+    tab: DashboardTab;
+    label: string;
+    icon?: typeof SearchIcon;
+}> = [
+    { tab: "marketplace", label: "Templates" },
+    { tab: "videos", label: "Videos" },
+    { tab: "search", label: "Search", icon: SearchIcon },
+];
+
+const swipeTabs: DashboardTab[] = ["search", "marketplace", "videos"];
 
 export default function Page() {
-    const { user, logout, login, isLoading: authLoading } = useAuth();
-    //const [templates, setTemplates] = useState<Template[]>([]);
-    const [outfits, setOutfits] = useState<Outfit[]>([]);
-    const [hairstyles, setHairstyles] = useState<Hairstyle[]>([]);
-    //const [videoTemplates, setVideoTemplates] = useState<VideoTemplate[]>([]);
+    const { user, isLoading: authLoading } = useAuth();
+    const { templates, videoTemplates, isLoading, setTemplates } = useTemplates();
     const [viewState, setViewState] = useState<ViewState>({ view: "marketplace" });
-    const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(false);
-    const [showConfirmDialog, setShowConfirmDialog] = useState<boolean>(false);
-    const params = useParams();
-    //const [isLoading, setIsLoading] = useState<boolean>(true);
-    const router = useRouter();
-
-    const { templates, videoTemplates,
-        isLoading, setTemplates, setVideoTemplates } = useTemplates();
-    // Pre-fetch data and handle initial state
-
-    const addTemplate = useCallback(
-        (newTemplate: Template) => setTemplates(prev => [newTemplate, ...prev]),
-        []
-    );
-
-    const addOutfit = useCallback(
-        (newOutfit: Outfit) => setOutfits(prev => [newOutfit, ...prev]),
-        []
-    );
-
-    const addHairstyle = useCallback(
-        (newHairstyle: Hairstyle) => setHairstyles(prev => [newHairstyle, ...prev]),
-        []
-    );
-
-    const handleDeleteTemplate = useCallback(
-        async (templateId: string) => {
-            if (!user || user.email !== "munemojoseph332@gmail.com")
-                throw new Error("No permission to delete templates");
-            try {
-                await deleteTemplate(templateId);
-                setTemplates(prev => prev.filter(t => t.id !== templateId));
-            }
-            catch (err) {
-                console.error(err);
-                throw err;
-            }
-        },
-        [user]
-    );
-
-    const handleUpdateTemplate = useCallback(
-        async (templateToUpdate: Template) => {
-            if (!user || user.email !== "munemojoseph332@gmail.com")
-                throw new Error("No permission to update templates");
-            try {
-                const { id, ...dataToUpdate } = templateToUpdate;
-                const updatedTemplate = await updateTemplate(id, dataToUpdate);
-                setTemplates(prev => prev.map(t => (t.id === id ? updatedTemplate : t)));
-            }
-            catch (err) {
-                console.error(err);
-                throw err;
-            }
-        },
-        [user]
-    );
-
-    const handleSelectTemplate = useCallback(
-        (template: Template) => {
-            //setViewState({ view: "apply", template });
-            //console.log("template in dashboard", template);
-            router.push(`/${user?.displayName ||
-                user?.username}/dashboard/${template.id}`);
-            /*incrementTemplateAccessCount(template.id);
-            setTemplates(prevTemplates =>
-                prevTemplates.map(t =>
-                    t.id === template.id
-                        ? { ...t, accessCount: (t.accessCount || 0) + 1 }
-                        : t
-                )
-            );*/
-        },
-        [user, router]
-    );
-
-    const handleSelectOutfit = useCallback(
-        (outfit: Outfit) => {
-            setViewState({ view: "applyOutfit", outfit });
-            incrementOutfitAccessCount(outfit.id);
-            setOutfits(prevOutfits =>
-                prevOutfits.map(o =>
-                    o.id === outfit.id
-                        ? { ...o, accessCount: (o.accessCount || 0) + 1 }
-                        : o
-                )
-            );
-        },
-        []
-    );
-
-    const handleSelectHairstyle = useCallback(
-        (hairstyle: Hairstyle) => {
-            setViewState({ view: "applyHairstyle", hairstyle });
-            incrementHairstyleAccessCount(hairstyle.id);
-            setHairstyles(prevHairstyles =>
-                prevHairstyles.map(h =>
-                    h.id === hairstyle.id
-                        ? { ...h, accessCount: (h.accessCount || 0) + 1 }
-                        : h
-                )
-            );
-        },
-        []
-    );
-
-    const handleDeleteHairstyle = useCallback(
-        async (hairstyleId: string) => {
-            if (!user) throw new Error("Must be logged in");
-            try {
-                await deleteHairstyle(hairstyleId);
-                setHairstyles(prev => prev.filter(h => h.id !== hairstyleId));
-            }
-            catch (err) {
-                console.error(err);
-                throw err;
-            }
-        },
-        [user]
-    );
-
-    const handleUpdateHairstyle = useCallback(
-        async (hairstyleToUpdate: Hairstyle) => {
-            if (!user) throw new Error("Must be logged in");
-            try {
-                const { id, ...dataToUpdate } = hairstyleToUpdate;
-                const updatedHairstyle = await updateHairstyle(id, dataToUpdate);
-                setHairstyles(prev => prev.map(h => (h.id === id ? updatedHairstyle : h)));
-            }
-            catch (err) {
-                console.error(err);
-                throw err;
-            }
-        },
-        [user]
-    );
-
-    const handleSelectVideo = useCallback(
-        (videoTemplate: VideoTemplate) => {
-            setViewState({ view: "applyVideo", videoTemplate });
-            incrementVideoAccessCount(videoTemplate.id);
-            setVideoTemplates(prevVideos =>
-                prevVideos.map(v =>
-                    v.id === videoTemplate.id
-                        ? { ...v, accessCount: (v.accessCount || 0) + 1 }
-                        : v
-                )
-            );
-        },
-        []
-    );
-    const handleSignInSuccess = (signedInUser: User) => {
-        login(signedInUser);
-        setIsWelcomeModalOpen(true);
-
-        router.push(`/${signedInUser.displayName ||
-            signedInUser.username}/dashboard`);
-    };
-    const handleCreateYourOwn = async (templateId: string) => {
-        try {
-            const template = await fetchTemplateById(templateId);
-            setViewState({ view: 'apply', template });
-        }
-        catch (error) {
-            console.error('Error fetching template:', error);
-            alert('Error fetching template. Please try again.');
-        }
-    };
-
-    // Swipe Navigation State
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
     const [transitionDirection, setTransitionDirection] = useState<"left" | "right" | "none">("none");
     const minSwipeDistance = 50;
+    const params = useParams();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const username = (Array.isArray(params.username) ? params.username[0] : params.username) || '';
+    const requestedTabParam = searchParams.get("tab");
+    const requestedTab = getDashboardTab(requestedTabParam);
 
-    const onTouchStart = (e: React.TouchEvent) => {
+    useEffect(() => {
+        if (!authLoading && !user) {
+            router.replace("/login");
+        }
+    }, [authLoading, router, user]);
+
+    useEffect(() => {
+        if (!user) {
+            return;
+        }
+
+        setViewState((current) => {
+            const currentTab = getDashboardTabFromView(current.view);
+
+            if (currentTab === requestedTab) {
+                if (current.view === "profile" && current.user?.uid !== user.uid) {
+                    return { view: "profile", user };
+                }
+                return current;
+            }
+
+            return requestedTab === "profile"
+                ? { view: "profile", user }
+                : { view: requestedTab };
+        });
+    }, [requestedTab, user]);
+
+    useEffect(() => {
+        if (!username || !requestedTabParam || requestedTabParam === requestedTab) {
+            return;
+        }
+
+        router.replace(buildDashboardHref(username, requestedTab));
+    }, [requestedTab, requestedTabParam, router, username]);
+
+    const addTemplate = useCallback(
+        (newTemplate: Template) => setTemplates((prev) => [newTemplate, ...prev]),
+        [setTemplates]
+    );
+
+    const handleDeleteTemplate = useCallback(
+        async (templateId: string) => {
+            if (!user || user.email !== "munemojoseph332@gmail.com") {
+                throw new Error("No permission to delete templates");
+            }
+
+            await deleteTemplate(templateId);
+            setTemplates((prev) => prev.filter((template) => template.id !== templateId));
+        },
+        [setTemplates, user]
+    );
+
+    const handleEditTemplate = useCallback(
+        (template: Template) => {
+            router.push(
+                `/${username}/createmenu/templateTemplate?templateId=${template.id}`
+            );
+        },
+        [router, username]
+    );
+
+    const handleSelectTemplate = useCallback(
+        (template: Template) => {
+            void incrementTemplateAccessCount(template.id);
+            setTemplates((prevTemplates) =>
+                prevTemplates.map((currentTemplate) =>
+                    currentTemplate.id === template.id
+                        ? {
+                            ...currentTemplate,
+                            accessCount: (currentTemplate.accessCount || 0) + 1,
+                        }
+                        : currentTemplate
+                )
+            );
+            router.push(`/${username}/dashboard/${template.id}`);
+        },
+        [router, setTemplates, username]
+    );
+
+    const handleSelectVideo = useCallback((videoTemplate: VideoTemplate) => {
+        setViewState({ view: "applyVideo", videoTemplate });
+        void incrementVideoAccessCount(videoTemplate.id);
+    }, []);
+
+    const navigateToTab = useCallback(
+        (tab: DashboardTab) => {
+            if (!username) {
+                return;
+            }
+
+            setTransitionDirection("none");
+            setViewState(tab === "profile" && user ? { view: "profile", user } : { view: tab });
+            router.replace(buildDashboardHref(username, tab));
+        },
+        [router, user, username]
+    );
+
+    const onTouchStart = (event: React.TouchEvent) => {
         setTouchEnd(null);
-        setTouchStart(e.targetTouches[0].clientX);
+        setTouchStart(event.targetTouches[0].clientX);
     };
 
-    const onTouchMove = (e: React.TouchEvent) => {
-        setTouchEnd(e.targetTouches[0].clientX);
+    const onTouchMove = (event: React.TouchEvent) => {
+        setTouchEnd(event.targetTouches[0].clientX);
     };
 
     const onTouchEnd = () => {
-        if (!touchStart || !touchEnd) return;
+        if (!touchStart || !touchEnd) {
+            return;
+        }
 
         const distance = touchStart - touchEnd;
         const isLeftSwipe = distance > minSwipeDistance;
         const isRightSwipe = distance < -minSwipeDistance;
+        const currentIndex = swipeTabs.indexOf(requestedTab);
 
-        if (isLeftSwipe || isRightSwipe) {
-            const tabs = ["search", "marketplace", "outfits", "hairstyles"];
-            const currentIndex = tabs.indexOf(viewState.view);
+        if (currentIndex === -1) {
+            return;
+        }
 
-            if (currentIndex !== -1) {
-                if (isLeftSwipe && currentIndex < tabs.length - 1) {
-                    setTransitionDirection("left");
-                    const nextView = tabs[currentIndex + 1] as "search" | "marketplace" | "outfits" | "hairstyles" | "feed";
-                    setViewState({ view: nextView });
-                } else if (isRightSwipe && currentIndex > 0) {
-                    setTransitionDirection("right");
-                    const prevView = tabs[currentIndex - 1] as "search" | "marketplace" | "outfits" | "hairstyles" | "feed";
-                    setViewState({ view: prevView });
-                }
-            }
+        if (isLeftSwipe && currentIndex < swipeTabs.length - 1) {
+            setTransitionDirection("left");
+            navigateToTab(swipeTabs[currentIndex + 1]);
+        } else if (isRightSwipe && currentIndex > 0) {
+            setTransitionDirection("right");
+            navigateToTab(swipeTabs[currentIndex - 1]);
         }
     };
 
     const renderView = () => {
-        if (authLoading || (isLoading && user) || !(user)) {
-            return (
-                <div className='flex flex-col items-center justify-center pt-20'>
-                    <Spinner className="h-10 w-10 text-brand-primary" />
-                    <p>Loading...</p>
-                </div>
-            );
-        }
-
-        // If loading, and we either have a user or are not on the auth screen, show a spinner.
-        if (isLoading && (user || viewState.view !== 'initialAuth')) {
+        if (authLoading || !user) {
             return (
                 <div className="flex flex-col items-center justify-center pt-20">
-                    <Spinner className="h-10 w-10 text-brand-primary dark:text-dark-brand-primary" />
+                    <Spinner className="h-10 w-10 text-brand-primary" />
                     <p className="mt-4 text-lg text-content-200 dark:text-dark-content-200">
-                        Loading...
+                        {authLoading ? "Loading your workspace..." : "Redirecting to sign in..."}
                     </p>
                 </div>
             );
         }
-        const animationClass = transitionDirection === "left" ? "animate-slide-left" : transitionDirection === "right" ? "animate-slide-right" : "animate-fade-in";
+
+        if (
+            isLoading &&
+            templates.length === 0 &&
+            videoTemplates.length === 0 &&
+            (requestedTab === "marketplace" ||
+                requestedTab === "videos" ||
+                requestedTab === "search")
+        ) {
+            return (
+                <div className="flex flex-col items-center justify-center pt-20">
+                    <Spinner className="h-10 w-10 text-brand-primary dark:text-dark-brand-primary" />
+                    <p className="mt-4 text-lg text-content-200 dark:text-dark-content-200">
+                        Loading your content...
+                    </p>
+                </div>
+            );
+        }
+
+        const animationClass =
+            transitionDirection === "left"
+                ? "animate-slide-left"
+                : transitionDirection === "right"
+                    ? "animate-slide-right"
+                    : "animate-fade-in";
 
         return (
             <div key={viewState.view} className={animationClass}>
@@ -273,55 +235,53 @@ export default function Page() {
                                     onSelectTemplate={handleSelectTemplate}
                                     user={user}
                                     onDeleteTemplate={handleDeleteTemplate}
-                                    onEditTemplate={(t: Template) => setViewState({ view: "edit", template: t })}
+                                    onEditTemplate={handleEditTemplate}
                                 />
                             );
-                        /*case "apply":
-                            return <ApplyTemplateView template={viewState.template!} setViewState={setViewState} user={user} />;*/
                         case "shared":
-                            return <SharedImageView shareId={viewState.shareId!} setViewState={setViewState} />;
-                        case "profile":
-                            return <ProfileView user={viewState.user || user!} currentUser={user} setViewState={setViewState} onCreateYourOwn={handleCreateYourOwn} />;
-                        case "outfits":
-                            return <OutfitsView outfits={outfits} onSelectOutfit={handleSelectOutfit} />;
-                        case "applyOutfit":
                             return (
-                                <ApplyOutfitView
-                                    outfit={viewState.outfit!}
-                                    user={user}
+                                <SharedImageView
+                                    shareId={viewState.shareId}
+                                    setViewState={setViewState}
                                 />
                             );
-                        case "hairstyles":
-                            return <HairstylesView
-                                hairstyles={hairstyles}
-                                onSelectHairstyle={handleSelectHairstyle}
-                                user={user}
-                                onDeleteHairstyle={handleDeleteHairstyle}
-                                onEditHairstyle={(h) => setViewState({ view: "createHairstyle", editingHairstyle: h })}
-                            />;
-                        case "applyHairstyle":
+                        case "profile":
                             return (
-                                <ApplyHairstyleView
-                                    hairstyle={viewState.hairstyle!}
-                                    user={user}
+                                <ProfileView
+                                    user={viewState.user || user}
+                                    currentUser={user}
+                                    onBackToDashboard={() => navigateToTab("marketplace")}
+                                    onOpenTemplate={handleSelectTemplate}
                                 />
                             );
                         case "search":
                             return (
                                 <SearchView
                                     templates={templates}
-                                    outfits={outfits}
+                                    videoTemplates={videoTemplates}
                                     onSelectTemplate={handleSelectTemplate}
-                                    onSelectOutfit={handleSelectOutfit}
+                                    onSelectVideo={handleSelectVideo}
                                     user={user}
                                     onDeleteTemplate={handleDeleteTemplate}
-                                    onEditTemplate={(t: Template) => setViewState({ view: "edit", template: t })}
+                                    onEditTemplate={handleEditTemplate}
                                 />
                             );
                         case "videos":
-                            return <VideosView videos={videoTemplates} onSelectVideo={handleSelectVideo} user={user} />;
+                            return (
+                                <VideosView
+                                    videos={videoTemplates}
+                                    onSelectVideo={handleSelectVideo}
+                                    user={user}
+                                />
+                            );
                         case "applyVideo":
-                            return <ApplyVideoView videoTemplate={viewState.videoTemplate!} setViewState={setViewState} user={user} />;
+                            return (
+                                <ApplyVideoView
+                                    videoTemplate={viewState.videoTemplate}
+                                    setViewState={setViewState}
+                                    user={user}
+                                />
+                            );
                         default:
                             return null;
                     }
@@ -330,73 +290,61 @@ export default function Page() {
         );
     };
 
-    const showDashboard = user && (viewState.view === "marketplace" || viewState.view === "feed" || viewState.view === "outfits" || viewState.view === "hairstyles");
+    const showDashboardBar = user && viewState.view === "marketplace";
 
     return (
         <div
-            className={`${commonClasses.container.base} min-h-screen flex flex-col ${commonClasses.transitions.default} relative`}
+            className={`${commonClasses.container.base} relative flex min-h-screen flex-col ${commonClasses.transitions.default}`}
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
         >
             {user && (
-                <div className="max-w-7xl mx-auto mb-8">
-                    <div className="flex justify-center gap-8 border-b border-gray-200 dark:border-gray-700">
-                        <button
-                            onClick={() => setViewState({ view: "search" })}
-                            className={`py-3 px-4 transition-colors ${viewState.view === "search"
-                                ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                                : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-                                }`}
-                            aria-label="Search"
-                        >
-                            <SearchIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                            onClick={() => setViewState({ view: "marketplace" })}
-                            className={`py-3 font-semibold transition-colors ${viewState.view === "marketplace"
-                                ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                                : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-                                }`}
-                        >
-                            Templates
-                        </button>
-                        <button
-                            onClick={() => setViewState({ view: "videos" })}
-                            className={`py-3 font-semibold transition-colors ${viewState.view === "videos"
-                                ? "border-b-2 border-brand-primary text-brand-primary dark:text-dark-brand-primary dark:border-dark-brand-primary"
-                                : "text-content-200 dark:text-dark-content-200 hover:text-brand-primary dark:hover:text-dark-brand-primary"
-                                }`}
-                        >
-                            Videos
-                        </button>
+                <div className="mx-auto mb-6 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div className="studio-panel-soft scrollbar-hidden flex gap-2 overflow-x-auto rounded-full p-2">
+                        {dashboardNavItems.map(({ tab, label, icon: Icon }) => (
+                            <button
+                                key={tab}
+                                type="button"
+                                onClick={() => navigateToTab(tab)}
+                                className={requestedTab === tab ? studioClasses.tabActive : studioClasses.tabInactive}
+                            >
+                                {Icon ? <Icon className="h-4 w-4" /> : null}
+                                <span>{label}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
             )}
 
             {renderView()}
 
-            {showDashboard && (
-                <div className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none">
-                    <div className="mx-auto w-full max-w-xl p-4 pointer-events-auto">
-                        <DashboardBar setViewState={setViewState} addTemplate={addTemplate} />
+            {showDashboardBar && (
+                <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-[100]">
+                    <div className="pointer-events-auto mx-auto w-full max-w-xl p-4">
+                        <DashboardBar
+                            addTemplate={addTemplate}
+                            username={username}
+                        />
                     </div>
-                    <div className="w-full py-2 text-center pointer-events-none">
-                        <p className="text-xs text-white font-medium mix-blend-difference opacity-80">
-                            © {new Date().getFullYear()} Genie. All rights reserved.
+                    <div className="pointer-events-none w-full py-2 text-center">
+                        <p className="text-xs uppercase tracking-[0.28em] text-content-300 dark:text-dark-content-300">
+                            &copy; {new Date().getFullYear()} Genie. All rights reserved.
                         </p>
                     </div>
                 </div>
             )}
 
-            <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
-                <div className="flex justify-end p-4">
-                    <a href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center gap-2 pointer-events-auto">
-                        <WhatsAppIcon />
-                        <span className="hidden sm:inline">Join community for support</span>
-                    </a>
-                </div>
-            </div>
+            <a
+                href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`fixed right-4 z-40 flex items-center gap-2 rounded-full bg-[#19c463] px-4 py-3 font-semibold text-white shadow-[0_18px_45px_rgba(25,196,99,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#16af58] ${showDashboardBar ? "bottom-24 sm:bottom-6" : "bottom-4"
+                    }`}
+            >
+                <WhatsAppIcon />
+                <span className="hidden sm:inline">Join community for support</span>
+            </a>
         </div>
     );
 }

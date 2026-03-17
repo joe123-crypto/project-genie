@@ -1,21 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { SparklesIcon, SendIcon } from './icons';
-import { ViewState, Template } from '../types';
+import { Template } from '../types';
 import { getValidIdToken } from '../services/authService';
 import { improvePrompt } from '../services/geminiService';
 import { getApiBaseUrlRuntime } from '../utils/api';
+import StatusBanner from './StatusBanner';
 
 interface DashboardProps {
-  setViewState: React.Dispatch<React.SetStateAction<ViewState>>;
   addTemplate: (template: Template) => void;
+  username: string;
 }
 
-const DashboardBar: React.FC<DashboardProps> = ({ setViewState, addTemplate }) => {
+const DashboardBar: React.FC<DashboardProps> = ({ addTemplate, username }) => {
   const [text, setText] = useState('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [feedback, setFeedback] = useState<{
+    kind: 'error' | 'success' | 'info';
+    message: string;
+  } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const containerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -28,6 +33,7 @@ const DashboardBar: React.FC<DashboardProps> = ({ setViewState, addTemplate }) =
     if (!text.trim()) return;
 
     setIsLoading(true);
+    setFeedback(null);
     try {
       const idToken = await getValidIdToken();
       if (!idToken) {
@@ -66,10 +72,17 @@ const DashboardBar: React.FC<DashboardProps> = ({ setViewState, addTemplate }) =
       const newTemplate: Template = await response.json();
       addTemplate(newTemplate);
       setText('');
-      setViewState({ view: 'apply', template: newTemplate });
+      setFeedback({
+        kind: 'success',
+        message: 'Template created. Opening it now so you can start applying it.',
+      });
+      router.push(`/${username}/dashboard/${newTemplate.id}`);
     } catch (error) {
       console.error('Error creating template:', error);
-      alert(`Error creating template: ${(error as Error).message}`);
+      setFeedback({
+        kind: 'error',
+        message: `Error creating template: ${(error as Error).message}`,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -78,40 +91,58 @@ const DashboardBar: React.FC<DashboardProps> = ({ setViewState, addTemplate }) =
   const handleImprovePrompt = async () => {
     if (!text.trim()) return;
     setIsLoading(true);
+    setFeedback(null);
     try {
       const improved = await improvePrompt(text);
       setText(improved);
+      setFeedback({
+        kind: 'success',
+        message: 'Prompt refined. Review it and send when you are ready.',
+      });
     } catch (error) {
       console.error('Error improving prompt:', error);
-      alert(`Error improving prompt: ${(error as Error).message}`);
+      setFeedback({
+        kind: 'error',
+        message: `Error improving prompt: ${(error as Error).message}`,
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-2xl px-4 mx-auto">
+    <div className="mx-auto w-full max-w-3xl px-4">
+      {feedback ? (
+        <StatusBanner
+          kind={feedback.kind}
+          message={feedback.message}
+          className="mb-3"
+        />
+      ) : null}
+
       <div
-        ref={containerRef}
-        className="bg-white/95 dark:bg-black/95 backdrop-blur-xl backdrop-saturate-150 rounded-3xl shadow-2xl border border-white/20 dark:border-white/10 p-3 flex items-end gap-2 transition-all duration-300 hover:shadow-brand-primary/10"
+        className="studio-panel flex items-end gap-3 rounded-[2rem] p-3 sm:p-4"
       >
-        <div className="flex-1 pl-4 py-2">
+        <div className="flex flex-1 items-start gap-3 rounded-[1.5rem] bg-base-200 px-4 py-3 dark:bg-dark-base-200">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-base-100 text-content-300 shadow-sm dark:bg-dark-base-100 dark:text-dark-content-300">
+            <SparklesIcon className="h-4 w-4" />
+          </div>
           <textarea
             ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={1}
             placeholder="Describe a template you want to create..."
-            className="w-full bg-transparent focus:outline-none text-black dark:text-white resize-none overflow-y-hidden placeholder-gray-700 dark:placeholder-gray-300 text-base font-medium max-h-32"
+            className="max-h-32 w-full resize-none overflow-y-hidden bg-transparent text-base font-medium text-content-100 placeholder-content-300 focus:outline-none dark:text-dark-content-100"
             disabled={isLoading}
             style={{ minHeight: '24px' }}
           />
         </div>
 
-        <div className="flex items-center gap-1 pr-1 pb-1">
+        <div className="flex items-center gap-2 pb-1">
           <button
             onClick={handleImprovePrompt}
-            className="p-2 text-brand-primary dark:text-dark-brand-primary hover:bg-brand-primary/10 dark:hover:bg-dark-brand-primary/10 rounded-full transition-colors"
+            className="studio-soft-button h-11 w-11 rounded-full p-0"
             disabled={isLoading || !text.trim()}
             title="Improve prompt with AI"
           >
@@ -120,9 +151,9 @@ const DashboardBar: React.FC<DashboardProps> = ({ setViewState, addTemplate }) =
 
           <button
             onClick={handleSend}
-            className={`p-3 rounded-full flex items-center justify-center transition-all duration-300 ${text.trim()
-              ? 'bg-brand-primary text-white hover:bg-brand-secondary shadow-lg hover:shadow-brand-primary/30'
-              : 'bg-neutral-200 dark:bg-dark-neutral-200 text-content-300 dark:text-dark-content-300 cursor-not-allowed'
+            className={`flex h-11 w-11 items-center justify-center rounded-full transition-all duration-300 ${text.trim()
+              ? 'studio-primary-button p-0'
+              : 'cursor-not-allowed bg-neutral-200 text-content-300 dark:bg-dark-neutral-200 dark:text-dark-content-300'
               }`}
             disabled={isLoading || !text.trim()}
           >
@@ -142,3 +173,4 @@ const DashboardBar: React.FC<DashboardProps> = ({ setViewState, addTemplate }) =
 };
 
 export default DashboardBar;
+

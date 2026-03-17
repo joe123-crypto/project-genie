@@ -94,20 +94,14 @@ export type ViewState =
   | { view: "apply"; template: Template }
   | { view: "create" }
   | { view: "createTemplate" }
-  | { view: "createOutfit" }
   | { view: "edit"; template: Template }
   | { view: "auth" }
   | { view: "shared"; shareId: string }
-  | { view: "outfits" }
-  | { view: "applyOutfit"; outfit: Outfit }
   | { view: "profile"; user?: User }
   | { view: "feed" }
   | { view: "search" }
   | { view: "search" }
   | { view: "initialAuth" }
-  | { view: "hairstyles" }
-  | { view: "createHairstyle"; editingHairstyle?: Hairstyle }
-  | { view: "applyHairstyle"; hairstyle: Hairstyle }
   | { view: "videos" }
   | { view: "createVideo"; editingVideo?: VideoTemplate }
   | { view: "applyVideo"; videoTemplate: VideoTemplate };

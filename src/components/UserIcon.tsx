@@ -33,22 +33,30 @@ const UserIcon: React.FC<UserIconProps> = ({ user, onSignOut, onGoToProfile, onR
           <img
             src={user.photoURL}
             alt="User profile"
-            className="h-8 w-8 rounded-full cursor-pointer"
+            className="studio-icon-button h-11 w-11 cursor-pointer rounded-full object-cover p-0"
           />
         ) : (
-          <div className="h-8 w-8 rounded-full cursor-pointer flex items-center justify-center bg-neutral-200 dark:bg-dark-neutral-200 hover:bg-neutral-300 dark:hover:bg-dark-neutral-300 transition-colors">
-            <DefaultUserIcon className="h-6 w-6 text-content-100 dark:text-dark-content-100" />
+          <div className="studio-icon-button h-11 w-11 cursor-pointer">
+            <DefaultUserIcon className="h-6 w-6" />
           </div>
         )}
       </button>
       {dropdownOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-base-100 dark:bg-dark-base-100 rounded-md shadow-lg py-1 z-50">
+        <div className="studio-panel absolute right-0 z-50 mt-3 w-56 rounded-[1.5rem] p-2">
+          <div className="px-4 py-3">
+            <p className="truncate text-sm font-semibold text-content-100 dark:text-dark-content-100">
+              {user.displayName || user.username || 'Your profile'}
+            </p>
+            <p className="truncate text-xs text-content-300 dark:text-dark-content-300">
+              {user.email}
+            </p>
+          </div>
           <button
             onClick={() => {
               onGoToProfile();
               setDropdownOpen(false);
             }}
-            className="block w-full text-left px-4 py-2 text-sm text-content-100 dark:text-dark-content-100 hover:bg-base-200 dark:hover:bg-dark-base-200"
+            className="block w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-content-100 transition-colors hover:bg-base-200 dark:text-dark-content-100 dark:hover:bg-dark-base-200"
           >
             Profile
           </button>
@@ -57,17 +65,17 @@ const UserIcon: React.FC<UserIconProps> = ({ user, onSignOut, onGoToProfile, onR
               onSignOut();
               setDropdownOpen(false);
             }}
-            className="block w-full text-left px-4 py-2 text-sm text-content-100 dark:text-dark-content-100 hover:bg-base-200 dark:hover:bg-dark-base-200"
+            className="block w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-content-100 transition-colors hover:bg-base-200 dark:text-dark-content-100 dark:hover:bg-dark-base-200"
           >
             Sign Out
           </button>
-          <div className="border-t border-border-color dark:border-dark-border-color my-1"></div>
+          <div className="my-2 border-t border-border-color dark:border-dark-border-color"></div>
           <button
             onClick={() => {
               onRemoveAccount();
               setDropdownOpen(false);
             }}
-            className="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-base-200 dark:hover:bg-dark-base-200"
+            className="block w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
           >
             Remove Account
           </button>

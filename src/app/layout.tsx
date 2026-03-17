@@ -56,10 +56,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${outfit.variable} ${cormorant.variable}`}>
       <body className="font-sans min-h-screen relative">
-        <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
-          <div className="absolute inset-0 bg-gray-100 dark:bg-gray-900" />
-          <div className="absolute inset-0 opacity-60 backdrop-blur-3xl" />
-        </div>
         <div className="relative z-10 min-h-screen">
           <AuthProvider>
             <TemplateProvider>

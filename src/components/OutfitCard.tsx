@@ -10,47 +10,36 @@ const OutfitCard: React.FC<OutfitCardProps> = ({ outfit, onSelect }) => {
   return (
     <div
       onClick={onSelect}
-      className="bg-base-200 dark:bg-dark-base-200 rounded-xl overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300 group border border-transparent hover:border-brand-primary/20 flex flex-col h-full"
+      className="group studio-card-hover relative h-full cursor-pointer overflow-hidden rounded-[1.7rem] border border-border-color bg-base-100 shadow-[0_18px_40px_rgba(15,23,42,0.08)] dark:border-dark-border-color dark:bg-dark-base-100"
     >
       <div className="relative aspect-[4/5] overflow-hidden">
         <img
           src={outfit.previewImageUrl}
           alt={outfit.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
-        <div className="absolute top-2 left-2 bg-brand-primary text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm uppercase tracking-wider">
-          Free
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-65 transition-opacity duration-300 group-hover:opacity-85" />
+        <div className="absolute left-3 top-3 rounded-full bg-white/80 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-slate-700 shadow-sm backdrop-blur dark:bg-black/50 dark:text-white">
+          Outfit
         </div>
-        {outfit.type && (
-          <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-1 rounded-md border border-white/10">
+        {outfit.type ? (
+          <div className="absolute right-3 top-3 rounded-full border border-white/10 bg-black/55 px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.18em] text-white backdrop-blur-sm">
             {outfit.type}
           </div>
-        )}
-      </div>
+        ) : null}
 
-      <div className="p-3 flex flex-col flex-grow">
-        <div className="flex justify-between items-start mb-1">
-          <h3 className="text-sm font-bold text-content-100 dark:text-dark-content-100 line-clamp-1 group-hover:text-brand-primary dark:group-hover:text-dark-brand-primary transition-colors">
+        <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+          <h3 className="truncate text-base font-bold drop-shadow-md">
             {outfit.name}
           </h3>
-        </div>
-
-        <div className="flex items-center mb-2">
-          <div className="flex text-yellow-400 text-xs">
-            {'★'.repeat(5)}
+          <p className="mt-1 line-clamp-2 text-xs text-white/75 sm:text-sm">
+            {outfit.description}
+          </p>
+          <div className="mt-3 flex items-center justify-between text-[0.7rem] uppercase tracking-[0.18em] text-white/65">
+            <span>{outfit.accessCount || 0} uses</span>
+            {outfit.username ? <span className="truncate max-w-[50%]">by {outfit.username}</span> : null}
           </div>
-          <span className="text-[10px] text-content-300 dark:text-dark-content-300 ml-1">
-            ({outfit.accessCount || Math.floor(Math.random() * 50) + 10})
-          </span>
         </div>
-
-        <p className="text-content-200 dark:text-dark-content-200 text-xs line-clamp-2 mb-3 flex-grow">
-          {outfit.description}
-        </p>
-
-        <button className="w-full bg-brand-primary/10 hover:bg-brand-primary text-brand-primary hover:text-white text-xs font-bold py-2 rounded-lg transition-colors duration-200 mt-auto">
-          GET
-        </button>
       </div>
     </div>
   );

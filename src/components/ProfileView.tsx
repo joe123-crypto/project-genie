@@ -1,35 +1,34 @@
-import React, { useState, useCallback, ChangeEvent, useEffect } from 'react';
-import { User, Share, Outfit, Template } from '../types';
-// import { updateUserProfile, uploadProfilePicture, fetchUserOutfits, fetchUserTemplates, fetchUserImages } from '../services/userService';
-import { fetchUserOutfits, fetchUserTemplates, fetchUserImages } from '../services/userService';
+import React, { useState, useCallback, useEffect } from 'react';
+import { User, Share, Template } from '../types';
+import { fetchUserTemplates, fetchUserImages } from '../services/userService';
 import { Spinner } from './Spinner'; // Changed to named import
 import { DefaultUserIcon, TrashIcon } from './icons';
-import OutfitCard from './OutfitCard';
 import TemplateCard from './TemplateCard';
+import { commonClasses, studioClasses } from '../utils/theme';
 
 interface ProfileViewProps {
   user: User;
   currentUser: User | null;
-  setViewState: (view: any) => void;
-  onCreateYourOwn: (templateId: string) => void;
+  onBackToDashboard: () => void;
+  onOpenTemplate: (template: Template) => void;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewState, onCreateYourOwn }) => {
-  const [displayName, setDisplayName] = useState(user.displayName || '');
-  const [newProfilePic, setNewProfilePic] = useState<File | null>(null);
-  const [isSaving] = useState(false);
+const ProfileView: React.FC<ProfileViewProps> = ({
+  user,
+  currentUser,
+  onBackToDashboard,
+  onOpenTemplate,
+}) => {
   const [error, setError] = useState<string | null>(null);
 
   const [images, setImages] = useState<Share[]>([]);
-  const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
 
   const [isLoadingImages, setIsLoadingImages] = useState(true);
-  const [isLoadingOutfits, setIsLoadingOutfits] = useState(true);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
 
   const [selectedImage, setSelectedImage] = useState<Share | null>(null);
-  const [activeTab, setActiveTab] = useState('outfits');
+  const [activeTab, setActiveTab] = useState<'templates' | 'images'>('templates');
 
   const isOwner = currentUser?.uid === user.uid;
 
@@ -39,7 +38,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
 
   const closeModal = () => {
     setSelectedImage(null);
-  }
+  };
 
   const loadUserData = useCallback(async () => {
     try {
@@ -47,14 +46,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
         throw new Error('User UID is not available or is invalid');
       }
 
-      const [userImages, userOutfits, userTemplates] = await Promise.all([
+      const [userImages, userTemplates] = await Promise.all([
         fetchUserImages(user.uid),
-        fetchUserOutfits(user.uid),
         fetchUserTemplates(user.uid)
       ]);
 
       setImages(userImages);
-      setOutfits(userOutfits);
       setTemplates(userTemplates);
 
     } catch (err: any) {
@@ -62,7 +59,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
       setError(prevError => prevError ? `${prevError}\n${err.message}` : `Failed to load your data: ${err.message}`);
     } finally {
       setIsLoadingImages(false);
-      setIsLoadingOutfits(false);
       setIsLoadingTemplates(false);
     }
   }, [user.uid]);
@@ -70,41 +66,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
   useEffect(() => {
     loadUserData();
   }, [loadUserData]);
-
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setNewProfilePic(e.target.files[0]);
-    }
-  };
-
-  const handleSave = useCallback(async () => {
-    // setIsSaving(true);
-    // setError(null);
-    // try {
-    //   const idToken = await getValidIdToken();
-    //   if (!idToken) throw new Error('Session expired'); 
-
-    //   let photoURL = user.photoURL;
-    //   if (newProfilePic) {
-    //     photoURL = await uploadProfilePicture(user.uid, newProfilePic, idToken);
-    //   }
-
-    //   await updateUserProfile(user.uid, { displayName, photoURL }, idToken);
-
-    //   setViewState({ view: 'marketplace' });
-    // } catch (err) {
-    //   console.error(err);
-    //   setError('Failed to update profile. Please try again.');
-    // } finally {
-    //   setIsSaving(false);
-    // }
-    console.warn("Profile update functionality is temporarily disabled.");
-  }, []);
-
-
-
-  const isSaveDisabled =
-    (displayName === (user.displayName || '') && !newProfilePic) || isSaving;
 
   const getSafeImageUrl = (url: string | undefined): string | undefined => {
     if (!url) {
@@ -117,36 +78,29 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
   };
 
   const renderTabs = () => (
-    <div className="mb-8 border-b border-border-color dark:border-dark-border-color">
-      <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-        <button onClick={() => setActiveTab('outfits')} className={`${activeTab === 'outfits' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Outfits</button>
-        <button onClick={() => setActiveTab('templates')} className={`${activeTab === 'templates' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Templates</button>
-        <button onClick={() => setActiveTab('images')} className={`${activeTab === 'images' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Images</button>
+    <div className="mb-8">
+      <nav className="studio-panel-soft inline-flex flex-wrap gap-2 rounded-full p-2" aria-label="Tabs">
+        <button onClick={() => setActiveTab('templates')} className={activeTab === 'templates' ? studioClasses.tabActive : studioClasses.tabInactive}>Templates</button>
+        <button onClick={() => setActiveTab('images')} className={activeTab === 'images' ? studioClasses.tabActive : studioClasses.tabInactive}>Images</button>
       </nav>
     </div>
   );
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'outfits':
-        return (
-          <div>
-            {(isLoadingImages || isLoadingOutfits) ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : outfits.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {outfits.map((outfit) => (
-                  <OutfitCard key={outfit.id} outfit={outfit} onSelect={() => setViewState({ view: 'applyOutfit', outfit: outfit })} />
-                ))}
-              </div>
-            ) : <p className="text-content-200 dark:text-dark-content-200 text-center py-10">This user hasn&apos;t created any outfits yet.</p>}
-          </div>
-        );
       case 'templates':
         return (
           <div>
             {isLoadingTemplates ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : templates.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {templates.map((template) => (
-                  <TemplateCard key={template.id} template={template} onSelect={() => setViewState({ view: 'apply', template: template })} onEdit={() => setViewState({ view: 'edit', template: template })} user={currentUser} onDelete={async () => { }} />
+                  <TemplateCard
+                    key={template.id}
+                    template={template}
+                    onSelect={() => onOpenTemplate(template)}
+                    user={currentUser}
+                    allowAdminActions={false}
+                  />
                 ))}
               </div>
             ) : <p className="text-content-200 dark:text-dark-content-200 text-center py-10">This user hasn&apos;t created any templates yet.</p>}
@@ -184,9 +138,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 bg-base-200 dark:bg-dark-base-200 rounded-lg shadow-lg">
+    <div className="studio-panel mx-auto max-w-7xl rounded-[2rem] p-4 sm:p-6 md:p-8">
 
-      <h2 className="text-2xl sm:text-3xl font-bold font-heading mb-6 text-center text-content-100 dark:text-dark-content-100">
+      <h2 className="landing-display mb-6 text-center text-4xl text-content-100 dark:text-dark-content-100 sm:text-5xl">
         {isOwner ? 'Your Profile' : `${user.displayName || 'Anonymous'}'s Profile`}
       </h2>
 
@@ -199,37 +153,33 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Profile Info Section */}
         <div className="md:col-span-1 flex flex-col items-center gap-6">
-          <div className="relative">
-            {newProfilePic ? (
-              <img src={URL.createObjectURL(newProfilePic)} alt="New profile preview" className="h-32 w-32 rounded-full object-cover shadow-md" />
-            ) : user.photoURL ? (
+          <div className="relative rounded-[1.75rem] bg-base-200 p-4 dark:bg-dark-base-200">
+            {user.photoURL ? (
               <img src={user.photoURL} alt="User profile" className="h-32 w-32 rounded-full object-cover shadow-md" />
             ) : (
               <div className="h-32 w-32 rounded-full flex items-center justify-center bg-neutral-200 dark:bg-dark-neutral-200">
                 <DefaultUserIcon className="h-24 w-24 text-content-100 dark:text-dark-content-100" />
               </div>
             )}
-            {isOwner && (
-              <label htmlFor="profile-pic-upload" className="absolute bottom-0 right-0 bg-brand-primary text-white p-2 rounded-full cursor-pointer hover:bg-brand-secondary transition-colors shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                <input id="profile-pic-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-              </label>
-            )}
           </div>
           <div className="w-full">
             <label htmlFor="displayName" className="block text-sm font-medium text-content-200 dark:text-dark-content-200 mb-1">Username</label>
-            <input id="displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-border-color dark:border-dark-border-color rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow" placeholder="Enter your username" disabled={!isOwner} />
+            <input id="displayName" type="text" value={user.displayName || ''} className={studioClasses.input} placeholder="Enter your username" disabled />
           </div>
           <div className="w-full">
             <label htmlFor="email" className="block text-sm font-medium text-content-200 dark:text-dark-content-200 mb-1">Email</label>
-            <input id="email" type="email" value={user.email || ''} disabled className="w-full px-4 py-2 bg-base-300 dark:bg-dark-base-300 border border-border-color dark:border-dark-border-color rounded-lg cursor-not-allowed" />
+            <input id="email" type="email" value={user.email || ''} disabled className="studio-input cursor-not-allowed bg-base-200 dark:bg-dark-base-200" />
           </div>
           {isOwner && (
-            <div className="w-full mt-4 flex justify-end gap-4">
-              <button onClick={() => setViewState({ view: 'marketplace' })} className="px-6 py-2 bg-neutral-200 dark:bg-dark-neutral-200 text-content-100 dark:text-dark-content-100 font-bold rounded-lg hover:bg-neutral-300 dark:hover:bg-dark-neutral-300 transition-colors" disabled={isSaving}>Cancel</button>
-              <button onClick={handleSave} className={`px-6 py-2 font-bold rounded-lg transition-all flex items-center justify-center ${isSaveDisabled ? 'bg-neutral-300 dark:bg-dark-neutral-300 text-content-200 dark:text-dark-content-200 cursor-not-allowed' : 'bg-brand-primary hover:bg-brand-secondary text-white'}`} disabled={isSaveDisabled}>
-                {isSaving ? <Spinner className="h-5 w-5" /> : 'Save'}
-              </button>
+            <div className="w-full mt-4 space-y-3">
+              <p className="text-sm text-content-200 dark:text-dark-content-200">
+                Profile editing is read-only for now. You can still browse your templates and saved images here.
+              </p>
+              <div className="flex justify-end">
+                <button onClick={onBackToDashboard} className={commonClasses.button.secondary}>
+                  Back
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -240,6 +190,24 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, currentUser, setViewSta
           {renderContent()}
         </div>
       </div>
+
+      {selectedImage ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={closeModal}
+        >
+          <div
+            className="max-h-[90vh] max-w-4xl overflow-hidden rounded-2xl bg-black shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <img
+              src={getSafeImageUrl(selectedImage.imageUrl || selectedImage.image || selectedImage.url)}
+              alt="Selected user generated content"
+              className="max-h-[90vh] w-full object-contain"
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
