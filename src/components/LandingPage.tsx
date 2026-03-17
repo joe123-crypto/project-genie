@@ -22,7 +22,7 @@ const workflowCards = [
     {
         step: '03',
         title: 'Apply, save, and share',
-        description: 'Use templates on outfits or hairstyles, save the best result, and publish it to your feed or profile.',
+        description: 'Reuse your templates, save the best result, and publish it to your feed or profile.',
     },
 ];
 
@@ -174,7 +174,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
 
                         <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/75 px-4 py-2 text-xs uppercase tracking-[0.28em] text-slate-500 shadow-[0_12px_35px_rgba(239,177,210,0.22)] backdrop-blur">
                             <SparkleIcon />
-                            Templates, image generation, video tools, outfits, and hairstyles
+                            Templates, image generation, video tools, and search
                         </div>
 
                         <h1 className={`landing-display mx-auto mt-8 max-w-4xl text-5xl leading-tight sm:text-6xl lg:text-7xl ${isDark ? 'text-white' : 'text-slate-950'}`}>
@@ -182,7 +182,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                         </h1>
 
                         <p className={`mx-auto mt-6 max-w-2xl text-base leading-8 sm:text-lg ${mutedText}`}>
-                            Explore template creation, outfit design, hairstyle previews, image generation, and quick video creation in a single polished workflow.
+                            Explore template creation, image generation, quick video creation, and sharing in a single polished workflow.
                         </p>
 
                         <div className={`mx-auto mt-10 flex w-full max-w-3xl flex-col gap-4 rounded-[2rem] border p-3 backdrop-blur-xl sm:flex-row sm:items-center ${sectionSurface}`}>
@@ -209,7 +209,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn, isDar
                         </div>
 
                         <div className={`mt-5 flex flex-wrap items-center justify-center gap-3 text-xs uppercase tracking-[0.22em] ${softText}`}>
-                            {['Templates', 'Videos', 'Outfits', 'Hairstyles'].map((item) => (
+                            {['Templates', 'Videos', 'Search', 'Sharing'].map((item) => (
                                 <span key={item} className={`rounded-full px-3 py-2 ${isDark ? 'bg-white/5' : 'bg-white/70'} shadow-sm`}>
                                     {item}
                                 </span>

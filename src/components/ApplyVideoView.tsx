@@ -187,7 +187,7 @@ const ApplyVideoView: React.FC<ApplyVideoViewProps> = ({
                             disabled={!selectedImage || isGenerating}
                             className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-bold shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] ${!selectedImage || isGenerating
                                 ? 'cursor-not-allowed bg-neutral-200 text-content-300 dark:bg-dark-neutral-200 dark:text-dark-content-300'
-                                : 'bg-gradient-to-r from-brand-primary to-brand-secondary text-white hover:shadow-brand-primary/25'
+                                : 'bg-gradient-to-r from-brand-primary to-brand-secondary text-white hover:shadow-brand-soft-strong'
                                 }`}
                         >
                             {isGenerating ? (
@@ -311,3 +311,4 @@ const ApplyVideoView: React.FC<ApplyVideoViewProps> = ({
 };
 
 export default ApplyVideoView;
+

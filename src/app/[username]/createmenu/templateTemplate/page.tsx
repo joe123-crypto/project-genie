@@ -321,7 +321,7 @@ export default function Page() {
               <button
                 type="button"
                 onClick={handleGeneratePrompt}
-                className="flex items-center gap-2 whitespace-nowrap rounded-lg bg-brand-secondary/10 px-4 py-2 font-semibold text-brand-primary transition-colors hover:bg-brand-secondary/20 dark:text-dark-brand-primary"
+                className="flex items-center gap-2 whitespace-nowrap rounded-lg bg-brand-soft px-4 py-2 font-semibold text-brand-primary transition-colors hover:bg-brand-soft-strong dark:text-dark-brand-primary"
                 disabled={isGeneratingPrompt}
               >
                 {isGeneratingPrompt ? (
@@ -366,7 +366,7 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={handleGenerateImage}
-                  className="flex items-center gap-2 rounded-lg bg-brand-secondary/10 px-4 py-3 font-semibold text-brand-primary transition-colors hover:bg-brand-secondary/20 dark:text-dark-brand-primary"
+                  className="flex items-center gap-2 rounded-lg bg-brand-soft px-4 py-3 font-semibold text-brand-primary transition-colors hover:bg-brand-soft-strong dark:text-dark-brand-primary"
                   disabled={isGeneratingImage}
                 >
                   {isGeneratingImage ? (
@@ -396,3 +396,4 @@ export default function Page() {
     </div>
   );
 }
+

@@ -3,37 +3,25 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
-    Hairstyle,
-    Outfit,
     Template,
     VideoTemplate,
     ViewState,
 } from "@/types";
 import Marketplace from "@/components/Marketplace";
-import ApplyOutfitView from "@/components/ApplyOutfitView";
-import ApplyHairstyleView from "@/components/ApplyHairstyleView";
-import HairstylesView from "@/components/HairstylesView";
-import OutfitsView from "@/components/OutfitsView";
 import VideosView from "@/components/VideosView";
 import ApplyVideoView from "@/components/ApplyVideoView";
 import SharedImageView from "@/components/SharedImageView";
 import { SearchIcon, WhatsAppIcon } from "@/components/icons";
 import {
-    deleteHairstyle,
     deleteTemplate,
-    getHairstyles,
-    getOutfits,
-    incrementHairstyleAccessCount,
-    incrementOutfitAccessCount,
     incrementTemplateAccessCount,
     incrementVideoAccessCount,
 } from "@/services/firebaseService";
 import { Spinner } from "@/components/Spinner";
-import { commonClasses } from "@/utils/theme";
+import { commonClasses, studioClasses } from "@/utils/theme";
 import ProfileView from "@/components/ProfileView";
 import DashboardBar from "@/components/DashboardBar";
 import SearchView from "@/components/SearchView";
-import StatusBanner from "@/components/StatusBanner";
 import { useAuth } from "@/context/AuthContext";
 import { useTemplates } from "@/context/TemplateContext";
 import {
@@ -50,18 +38,15 @@ const dashboardNavItems: Array<{
 }> = [
     { tab: "marketplace", label: "Templates" },
     { tab: "videos", label: "Videos" },
-    { tab: "outfits", label: "Outfits" },
-    { tab: "hairstyles", label: "Hairstyles" },
     { tab: "search", label: "Search", icon: SearchIcon },
 ];
+
+const swipeTabs: DashboardTab[] = ["search", "marketplace", "videos"];
 
 export default function Page() {
     const { user, isLoading: authLoading } = useAuth();
     const { templates, videoTemplates, isLoading, setTemplates } = useTemplates();
-    const [outfits, setOutfits] = useState<Outfit[]>([]);
-    const [hairstyles, setHairstyles] = useState<Hairstyle[]>([]);
     const [viewState, setViewState] = useState<ViewState>({ view: "marketplace" });
-    const [contentError, setContentError] = useState<string | null>(null);
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
     const [transitionDirection, setTransitionDirection] = useState<"left" | "right" | "none">("none");
@@ -70,7 +55,8 @@ export default function Page() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const username = (Array.isArray(params.username) ? params.username[0] : params.username) || '';
-    const requestedTab = getDashboardTab(searchParams.get("tab"));
+    const requestedTabParam = searchParams.get("tab");
+    const requestedTab = getDashboardTab(requestedTabParam);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -100,42 +86,12 @@ export default function Page() {
     }, [requestedTab, user]);
 
     useEffect(() => {
-        if (!user) {
+        if (!username || !requestedTabParam || requestedTabParam === requestedTab) {
             return;
         }
 
-        let cancelled = false;
-
-        const loadSupplementalCollections = async () => {
-            try {
-                const [nextOutfits, nextHairstyles] = await Promise.all([
-                    getOutfits(),
-                    getHairstyles(),
-                ]);
-
-                if (cancelled) {
-                    return;
-                }
-
-                setOutfits(nextOutfits);
-                setHairstyles(nextHairstyles);
-                setContentError(null);
-            } catch (error) {
-                console.error("Failed to load outfits or hairstyles:", error);
-                if (!cancelled) {
-                    setContentError(
-                        "Some collections could not be loaded. Templates and videos are still available."
-                    );
-                }
-            }
-        };
-
-        void loadSupplementalCollections();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [user]);
+        router.replace(buildDashboardHref(username, requestedTab));
+    }, [requestedTab, requestedTabParam, router, username]);
 
     const addTemplate = useCallback(
         (newTemplate: Template) => setTemplates((prev) => [newTemplate, ...prev]),
@@ -181,45 +137,6 @@ export default function Page() {
         [router, setTemplates, username]
     );
 
-    const handleSelectOutfit = useCallback((outfit: Outfit) => {
-        setViewState({ view: "applyOutfit", outfit });
-        void incrementOutfitAccessCount(outfit.id);
-        setOutfits((prevOutfits) =>
-            prevOutfits.map((currentOutfit) =>
-                currentOutfit.id === outfit.id
-                    ? { ...currentOutfit, accessCount: (currentOutfit.accessCount || 0) + 1 }
-                    : currentOutfit
-            )
-        );
-    }, []);
-
-    const handleSelectHairstyle = useCallback((hairstyle: Hairstyle) => {
-        setViewState({ view: "applyHairstyle", hairstyle });
-        void incrementHairstyleAccessCount(hairstyle.id);
-        setHairstyles((prevHairstyles) =>
-            prevHairstyles.map((currentHairstyle) =>
-                currentHairstyle.id === hairstyle.id
-                    ? {
-                        ...currentHairstyle,
-                        accessCount: (currentHairstyle.accessCount || 0) + 1,
-                    }
-                    : currentHairstyle
-            )
-        );
-    }, []);
-
-    const handleDeleteHairstyle = useCallback(
-        async (hairstyleId: string) => {
-            if (!user) {
-                throw new Error("Must be logged in");
-            }
-
-            await deleteHairstyle(hairstyleId);
-            setHairstyles((prev) => prev.filter((hairstyle) => hairstyle.id !== hairstyleId));
-        },
-        [user]
-    );
-
     const handleSelectVideo = useCallback((videoTemplate: VideoTemplate) => {
         setViewState({ view: "applyVideo", videoTemplate });
         void incrementVideoAccessCount(videoTemplate.id);
@@ -255,14 +172,6 @@ export default function Page() {
         const distance = touchStart - touchEnd;
         const isLeftSwipe = distance > minSwipeDistance;
         const isRightSwipe = distance < -minSwipeDistance;
-        const swipeTabs: DashboardTab[] = [
-            "search",
-            "marketplace",
-            "videos",
-            "outfits",
-            "hairstyles",
-        ];
-
         const currentIndex = swipeTabs.indexOf(requestedTab);
 
         if (currentIndex === -1) {
@@ -342,45 +251,15 @@ export default function Page() {
                                     user={viewState.user || user}
                                     currentUser={user}
                                     onBackToDashboard={() => navigateToTab("marketplace")}
-                                    onSelectOutfit={handleSelectOutfit}
                                     onOpenTemplate={handleSelectTemplate}
-                                />
-                            );
-                        case "outfits":
-                            return (
-                                <OutfitsView
-                                    outfits={outfits}
-                                    onSelectOutfit={handleSelectOutfit}
-                                />
-                            );
-                        case "applyOutfit":
-                            return <ApplyOutfitView outfit={viewState.outfit} user={user} />;
-                        case "hairstyles":
-                            return (
-                                <HairstylesView
-                                    hairstyles={hairstyles}
-                                    onSelectHairstyle={handleSelectHairstyle}
-                                    user={user}
-                                    onDeleteHairstyle={handleDeleteHairstyle}
-                                />
-                            );
-                        case "applyHairstyle":
-                            return (
-                                <ApplyHairstyleView
-                                    hairstyle={viewState.hairstyle}
-                                    user={user}
                                 />
                             );
                         case "search":
                             return (
                                 <SearchView
                                     templates={templates}
-                                    outfits={outfits}
-                                    hairstyles={hairstyles}
                                     videoTemplates={videoTemplates}
                                     onSelectTemplate={handleSelectTemplate}
-                                    onSelectOutfit={handleSelectOutfit}
-                                    onSelectHairstyle={handleSelectHairstyle}
                                     onSelectVideo={handleSelectVideo}
                                     user={user}
                                     onDeleteTemplate={handleDeleteTemplate}
@@ -422,24 +301,13 @@ export default function Page() {
         >
             {user && (
                 <div className="mx-auto mb-6 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-                    {contentError && (
-                        <StatusBanner
-                            kind="info"
-                            message={contentError}
-                            className="mb-4"
-                        />
-                    )}
-
-                    <div className="flex gap-2 overflow-x-auto border-b border-gray-200 pb-1 dark:border-gray-700">
+                    <div className="studio-panel-soft scrollbar-hidden flex gap-2 overflow-x-auto rounded-full p-2">
                         {dashboardNavItems.map(({ tab, label, icon: Icon }) => (
                             <button
                                 key={tab}
                                 type="button"
                                 onClick={() => navigateToTab(tab)}
-                                className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-3 text-sm font-semibold transition-colors ${requestedTab === tab
-                                    ? "bg-brand-primary/10 text-brand-primary dark:bg-dark-brand-primary/10 dark:text-dark-brand-primary"
-                                    : "text-content-200 hover:bg-black/[0.04] hover:text-content-100 dark:text-dark-content-200 dark:hover:bg-white/5 dark:hover:text-dark-content-100"
-                                    }`}
+                                className={requestedTab === tab ? studioClasses.tabActive : studioClasses.tabInactive}
                             >
                                 {Icon ? <Icon className="h-4 w-4" /> : null}
                                 <span>{label}</span>
@@ -460,7 +328,7 @@ export default function Page() {
                         />
                     </div>
                     <div className="pointer-events-none w-full py-2 text-center">
-                        <p className="text-xs font-medium text-white opacity-80 mix-blend-difference">
+                        <p className="text-xs uppercase tracking-[0.28em] text-content-300 dark:text-dark-content-300">
                             &copy; {new Date().getFullYear()} Genie. All rights reserved.
                         </p>
                     </div>
@@ -471,7 +339,7 @@ export default function Page() {
                 href="https://chat.whatsapp.com/ERJZxNP5UpCF8Fp1JECUK0"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`fixed right-4 z-40 flex items-center gap-2 rounded-full bg-green-500 px-4 py-3 font-bold text-white shadow-lg transition-colors hover:bg-green-600 ${showDashboardBar ? "bottom-24 sm:bottom-6" : "bottom-4"
+                className={`fixed right-4 z-40 flex items-center gap-2 rounded-full bg-[#19c463] px-4 py-3 font-semibold text-white shadow-[0_18px_45px_rgba(25,196,99,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#16af58] ${showDashboardBar ? "bottom-24 sm:bottom-6" : "bottom-4"
                     }`}
             >
                 <WhatsAppIcon />

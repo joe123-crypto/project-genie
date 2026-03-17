@@ -71,33 +71,38 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div
             className={`${commonClasses.container.base} min-h-screen flex flex-col ${commonClasses.transitions.default} relative`}
         >
-            <div className="flex-grow p-4 sm:p-6 md:p-8 pb-56 sm:pb-24 relative z-10">
+            <div className="relative z-10 px-4 pt-4 sm:px-6 sm:pt-6 md:px-8 md:pt-8">
                 {user && (
-                    <header className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
+                    <header className="mx-auto mb-6 flex max-w-7xl items-center justify-between gap-3 sm:mb-8">
                         <div
-                            className="flex items-center gap-3 cursor-pointer"
+                            className="group flex cursor-pointer items-center gap-3 rounded-full"
                             onClick={() => router.push(buildDashboardHref(usernameParam))}
                         >
-                            <img src="/lamp.png" alt="Genie Lamp" className="h-8 w-8" />
-                            <h1 className={`text-2xl sm:text-3xl ${commonClasses.text.heading}`}>
-                                GenAIe
-                            </h1>
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/80 p-2 shadow-[0_14px_34px_rgba(239,177,210,0.24)] ring-1 ring-black/5 backdrop-blur transition-shadow duration-200 group-hover:shadow-[0_18px_40px_rgba(239,177,210,0.3)] dark:bg-white/10 dark:ring-white/10">
+                                <img src="/lamp.png" alt="Genie Lamp" className="h-full w-full object-contain" />
+                            </div>
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.35em] text-content-300 dark:text-dark-content-300">
+                                    Creative Workspace
+                                </p>
+                                <h1 className="text-2xl font-semibold tracking-tight text-content-100 dark:text-dark-content-100 sm:text-3xl">
+                                    GenAIe
+                                </h1>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <>
-                                <Link
-                                    href={`/${params.username}/createmenu`}
-                                    className={commonClasses.button.primary}
-                                >
-                                    Create
-                                </Link>
-                                <UserIcon
-                                    user={user}
-                                    onSignOut={handleSignOut}
-                                    onGoToProfile={() => router.push(buildDashboardHref(usernameParam, "profile"))}
-                                    onRemoveAccount={handleRemoveAccount}
-                                />
-                            </>
+                        <div className="flex items-center gap-3">
+                            <Link
+                                href={`/${params.username}/createmenu`}
+                                className={`${commonClasses.button.primary} px-5`}
+                            >
+                                Create
+                            </Link>
+                            <UserIcon
+                                user={user}
+                                onSignOut={handleSignOut}
+                                onGoToProfile={() => router.push(buildDashboardHref(usernameParam, "profile"))}
+                                onRemoveAccount={handleRemoveAccount}
+                            />
                             <button
                                 className={commonClasses.button.icon}
                                 onClick={toggleTheme}
@@ -117,7 +122,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     onCancel={() => setShowConfirmDialog(false)}
                 />
             )}
-            {children}
+            <main className="relative z-10 flex-1 pb-56 sm:pb-24">
+                {children}
+            </main>
             {/*renderView()*/}
         </div>
     )

@@ -3,8 +3,6 @@ import type { ViewState } from "@/types";
 export const dashboardTabs = [
   "marketplace",
   "videos",
-  "outfits",
-  "hairstyles",
   "search",
   "profile",
 ] as const;
@@ -36,8 +34,6 @@ export const getDashboardTabFromView = (
   switch (view) {
     case "marketplace":
     case "videos":
-    case "outfits":
-    case "hairstyles":
     case "search":
     case "profile":
       return view;

@@ -70,7 +70,7 @@ const CreateOutfitView: React.FC<CreateOutfitViewProps> = ({
       };
       const saved = await saveOutfit(payload);
       if (addOutfit) addOutfit(saved);
-      setViewState({ view: "outfits" });
+      setViewState({ view: "marketplace" });
     } catch (e) {
       console.error("Failed to save outfit", e);
       alert("Failed to save outfit. Please try again.");

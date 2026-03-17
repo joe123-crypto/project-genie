@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { signInWithGoogle, signIn, signUp, getAuthUser } from '../services/authService';
 import { Spinner } from './Spinner';
-import { commonClasses, themeColors } from '../utils/theme'; // Import theme utilities
+import { commonClasses, studioClasses } from '../utils/theme';
 
 interface InitialAuthViewProps {
   onSignInSuccess: (user: User) => void;
@@ -91,20 +91,40 @@ export const InitialAuthView: React.FC<InitialAuthViewProps> = ({ onSignInSucces
     );
   }
 
+  const inputClass = studioClasses.input;
+
   return (
-    <div className={`${commonClasses.container.card} max-w-md mx-auto animate-fade-in`}>
-      <h2 className={`${commonClasses.text.heading} text-3xl font-bold text-center mb-6`}>
-        {isSigningUp ? 'Create Account' : 'Sign In'}
-      </h2>
-      {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-      <div className="space-y-4">
+    <div className="w-full max-w-md mx-auto animate-fade-in">
+      <div className="mb-6 flex flex-col items-center text-center">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/80 p-3 shadow-[0_16px_36px_rgba(239,177,210,0.22)] ring-1 ring-black/5 backdrop-blur dark:bg-white/10 dark:ring-white/10">
+          <img src="/lamp.png" alt="Genaie logo" className="h-full w-full object-contain" />
+        </div>
+        <p className="text-xs uppercase tracking-[0.35em] text-content-300 dark:text-dark-content-300">
+          Genaie Studio
+        </p>
+        <h2 className="landing-display mt-3 text-5xl text-content-100 dark:text-dark-content-100">
+          {isSigningUp ? 'Create your account' : 'Welcome back'}
+        </h2>
+        <p className="mt-3 max-w-sm text-sm leading-7 text-content-200 dark:text-dark-content-200">
+          Sign in to keep creating templates, videos, and saved images in the same polished workspace.
+        </p>
+      </div>
+
+      <div className={`${commonClasses.container.card} px-6 py-8`}>
+        {error ? (
+          <p className="mb-4 rounded-2xl border border-red-200 bg-red-50/80 px-4 py-3 text-center text-sm text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="space-y-4">
         {isSigningUp && (
           <input
             type="text"
             placeholder="Username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className={`w-full px-4 py-2 border ${themeColors.border.light} ${themeColors.border.dark} rounded-md focus:outline-none focus:ring-2`}
+            className={inputClass}
           />
         )}
         <input
@@ -112,25 +132,25 @@ export const InitialAuthView: React.FC<InitialAuthViewProps> = ({ onSignInSucces
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className={`w-full px-4 py-2 border ${themeColors.border.light} ${themeColors.border.dark} rounded-md focus:outline-none focus:ring-2`}
+          className={inputClass}
         />
         <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className={`w-full px-4 py-2 border ${themeColors.border.light} ${themeColors.border.dark} rounded-md focus:outline-none focus:ring-2`}
+          className={inputClass}
         />
         <button
           onClick={() => handleAuthAction()}
-          className={`w-full py-2 rounded-md ${commonClasses.button.primary} ${commonClasses.transitions.default}`}
+          className={`w-full ${commonClasses.button.primary}`}
           disabled={isLoading}
         >
           {isSigningUp ? 'Sign Up' : 'Sign In'}
         </button>
         <button
           onClick={handleGoogleSignIn}
-          className={`w-full py-2 rounded-md ${commonClasses.button.secondary} ${commonClasses.transitions.default} flex items-center justify-center gap-2`}
+          className={`w-full ${commonClasses.button.secondary}`}
           disabled={isLoading}
         >
           <img src="/google-icon.svg" alt="Google" className="w-5 h-5" />
@@ -138,11 +158,12 @@ export const InitialAuthView: React.FC<InitialAuthViewProps> = ({ onSignInSucces
         </button>
         <button
           onClick={() => setIsSigningUp(!isSigningUp)}
-          className={`w-full py-2 rounded-md hover:underline ${commonClasses.transitions.default} text-brand-primary dark:text-dark-brand-primary`}
+          className="w-full py-2 text-sm text-content-200 transition-colors hover:text-content-100 dark:text-dark-content-200 dark:hover:text-dark-content-100"
           disabled={isLoading}
         >
           {isSigningUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
         </button>
+      </div>
       </div>
     </div>
   );

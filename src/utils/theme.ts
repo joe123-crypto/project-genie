@@ -6,11 +6,13 @@ export const themeColors = {
         100: 'bg-base-100',
         200: 'bg-base-200',
         300: 'bg-base-300',
+        400: 'bg-base-400',
       },
       dark: {
         100: 'dark:bg-dark-base-100',
         200: 'dark:bg-dark-base-200',
         300: 'dark:bg-dark-base-300',
+        400: 'dark:bg-dark-base-400',
       }
     },
   
@@ -19,10 +21,12 @@ export const themeColors = {
       light: {
         100: 'text-content-100',
         200: 'text-content-200',
+        300: 'text-content-300',
       },
       dark: {
         100: 'dark:text-dark-content-100',
         200: 'dark:text-dark-content-200',
+        300: 'dark:text-dark-content-300',
       }
     },
   
@@ -32,11 +36,13 @@ export const themeColors = {
         primary: 'bg-brand-primary',
         secondary: 'bg-brand-secondary',
         hover: 'hover:bg-brand-secondary',
+        soft: 'bg-brand-soft',
       },
       dark: {
         primary: 'dark:bg-dark-brand-primary',
         secondary: 'dark:bg-dark-brand-secondary',
         hover: 'dark:hover:bg-dark-brand-secondary',
+        soft: 'dark:bg-dark-brand-soft',
       }
     },
 
@@ -76,34 +82,49 @@ export const themeColors = {
   };
   
   // Common component classes
-  export const commonClasses = {
+export const commonClasses = {
     // Button variants
     button: {
-      primary: `px-4 py-2 ${themeColors.brand.light.primary} ${themeColors.brand.light.hover} ${themeColors.brand.dark.primary} ${themeColors.brand.dark.hover} ${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-heading font-bold rounded-lg transition-colors`,
+      primary: 'studio-primary-button',
       
-      secondary: `px-4 py-2 ${themeColors.neutral.light[200]} ${themeColors.neutral.light.hover} ${themeColors.neutral.dark[200]} ${themeColors.neutral.dark.hover} ${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-heading font-bold rounded-lg transition-colors`,
+      secondary: 'studio-secondary-button',
 
-      success: `w-full sm:w-auto ${themeColors.success.light[100]} ${themeColors.success.light[200]} ${themeColors.success.dark[100]} ${themeColors.success.dark[200]} ${themeColors.success.light.text} ${themeColors.success.dark.text} font-heading font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg`,
+      success: 'studio-success-button',
       
-      icon: `p-2 rounded-lg ${themeColors.neutral.light[200]} ${themeColors.neutral.dark[200]} ${themeColors.neutral.light.hover} ${themeColors.neutral.dark.hover} transition-colors`,
+      icon: 'studio-icon-button',
     },
   
     // Container variants
     container: {
       base: `${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-sans`,
       
-      card: `${themeColors.base.light[200]} ${themeColors.base.dark[200]} p-6 rounded-lg shadow-md`,
+      card: 'studio-panel rounded-[2rem] p-6 sm:p-8',
     },
   
     // Text variants
     text: {
-      heading: `${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-heading font-bold`,
+      heading: `${themeColors.content.light[100]} ${themeColors.content.dark[100]} font-semibold tracking-tight`,
       body: `${themeColors.content.light[200]} ${themeColors.content.dark[200]} font-sans`,
     },
   
     // Transition effects
     transitions: {
-      default: 'transition-colors duration-300',
-      transform: 'transition-transform duration-300',
+      default: 'transition-all duration-300 ease-out',
+      transform: 'transition-transform duration-300 ease-out',
     }
   };
+
+export const studioClasses = {
+  surface: 'studio-panel',
+  surfaceSoft: 'studio-panel-soft',
+  input: 'studio-input',
+  tab: 'studio-tab',
+  tabActive: 'studio-tab studio-tab-active',
+  tabInactive: 'studio-tab studio-tab-inactive',
+  badge: 'studio-badge',
+  emptyState: 'studio-empty-state rounded-[2rem]',
+  softButton: 'studio-soft-button',
+  dangerButton: 'studio-danger-button',
+  cardHover: 'studio-card-hover',
+};
+

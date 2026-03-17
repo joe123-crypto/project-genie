@@ -111,7 +111,7 @@ const DashboardBar: React.FC<DashboardProps> = ({ addTemplate, username }) => {
   };
 
   return (
-    <div className="w-full max-w-2xl px-4 mx-auto">
+    <div className="mx-auto w-full max-w-3xl px-4">
       {feedback ? (
         <StatusBanner
           kind={feedback.kind}
@@ -121,25 +121,28 @@ const DashboardBar: React.FC<DashboardProps> = ({ addTemplate, username }) => {
       ) : null}
 
       <div
-        className="bg-white/95 dark:bg-black/95 backdrop-blur-xl backdrop-saturate-150 rounded-3xl shadow-2xl border border-white/20 dark:border-white/10 p-3 flex items-end gap-2 transition-all duration-300 hover:shadow-brand-primary/10"
+        className="studio-panel flex items-end gap-3 rounded-[2rem] p-3 sm:p-4"
       >
-        <div className="flex-1 pl-4 py-2">
+        <div className="flex flex-1 items-start gap-3 rounded-[1.5rem] bg-base-200 px-4 py-3 dark:bg-dark-base-200">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-base-100 text-content-300 shadow-sm dark:bg-dark-base-100 dark:text-dark-content-300">
+            <SparklesIcon className="h-4 w-4" />
+          </div>
           <textarea
             ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={1}
             placeholder="Describe a template you want to create..."
-            className="w-full bg-transparent focus:outline-none text-black dark:text-white resize-none overflow-y-hidden placeholder-gray-700 dark:placeholder-gray-300 text-base font-medium max-h-32"
+            className="max-h-32 w-full resize-none overflow-y-hidden bg-transparent text-base font-medium text-content-100 placeholder-content-300 focus:outline-none dark:text-dark-content-100"
             disabled={isLoading}
             style={{ minHeight: '24px' }}
           />
         </div>
 
-        <div className="flex items-center gap-1 pr-1 pb-1">
+        <div className="flex items-center gap-2 pb-1">
           <button
             onClick={handleImprovePrompt}
-            className="p-2 text-brand-primary dark:text-dark-brand-primary hover:bg-brand-primary/10 dark:hover:bg-dark-brand-primary/10 rounded-full transition-colors"
+            className="studio-soft-button h-11 w-11 rounded-full p-0"
             disabled={isLoading || !text.trim()}
             title="Improve prompt with AI"
           >
@@ -148,9 +151,9 @@ const DashboardBar: React.FC<DashboardProps> = ({ addTemplate, username }) => {
 
           <button
             onClick={handleSend}
-            className={`p-3 rounded-full flex items-center justify-center transition-all duration-300 ${text.trim()
-              ? 'bg-brand-primary text-white hover:bg-brand-secondary shadow-lg hover:shadow-brand-primary/30'
-              : 'bg-neutral-200 dark:bg-dark-neutral-200 text-content-300 dark:text-dark-content-300 cursor-not-allowed'
+            className={`flex h-11 w-11 items-center justify-center rounded-full transition-all duration-300 ${text.trim()
+              ? 'studio-primary-button p-0'
+              : 'cursor-not-allowed bg-neutral-200 text-content-300 dark:bg-dark-neutral-200 dark:text-dark-content-300'
               }`}
             disabled={isLoading || !text.trim()}
           >
@@ -170,3 +173,4 @@ const DashboardBar: React.FC<DashboardProps> = ({ addTemplate, username }) => {
 };
 
 export default DashboardBar;
+

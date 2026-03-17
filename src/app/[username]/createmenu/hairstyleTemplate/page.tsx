@@ -117,7 +117,7 @@ const CreateHairstyleView: React.FC<CreateHairstyleViewProps> = ({
                 if (addHairstyle) addHairstyle(saved);
             }
 
-            setViewState({ view: "hairstyles" });
+            setViewState({ view: "marketplace" });
         } catch (e) {
             console.error("Failed to save hairstyle", e);
             alert("Failed to save hairstyle. Please try again.");
@@ -153,7 +153,7 @@ const CreateHairstyleView: React.FC<CreateHairstyleViewProps> = ({
                                 type="button"
                                 onClick={handleGenerateName}
                                 disabled={isGeneratingName || !formData.previewImageUrl}
-                                className="text-xs flex items-center gap-1.5 text-brand-primary dark:text-dark-brand-primary hover:bg-brand-secondary/10 px-2 py-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="text-xs flex items-center gap-1.5 text-brand-primary dark:text-dark-brand-primary hover:bg-brand-soft px-2 py-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isGeneratingName ? (
                                     <>
@@ -188,7 +188,7 @@ const CreateHairstyleView: React.FC<CreateHairstyleViewProps> = ({
                                 type="button"
                                 onClick={handleGenerateDescription}
                                 disabled={isGeneratingDescription || !formData.name}
-                                className="text-xs flex items-center gap-1.5 text-brand-primary dark:text-dark-brand-primary hover:bg-brand-secondary/10 px-2 py-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="text-xs flex items-center gap-1.5 text-brand-primary dark:text-dark-brand-primary hover:bg-brand-soft px-2 py-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isGeneratingDescription ? (
                                     <>

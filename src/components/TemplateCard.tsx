@@ -50,13 +50,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
   return (
     <div
       onClick={onSelect}
-      className="
-        group relative w-full
-        cursor-pointer overflow-hidden rounded-2xl
-        bg-base-200 shadow-sm transition-all duration-300 ease-out
-        hover:-translate-y-1 hover:shadow-xl
-        dark:bg-dark-base-200
-      "
+      className="group relative w-full cursor-pointer overflow-hidden rounded-[1.7rem] border border-border-color bg-base-100 shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_24px_54px_rgba(15,23,42,0.14)] dark:border-dark-border-color dark:bg-dark-base-100"
     >
       <div className={`relative w-full ${aspectRatio} overflow-hidden bg-base-300 dark:bg-dark-base-300`}>
         {showAdminActions ? (

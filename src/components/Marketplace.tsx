@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Template, User } from '../types';
 import TemplateCard from './TemplateCard';
+import { studioClasses } from '../utils/theme';
 
 interface MarketplaceProps {
     templates: Template[];
@@ -16,14 +17,14 @@ const Marketplace: React.FC<MarketplaceProps> = ({ templates, onSelectTemplate, 
 
     const { trendingSection, otherSections } = useMemo(() => {
         const sortedTemplates = [...templates].sort((a, b) => (b.accessCount || 0) - (a.accessCount || 0));
-        const trendingTemplates = sortedTemplates.slice(0, 5).filter(t => (t.accessCount || 0) > 0);
-        const trendingIds = new Set(trendingTemplates.map(t => t.id));
-        const otherTemplates = templates.filter(t => !trendingIds.has(t.id));
+        const trendingTemplates = sortedTemplates.slice(0, 5).filter((template) => (template.accessCount || 0) > 0);
+        const trendingIds = new Set(trendingTemplates.map((template) => template.id));
+        const otherTemplates = templates.filter((template) => !trendingIds.has(template.id));
 
         const categoriesMap = new Map<string, Template[]>();
         const validCategories = new Set(['Fun', 'Useful', 'Futuristic', 'Hair Styles', 'Other']);
 
-        otherTemplates.forEach(template => {
+        otherTemplates.forEach((template) => {
             let category = template.category;
             if (!category || !validCategories.has(category)) {
                 category = 'Other';
@@ -45,7 +46,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ templates, onSelectTemplate, 
             return indexA - indexB;
         });
 
-        const otherSections = sortedCategoryNames.map(categoryName => ({
+        const otherSections = sortedCategoryNames.map((categoryName) => ({
             name: categoryName,
             templates: categoriesMap.get(categoryName) || [],
         }));
@@ -53,35 +54,39 @@ const Marketplace: React.FC<MarketplaceProps> = ({ templates, onSelectTemplate, 
         return { trendingSection: { name: 'Trending', templates: trendingTemplates }, otherSections };
     }, [templates]);
 
-    // Duplicate templates for infinite scroll effect if there are enough items
     const infiniteTrendingTemplates = trendingSection.templates.length > 0
         ? [...trendingSection.templates, ...trendingSection.templates]
         : [];
 
     return (
-        <div className="animate-fade-in pb-20"> {/* Added padding bottom for mobile nav if exists */}
-
+        <div className="animate-fade-in pb-20">
             {templates.length === 0 && (
-                <div className="text-center bg-base-200 dark:bg-dark-base-200 p-12 rounded-3xl mx-4 mt-8 shadow-sm">
-                    <h3 className="text-2xl font-bold text-content-100 dark:text-dark-content-100">The Marketplace is Empty!</h3>
-                    <p className="text-content-200 dark:text-dark-content-200 mt-2 mb-6">Be the first to create and share a new template with the community.</p>
+                <div className={`${studioClasses.emptyState} mx-4 mt-8 p-12 text-center`}>
+                    <h3 className="landing-display text-4xl text-content-100 dark:text-dark-content-100">
+                        The marketplace is empty
+                    </h3>
+                    <p className="mt-3 text-content-200 dark:text-dark-content-200">
+                        Be the first to create and share a new template with the community.
+                    </p>
                 </div>
             )}
 
-            <div className="space-y-12">
+            <div className="space-y-14">
                 {trendingSection.templates.length > 0 && (
                     <section className="overflow-hidden">
-                        <div className="px-4 sm:px-6 lg:px-8 mb-6">
-                            <h3 className="text-2xl font-bold text-content-100 dark:text-dark-content-100">
-                                {trendingSection.name} 🔥
+                        <div className="mb-6 px-4 sm:px-6 lg:px-8">
+                            <div className="mb-2">
+                                <span className={studioClasses.badge}>Popular now</span>
+                            </div>
+                            <h3 className="landing-display text-4xl text-content-100 dark:text-dark-content-100">
+                                {trendingSection.name}
                             </h3>
                         </div>
 
-                        {/* Scroll Container */}
                         <div className="relative w-full overflow-hidden">
-                            <div className="flex animate-scroll w-max hover:pause">
+                            <div className="flex w-max animate-scroll">
                                 {infiniteTrendingTemplates.map((template, index) => (
-                                    <div key={`${template.id}-${index}`} className="w-[160px] sm:w-[200px] mx-2 sm:mx-3 shrink-0">
+                                    <div key={`${template.id}-${index}`} className="mx-2 w-[170px] shrink-0 sm:mx-3 sm:w-[210px]">
                                         <TemplateCard
                                             template={template}
                                             onSelect={() => onSelectTemplate(template)}
@@ -98,18 +103,20 @@ const Marketplace: React.FC<MarketplaceProps> = ({ templates, onSelectTemplate, 
                 )}
 
                 <div className="space-y-12 px-4 sm:px-6 lg:px-8">
-                    {otherSections.map(categorySection => {
+                    {otherSections.map((categorySection) => {
                         if (categorySection.templates.length === 0) return null;
                         return (
                             <section key={categorySection.name}>
-                                <h3 className="text-xl font-bold text-content-100 dark:text-dark-content-100 mb-6 flex items-center gap-2">
-                                    {categorySection.name}
-                                    <span className="text-sm font-normal text-content-300 dark:text-dark-content-300 bg-base-200 dark:bg-dark-base-200 px-2 py-0.5 rounded-full">
+                                <div className="mb-6 flex items-center gap-3">
+                                    <h3 className="landing-display text-3xl text-content-100 dark:text-dark-content-100">
+                                        {categorySection.name}
+                                    </h3>
+                                    <span className="studio-pill px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-content-300 dark:text-dark-content-300">
                                         {categorySection.templates.length}
                                     </span>
-                                </h3>
+                                </div>
 
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+                                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-4 lg:grid-cols-5">
                                     {categorySection.templates.map((template, index) => (
                                         <TemplateCard
                                             key={template.id}

@@ -1,17 +1,15 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { User, Share, Outfit, Template } from '../types';
-// import { updateUserProfile, uploadProfilePicture, fetchUserOutfits, fetchUserTemplates, fetchUserImages } from '../services/userService';
-import { fetchUserOutfits, fetchUserTemplates, fetchUserImages } from '../services/userService';
+import { User, Share, Template } from '../types';
+import { fetchUserTemplates, fetchUserImages } from '../services/userService';
 import { Spinner } from './Spinner'; // Changed to named import
 import { DefaultUserIcon, TrashIcon } from './icons';
-import OutfitCard from './OutfitCard';
 import TemplateCard from './TemplateCard';
+import { commonClasses, studioClasses } from '../utils/theme';
 
 interface ProfileViewProps {
   user: User;
   currentUser: User | null;
   onBackToDashboard: () => void;
-  onSelectOutfit: (outfit: Outfit) => void;
   onOpenTemplate: (template: Template) => void;
 }
 
@@ -19,21 +17,18 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   user,
   currentUser,
   onBackToDashboard,
-  onSelectOutfit,
   onOpenTemplate,
 }) => {
   const [error, setError] = useState<string | null>(null);
 
   const [images, setImages] = useState<Share[]>([]);
-  const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
 
   const [isLoadingImages, setIsLoadingImages] = useState(true);
-  const [isLoadingOutfits, setIsLoadingOutfits] = useState(true);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
 
   const [selectedImage, setSelectedImage] = useState<Share | null>(null);
-  const [activeTab, setActiveTab] = useState('outfits');
+  const [activeTab, setActiveTab] = useState<'templates' | 'images'>('templates');
 
   const isOwner = currentUser?.uid === user.uid;
 
@@ -51,14 +46,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         throw new Error('User UID is not available or is invalid');
       }
 
-      const [userImages, userOutfits, userTemplates] = await Promise.all([
+      const [userImages, userTemplates] = await Promise.all([
         fetchUserImages(user.uid),
-        fetchUserOutfits(user.uid),
         fetchUserTemplates(user.uid)
       ]);
 
       setImages(userImages);
-      setOutfits(userOutfits);
       setTemplates(userTemplates);
 
     } catch (err: any) {
@@ -66,7 +59,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       setError(prevError => prevError ? `${prevError}\n${err.message}` : `Failed to load your data: ${err.message}`);
     } finally {
       setIsLoadingImages(false);
-      setIsLoadingOutfits(false);
       setIsLoadingTemplates(false);
     }
   }, [user.uid]);
@@ -86,29 +78,16 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   const renderTabs = () => (
-    <div className="mb-8 border-b border-border-color dark:border-dark-border-color">
-      <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-        <button onClick={() => setActiveTab('outfits')} className={`${activeTab === 'outfits' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Outfits</button>
-        <button onClick={() => setActiveTab('templates')} className={`${activeTab === 'templates' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Templates</button>
-        <button onClick={() => setActiveTab('images')} className={`${activeTab === 'images' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-content-200 hover:text-content-100 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}>Images</button>
+    <div className="mb-8">
+      <nav className="studio-panel-soft inline-flex flex-wrap gap-2 rounded-full p-2" aria-label="Tabs">
+        <button onClick={() => setActiveTab('templates')} className={activeTab === 'templates' ? studioClasses.tabActive : studioClasses.tabInactive}>Templates</button>
+        <button onClick={() => setActiveTab('images')} className={activeTab === 'images' ? studioClasses.tabActive : studioClasses.tabInactive}>Images</button>
       </nav>
     </div>
   );
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'outfits':
-        return (
-          <div>
-            {(isLoadingImages || isLoadingOutfits) ? <div className="flex justify-center items-center h-48"><Spinner className="h-8 w-8" /></div> : outfits.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {outfits.map((outfit) => (
-                  <OutfitCard key={outfit.id} outfit={outfit} onSelect={() => onSelectOutfit(outfit)} />
-                ))}
-              </div>
-            ) : <p className="text-content-200 dark:text-dark-content-200 text-center py-10">This user hasn&apos;t created any outfits yet.</p>}
-          </div>
-        );
       case 'templates':
         return (
           <div>
@@ -159,9 +138,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 bg-base-200 dark:bg-dark-base-200 rounded-lg shadow-lg">
+    <div className="studio-panel mx-auto max-w-7xl rounded-[2rem] p-4 sm:p-6 md:p-8">
 
-      <h2 className="text-2xl sm:text-3xl font-bold font-heading mb-6 text-center text-content-100 dark:text-dark-content-100">
+      <h2 className="landing-display mb-6 text-center text-4xl text-content-100 dark:text-dark-content-100 sm:text-5xl">
         {isOwner ? 'Your Profile' : `${user.displayName || 'Anonymous'}'s Profile`}
       </h2>
 
@@ -174,7 +153,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Profile Info Section */}
         <div className="md:col-span-1 flex flex-col items-center gap-6">
-          <div className="relative">
+          <div className="relative rounded-[1.75rem] bg-base-200 p-4 dark:bg-dark-base-200">
             {user.photoURL ? (
               <img src={user.photoURL} alt="User profile" className="h-32 w-32 rounded-full object-cover shadow-md" />
             ) : (
@@ -185,19 +164,19 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
           <div className="w-full">
             <label htmlFor="displayName" className="block text-sm font-medium text-content-200 dark:text-dark-content-200 mb-1">Username</label>
-            <input id="displayName" type="text" value={user.displayName || ''} className="w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-border-color dark:border-dark-border-color rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow" placeholder="Enter your username" disabled />
+            <input id="displayName" type="text" value={user.displayName || ''} className={studioClasses.input} placeholder="Enter your username" disabled />
           </div>
           <div className="w-full">
             <label htmlFor="email" className="block text-sm font-medium text-content-200 dark:text-dark-content-200 mb-1">Email</label>
-            <input id="email" type="email" value={user.email || ''} disabled className="w-full px-4 py-2 bg-base-300 dark:bg-dark-base-300 border border-border-color dark:border-dark-border-color rounded-lg cursor-not-allowed" />
+            <input id="email" type="email" value={user.email || ''} disabled className="studio-input cursor-not-allowed bg-base-200 dark:bg-dark-base-200" />
           </div>
           {isOwner && (
             <div className="w-full mt-4 space-y-3">
               <p className="text-sm text-content-200 dark:text-dark-content-200">
-                Profile editing is read-only for now. You can still browse your templates, outfits, and saved images here.
+                Profile editing is read-only for now. You can still browse your templates and saved images here.
               </p>
               <div className="flex justify-end">
-                <button onClick={onBackToDashboard} className="px-6 py-2 bg-neutral-200 dark:bg-dark-neutral-200 text-content-100 dark:text-dark-content-100 font-bold rounded-lg hover:bg-neutral-300 dark:hover:bg-dark-neutral-300 transition-colors">
+                <button onClick={onBackToDashboard} className={commonClasses.button.secondary}>
                   Back
                 </button>
               </div>
